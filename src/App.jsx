@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import './styles.css';
+import { Toaster } from 'react-hot-toast';
 
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -19,6 +20,7 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <Toaster position="top-right" reverseOrder={false} />
         <Routes>
           {/* Public routes */}
           <Route path="/"           element={<Home />} />

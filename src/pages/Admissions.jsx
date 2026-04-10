@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
+import toast from 'react-hot-toast';
 
 const Admissions = () => {
   const [alert, setAlert] = useState(null);
@@ -34,16 +35,14 @@ const Admissions = () => {
       await addDoc(collection(db, 'applications'), data);
 
       formRef.current.reset();
-      setAlert({ 
-        type: 'success', 
-        msg: '🎉 Application submitted successfully! We will contact you within 2–3 business days.' 
-      });
+      const msg = '🎉 Application submitted successfully! We will contact you within 2–3 business days.';
+      setAlert({ type: 'success', msg });
+      toast.success(msg);
     } catch (err) {
       console.error('Submission error:', err);
-      setAlert({ 
-        type: 'error', 
-        msg: '❌ Failed to submit application. Please check your connection and try again.' 
-      });
+      const msg = '❌ Failed to submit application. Please check your connection and try again.';
+      setAlert({ type: 'error', msg });
+      toast.error(msg);
     } finally {
       setSubmitting(false);
     }

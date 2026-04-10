@@ -5,6 +5,7 @@ import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firesto
 import { auth, db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import Layout from '../components/Layout';
+import toast from 'react-hot-toast';
 
 const Login = () => {
   const [form, setForm] = useState({ email: '', password: '', role: 'student' });
@@ -106,7 +107,9 @@ const Login = () => {
         if (foundEmail) {
           emailToAuth = foundEmail;
         } else {
-          setError('User ID not found. Please use your registered email or correct ID.');
+          const msg = 'User ID not found. Please use your registered email or correct ID.';
+          setError(msg);
+          toast.error(msg);
           setLoading(false);
           return;
         }
@@ -145,12 +148,16 @@ const Login = () => {
       }
 
       // 5. Redirect to correct dashboard
+      toast.success(`Welcome back! Logged in as ${role}`);
+      
       if (role === 'admin')       navigate('/admin-dashboard');
       else if (role === 'staff')  navigate('/staff-dashboard');
       else                        navigate('/student-dashboard');
 
     } catch (err) {
-      setError(getFirebaseErrorMessage(err.code));
+      const msg = getFirebaseErrorMessage(err.code);
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }

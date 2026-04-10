@@ -417,7 +417,8 @@ const StudentDashboard = () => {
     email: profile?.email || currentUser?.email || '—',
     initials: (profile?.name || currentUser?.displayName || 'ST')
       .split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(),
-    id: profile?.studentId || '—',
+    id: profile?.studentId || profile?.student_id ||
+        (uid ? `LAUC/${new Date().getFullYear()}/STU/${uid.slice(0, 6).toUpperCase()}` : '—'),
     program: profile?.program || '—',
     school: profile?.school || '—',
     level: profile?.level || '—',

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import Layout from '../components/Layout';
+import toast from 'react-hot-toast';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
@@ -33,9 +34,13 @@ const ForgotPassword = () => {
 
     try {
       await resetPassword(email);
-      setMessage('A password reset link has been sent to your email. Check your inbox and spam folder.');
+      const msg = 'A password reset link has been sent to your email. Check your inbox and spam folder.';
+      setMessage(msg);
+      toast.success(msg);
     } catch (err) {
-      setError(getFirebaseErrorMessage(err.code));
+      const msg = getFirebaseErrorMessage(err.code);
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }

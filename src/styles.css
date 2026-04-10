@@ -59,14 +59,23 @@ main:has(.hero) {
 .nav-brand {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 20px;
-  font-weight: 700;
+  gap: 12px;
   text-decoration: none;
   color: white;
 }
 
-.nav-brand i { font-size: 28px; }
+.nav-logo {
+  height: 48px;
+  width: auto;
+  object-fit: contain;
+  transition: height 0.3s;
+}
+
+.nav-text {
+  font-size: 20px;
+  font-weight: 700;
+  max-width: 320px;
+}
 
 .nav-links {
   display: flex;
@@ -156,7 +165,7 @@ main:has(.hero) {
   position: relative;
   z-index: 1;
   animation: fadeInUp 0.8s ease-out;
-  padding-top: 80px; /* offset for fixed navbar */
+  padding-top: 100px; /* offset for fixed navbar */
 }
 
 .hero-content h1 {
@@ -844,8 +853,9 @@ main:has(.hero) {
 
 @media (max-width: 768px) {
   .navbar { padding: 18px 0; }
-  .nav-brand { font-size: 20px; }
-  .nav-brand i { font-size: 26px; }
+  .nav-brand { gap: 0; }
+  .nav-text { display: none; }
+  .nav-logo { height: 50px; }
 
   .nav-links {
     display: none;
@@ -912,8 +922,8 @@ main:has(.hero) {
 }
 
 @media (max-width: 480px) {
-  .nav-brand { font-size: 18px; gap: 6px; }
-  .nav-brand i { font-size: 22px; }
+  .nav-brand { gap: 0; }
+  .nav-logo { height: 44px; }
   .hero-content h1 { font-size: 48px; line-height: 1.1; }
   .hero-content p { font-size: 15px; }
   .stat-box { padding: 18px 10px; }

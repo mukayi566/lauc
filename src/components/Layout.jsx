@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import logo from '../assets/logo.png';
 
 const Navbar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -21,8 +22,8 @@ const Navbar = () => {
     }}>
       <div className="nav-container">
         <Link to="/" className="nav-brand">
-          <i className="fas fa-graduation-cap"></i>
-          London American University College
+          <img src={logo} alt="LAUC Logo" className="nav-logo" />
+          <span className="nav-text">London American University College</span>
         </Link>
 
         <div className={`nav-links${menuOpen ? ' open' : ''}`}>

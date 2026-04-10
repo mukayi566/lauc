@@ -875,7 +875,7 @@ main:has(.hero) {
 
   /* Hero adjustments */
   .hero { padding-top: 60px; }
-  .hero-content h1 { font-size: 36px; letter-spacing: -0.5px; }
+  .hero-content h1 { font-size: 46px; letter-spacing: -0.5px; }
   .hero-content p { font-size: 16px; margin-bottom: 25px; }
   .hero-buttons { flex-direction: column; width: 100%; max-width: 280px; margin: 0 auto; }
   .hero-buttons .btn { width: 100%; justify-content: center; }
@@ -914,7 +914,7 @@ main:has(.hero) {
 @media (max-width: 480px) {
   .nav-brand { font-size: 12px; gap: 4px; }
   .nav-brand i { font-size: 16px; }
-  .hero-content h1 { font-size: 30px; line-height: 1.2; }
+  .hero-content h1 { font-size: 42px; line-height: 1.2; }
   .hero-content p { font-size: 15px; }
   .stat-box { padding: 18px 10px; }
   .stat-number { font-size: 28px; }

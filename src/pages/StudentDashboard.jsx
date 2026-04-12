@@ -111,6 +111,9 @@ const StudentDashboard = () => {
   const [payAmount, setPayAmount] = useState('');
   const [payMethod, setPayMethod] = useState('mobile_money');
   const [payDesc, setPayDesc] = useState('');
+  const [payStep, setPayStep] = useState(1); // 1: Amount/Desc, 2: Method/Details, 3: Processing, 4: Success
+  const [payProgress, setPayProgress] = useState(0);
+  const [cardData, setCardData] = useState({ number: '', expiry: '', cvc: '', name: '' });
   const [paySuccessMsg, setPaySuccessMsg] = useState('');
   const [regSelected, setRegSelected] = useState([]);
   const [regSuccessMsg, setRegSuccessMsg] = useState('');
@@ -295,47 +298,78 @@ const StudentDashboard = () => {
   };
 
   /* Pay fees */
+  /* Pay fees simulation */
   const handlePay = async (e) => {
-    e.preventDefault();
-    setPayingFee(true);
-    try {
-      const amt = parseFloat(payAmount);
-      const txCol = collection(db, 'students', uid, 'transactions');
-      const today = new Date().toISOString().split('T')[0];
-      const newTx = {
-        date: today,
-        desc: payDesc || `Tuition Payment – ${payMethod === 'mobile_money' ? 'Mobile Money' : payMethod === 'card' ? 'Card' : 'Bank Transfer'}`,
-        type: 'credit',
-        amount: amt,
-        method: payMethod,
-        createdAt: serverTimestamp(),
-      };
-      await addDoc(txCol, newTx);
-
-      // refresh transactions & balance
-      const txSnap = await getDocs(query(txCol, orderBy('date', 'desc')));
-      const loadedTx = txSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-      setTransactions(loadedTx);
-      const bal = loadedTx.reduce((s, t) => {
-        const a = Number(t.amount) || 0;
-        return t.type === 'credit' ? s - a : s + a;
-      }, 0);
-      setBalanceDue(Math.max(0, bal));
-
-      setPaySuccessMsg(`Payment of ${ZMW(amt)} received. A receipt has been sent to your email.`);
-      setPayAmount('');
-      setPayDesc('');
-      setTimeout(() => { setPaySuccessMsg(''); setShowPayModal(false); }, 3000);
-    } catch (err) {
-      console.error('Pay error:', err);
-      if (!navigator.onLine || err.code === 'unavailable') {
-        setPaySuccessMsg('You are offline. Payment will sync when you are back online.');
-      } else {
-        setPaySuccessMsg('Error processing payment. Please try again.');
-      }
-    } finally {
-      setPayingFee(false);
+    if (e) e.preventDefault();
+    
+    if (payStep === 1) {
+      if (!payAmount || parseFloat(payAmount) <= 0) return;
+      setPayStep(2);
+      return;
     }
+
+    if (payStep === 2) {
+      setPayStep(3);
+      setPayProgress(0);
+      
+      // Simulate progress
+      const interval = setInterval(() => {
+        setPayProgress(prev => {
+          if (prev >= 100) {
+            clearInterval(interval);
+            return 100;
+          }
+          return prev + 5;
+        });
+      }, 100);
+
+      setTimeout(async () => {
+        setPayingFee(true);
+        try {
+          const amt = parseFloat(payAmount);
+          const txCol = collection(db, 'students', uid, 'transactions');
+          const today = new Date().toISOString().split('T')[0];
+          const newTx = {
+            date: today,
+            desc: payDesc || `Tuition Payment – ${payMethod === 'mobile_money' ? 'Mobile Money' : payMethod === 'card' ? 'Card' : 'Bank Transfer'}`,
+            type: 'credit',
+            amount: amt,
+            method: payMethod,
+            createdAt: serverTimestamp(),
+          };
+          await addDoc(txCol, newTx);
+
+          // refresh transactions & balance
+          const txSnap = await getDocs(query(txCol, orderBy('date', 'desc')));
+          const loadedTx = txSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          setTransactions(loadedTx);
+          const bal = loadedTx.reduce((s, t) => {
+            const a = Number(t.amount) || 0;
+            return t.type === 'credit' ? s - a : s + a;
+          }, 0);
+          setBalanceDue(Math.max(0, bal));
+
+          setPayStep(4);
+          setPaySuccessMsg(`Receipt #TX-${Math.random().toString(36).substr(2, 9).toUpperCase()}`);
+        } catch (err) {
+          console.error('Pay error:', err);
+          setPayStep(1);
+          alert("Error processing payment. Please try again.");
+        } finally {
+          setPayingFee(false);
+          clearInterval(interval);
+        }
+      }, 2500);
+    }
+  };
+
+  const closePayModal = () => {
+    setShowPayModal(false);
+    setPayStep(1);
+    setPayAmount('');
+    setPayDesc('');
+    setPayProgress(0);
+    setCardData({ number: '', expiry: '', cvc: '', name: '' });
   };
 
   /* Register course */
@@ -943,50 +977,165 @@ const StudentDashboard = () => {
 
       {/* ════════════ PAY MODAL ════════════ */}
       {showPayModal && (
-        <div className="sd-modal-overlay" onClick={() => setShowPayModal(false)}>
+        <div className="sd-modal-overlay" onClick={closePayModal}>
           <div className="sd-modal" onClick={e => e.stopPropagation()}>
             <div className="sd-modal-head">
               <h3><i className="fas fa-credit-card"></i> Pay Fees</h3>
-              <button className="sd-close-btn" onClick={() => setShowPayModal(false)}>&times;</button>
+              <button className="sd-close-btn" onClick={closePayModal}>&times;</button>
             </div>
 
-            {paySuccessMsg ? (
-              <div className={`sd-success-msg ${paySuccessMsg.startsWith('Error') ? 'sd-err-msg' : ''}`}>
-                <i className={`fas ${paySuccessMsg.startsWith('Error') ? 'fa-times-circle' : 'fa-check-circle'}`}></i><br />
-                {paySuccessMsg.startsWith('Error') ? 'Payment Failed' : 'Payment Successful!'}<br />
-                <small>{paySuccessMsg}</small>
-              </div>
-            ) : (
+            <div className="sd-pay-steps">
+              {[1, 2, 3, 4].map(s => (
+                <div key={s} className={`sd-pay-step-dot ${payStep >= s ? 'active' : ''}`}></div>
+              ))}
+            </div>
+
+            {/* Step 1: Amount & Desc */}
+            {payStep === 1 && (
               <form onSubmit={handlePay} className="sd-modal-form">
                 <label>Amount (ZMW – K)</label>
                 <input
                   type="number" placeholder="e.g. 5000"
                   value={payAmount} onChange={e => setPayAmount(e.target.value)}
-                  required min="1"
+                  required min="1" autoFocus
                 />
-                <label>Payment Method</label>
-                <select value={payMethod} onChange={e => setPayMethod(e.target.value)}>
-                  <option value="mobile_money">Mobile Money (MTN / Airtel)</option>
-                  <option value="card">Credit / Debit Card</option>
-                  <option value="bank_transfer">Bank Transfer (ZNBS / Zanaco)</option>
-                  <option value="cash">Cash at Finance Office</option>
-                </select>
                 <label>Description (optional)</label>
                 <input
-                  type="text" placeholder="e.g. Spring 2026 Tuition"
+                  type="text" placeholder="e.g. Semester Tuition"
                   value={payDesc} onChange={e => setPayDesc(e.target.value)}
                 />
                 <div className="sd-modal-info">
-                  <i className="fas fa-info-circle"></i>
-                  Current balance: <strong>{ZMW(balanceDue)}</strong>
+                  <i className="fas fa-info-circle"></i> Outstanding: <strong>{ZMW(balanceDue)}</strong>
                 </div>
                 <div className="sd-modal-actions">
-                  <button type="button" className="sd-btn sd-btn-ghost" onClick={() => setShowPayModal(false)}>Cancel</button>
-                  <button type="submit" className="sd-btn sd-btn-primary" disabled={payingFee}>
-                    {payingFee ? <><i className="fas fa-circle-notch fa-spin"></i> Processing…</> : 'Confirm Payment'}
-                  </button>
+                  <button type="button" className="sd-btn sd-btn-ghost" onClick={closePayModal}>Cancel</button>
+                  <button type="submit" className="sd-btn sd-btn-primary">Next Step <i className="fas fa-arrow-right"></i></button>
                 </div>
               </form>
+            )}
+
+            {/* Step 2: Method & Details */}
+            {payStep === 2 && (
+              <div className="sd-modal-form">
+                <label>Select Payment Method</label>
+                <div className="sd-payment-methods-grid">
+                  {[
+                    { id: 'mobile_money', icon: 'fa-mobile-alt', label: 'Mobile Money' },
+                    { id: 'card', icon: 'fa-credit-card', label: 'Card' },
+                    { id: 'bank_transfer', icon: 'fa-university', label: 'Bank Transfer' },
+                    { id: 'cash', icon: 'fa-money-bill-wave', label: 'Cash' },
+                  ].map(m => (
+                    <div 
+                      key={m.id} 
+                      className={`sd-method-card ${payMethod === m.id ? 'active' : ''}`}
+                      onClick={() => setPayMethod(m.id)}
+                    >
+                      <i className={`fas ${m.icon}`}></i>
+                      <span>{m.label}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {payMethod === 'card' && (
+                  <div className="sd-tab-fade">
+                    <div className="sd-card-preview">
+                      <div className="sd-card-chip"></div>
+                      <div className="sd-card-number-view">
+                        {cardData.number || '•••• •••• •••• ••••'}
+                      </div>
+                      <div className="sd-card-bottom">
+                        <div>
+                          <div className="sd-card-label">Card Holder</div>
+                          <div className="sd-card-holder-view">{cardData.name || student.name}</div>
+                        </div>
+                        <div>
+                          <div className="sd-card-label">Expires</div>
+                          <div className="sd-card-expiry-view">{cardData.expiry || 'MM/YY'}</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                      <div style={{ gridColumn: 'span 2' }}>
+                        <label>Card Number</label>
+                        <input 
+                          type="text" placeholder="0000 0000 0000 0000" 
+                          maxLength="19"
+                          value={cardData.number}
+                          onChange={e => setCardData({...cardData, number: e.target.value.replace(/\W/gi, '').replace(/(.{4})/g, '$1 ').trim()})}
+                        />
+                      </div>
+                      <div>
+                        <label>Expiry Date</label>
+                        <input 
+                          type="text" placeholder="MM/YY" maxLength="5"
+                          value={cardData.expiry}
+                          onChange={e => setCardData({...cardData, expiry: e.target.value})}
+                        />
+                      </div>
+                      <div>
+                        <label>CVC</label>
+                        <input type="password" placeholder="***" maxLength="3" />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {payMethod === 'mobile_money' && (
+                  <div className="sd-tab-fade">
+                    <label>Mobile Number</label>
+                    <input type="tel" placeholder="+260 97..." defaultValue={student.phone} />
+                    <p style={{ fontSize: '11px', color: '#64748b', marginTop: '8px' }}>
+                      <i className="fas fa-info-circle"></i> A push notification will be sent to your phone to authorize the payment.
+                    </p>
+                  </div>
+                )}
+
+                <div className="sd-modal-actions">
+                  <button type="button" className="sd-btn sd-btn-ghost" onClick={() => setPayStep(1)}>Back</button>
+                  <button type="button" className="sd-btn sd-btn-primary" onClick={() => handlePay()}>
+                    Pay {ZMW(payAmount)}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Processing */}
+            {payStep === 3 && (
+              <div className="sd-processing-box">
+                <div className="sd-processing-ring"><div></div><div></div><div></div><div></div></div>
+                <h4>Processing Payment...</h4>
+                <p className="sd-modal-hint">Please wait while we secure your transaction with {payMethod.replace('_', ' ')}.</p>
+                <div className="sd-progress-bar-wrap">
+                  <div className="sd-progress-bar-fill" style={{ width: `${payProgress}%` }}></div>
+                </div>
+                <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '10px' }}>{payProgress}% securely encrypted</div>
+              </div>
+            )}
+
+            {/* Step 4: Success */}
+            {payStep === 4 && (
+              <div className="sd-tab-fade" style={{ textAlign: 'center' }}>
+                <div className="sd-success-check">
+                  <i className="fas fa-check"></i>
+                </div>
+                <h3 style={{ color: '#0d9488', fontSize: '22px', marginBottom: '10px' }}>Payment Successful!</h3>
+                <p className="sd-modal-hint">Thank you for your payment. Your student account has been updated.</p>
+                
+                <div className="sd-receipt-card">
+                  <div className="sd-receipt-row"><span>Receipt No:</span><span className="sd-receipt-val">{paySuccessMsg}</span></div>
+                  <div className="sd-receipt-row"><span>Amount Paid:</span><span className="sd-receipt-val">{ZMW(payAmount)}</span></div>
+                  <div className="sd-receipt-row"><span>Date:</span><span className="sd-receipt-val">{new Date().toLocaleDateString()}</span></div>
+                  <div className="sd-receipt-row"><span>Method:</span><span className="sd-receipt-val" style={{ textTransform: 'capitalize' }}>{payMethod.replace('_', ' ')}</span></div>
+                  <div className="sd-receipt-row" style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #e2e8f0' }}>
+                    <span>New Balance:</span><span className="sd-receipt-val">{ZMW(balanceDue)}</span>
+                  </div>
+                </div>
+
+                <div className="sd-modal-actions" style={{ justifyContent: 'center' }}>
+                  <button className="sd-btn sd-btn-primary" onClick={closePayModal}>Done</button>
+                  <button className="sd-btn sd-btn-ghost" onClick={() => window.print()}><i className="fas fa-print"></i> Print Receipt</button>
+                </div>
+              </div>
             )}
           </div>
         </div>

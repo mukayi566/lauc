@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, storage } from '../firebase';
 import toast from 'react-hot-toast';
 
 const Admissions = () => {
@@ -27,9 +28,32 @@ const Admissions = () => {
       const formData = new FormData(formRef.current);
       const data = Object.fromEntries(formData.entries());
       
+      // Handle file uploads
+      const nrcFile = formData.get('nrcPassportFile');
+      const resultsFile = formData.get('academicResultsFile');
+
+      if (nrcFile && nrcFile.size > 0) {
+        const nrcRef = ref(storage, `applications/${Date.now()}_${nrcFile.name}`);
+        const nrcSnapshot = await uploadBytes(nrcRef, nrcFile);
+        data.nrcPassportUrl = await getDownloadURL(nrcSnapshot.ref);
+      }
+      
+      if (resultsFile && resultsFile.size > 0) {
+        const resultsRef = ref(storage, `applications/${Date.now()}_${resultsFile.name}`);
+        const resultsSnapshot = await uploadBytes(resultsRef, resultsFile);
+        data.academicResultsUrl = await getDownloadURL(resultsSnapshot.ref);
+      }
+
+      // Remove File objects before saving to Firestore
+      delete data.nrcPassportFile;
+      delete data.academicResultsFile;
+
       // Add metadata
       data.submittedAt = serverTimestamp();
+      data.date = new Date().toISOString().split('T')[0]; // For easy filtering in dashboard
       data.status = 'Pending';
+      data.name = `${data.firstName} ${data.lastName}`; // Concat name for dashboard search
+      data.id = `APP-${Date.now().toString().slice(-6)}`; // Simple unique ID
 
       // Save to 'applications' collection
       await addDoc(collection(db, 'applications'), data);
@@ -304,6 +328,18 @@ const Admissions = () => {
                   <div className="form-group">
                     <label htmlFor="refereeName">Referee Name *</label>
                     <input type="text" id="refereeName" name="refereeName" required placeholder="Name of your referee" />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="nrcPassportFile">Upload NRC / Passport (PDF or Image) *</label>
+                    <input type="file" id="nrcPassportFile" name="nrcPassportFile" accept=".pdf,image/*" required />
+                    <small style={{display: 'block', marginTop: 4, color: '#666'}}>Maximum size: 5MB</small>
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="academicResultsFile">Upload Academic Results / Transcripts *</label>
+                    <input type="file" id="academicResultsFile" name="academicResultsFile" accept=".pdf,image/*" required />
+                    <small style={{display: 'block', marginTop: 4, color: '#666'}}>Maximum size: 5MB</small>
                   </div>
                 </div>
                 <div className="form-row full">

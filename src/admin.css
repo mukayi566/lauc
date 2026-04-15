@@ -1420,3 +1420,166 @@
 @media (max-width: 400px) {
   .ad-stats-grid { grid-template-columns: 1fr; }
 }
+
+/* ─────────────────────────────────────────
+   APPLICATION DETAIL MODAL
+───────────────────────────────────────── */
+.ad-modal--lg {
+  max-width: 900px !important;
+  width: 95%;
+}
+
+.ad-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  padding: 10px 0;
+}
+
+.ad-detail-section {
+  background: #f8faff;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #e4e8ef;
+}
+
+.ad-detail-section--full {
+  grid-column: 1 / -1;
+}
+
+.ad-detail-section h4 {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e3c72;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 2px solid #e4e8ef;
+  padding-bottom: 8px;
+}
+
+.ad-detail-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.ad-detail-info p {
+  font-size: 13.5px;
+  margin: 0;
+  color: #1a2035;
+}
+
+.ad-detail-info p strong {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #6b7a99;
+  margin-bottom: 2px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+}
+
+.ad-doc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 14px;
+  margin-top: 8px;
+}
+
+.ad-doc-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: #fff;
+  border: 1.5px solid #e4e8ef;
+  border-radius: 10px;
+  text-decoration: none;
+  color: #1a2035;
+  font-weight: 600;
+  font-size: 13px;
+  transition: all 0.22s cubic-bezier(0.4,0,0.2,1);
+}
+
+.ad-doc-card:hover {
+  border-color: #1e3c72;
+  background: #f0f4f9;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(30,60,114,.12);
+}
+
+.ad-doc-card i {
+  font-size: 22px;
+  color: #1e3c72;
+  flex-shrink: 0;
+}
+
+.ad-detail-box {
+  margin-top: 16px;
+  padding: 16px;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #e4e8ef;
+}
+
+.ad-detail-box strong {
+  display: block;
+  font-size: 11px;
+  color: #6b7a99;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 8px;
+}
+
+.ad-detail-box p {
+  font-size: 14px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  color: #1a2035;
+}
+
+.ad-status-indicator {
+  font-weight: 600;
+  color: #1a2035;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+}
+
+.ad-modal__footer-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* ─── Icon Button Variants ─── */
+.ad-icon-btn--view { background: #eff6ff; color: #1e40af; }
+.ad-icon-btn--view:hover { background: #dbeafe; }
+
+.ad-icon-btn--approve { background: #ecfdf5; color: #065f46; }
+.ad-icon-btn--approve:hover { background: #d1fae5; }
+
+.ad-icon-btn--reject { background: #fef2f2; color: #991b1b; }
+.ad-icon-btn--reject:hover { background: #fee2e2; }
+
+.ad-icon-btn--ghost { background: #f1f5f9; color: #6b7a99; }
+.ad-icon-btn--ghost:hover { background: #e2e8f0; color: #1a2035; }
+
+/* ─── File inputs ─── */
+input[type="file"] {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 13px;
+  border: 1.5px dashed #c5cce0;
+  border-radius: 8px;
+  cursor: pointer;
+  background: #f8faff;
+  transition: border-color 0.2s;
+}
+
+input[type="file"]:hover {
+  border-color: #2a5298;
+}

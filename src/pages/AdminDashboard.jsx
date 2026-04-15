@@ -266,6 +266,107 @@ const Modal = ({ type, editData, lecturers = [], onClose, onSave }) => {
 };
 
 /* ─────────────────────────────────────────
+   APPLICATION DETAIL MODAL
+───────────────────────────────────────── */
+const ApplicationDetailModal = ({ app, onClose, onReview }) => {
+  if (!app) return null;
+
+  return (
+    <div className="ad-overlay" onClick={onClose}>
+      <div className="ad-modal ad-modal--lg" onClick={e => e.stopPropagation()}>
+        <div className="ad-modal__header">
+          <div>
+            <h3>Application Details</h3>
+            <p className="ad-muted">ID: {app.id}</p>
+          </div>
+          <button className="ad-modal__close" onClick={onClose}><i className="fas fa-times" /></button>
+        </div>
+        
+        <div className="ad-modal__body">
+          <div className="ad-detail-grid">
+            {/* Personal */}
+            <div className="ad-detail-section">
+              <h4><i className="fas fa-user" /> Personal Information</h4>
+              <div className="ad-detail-info">
+                <p><strong>Name:</strong> {app.firstName} {app.lastName}</p>
+                <p><strong>Email:</strong> {app.email}</p>
+                <p><strong>Phone:</strong> {app.phone}</p>
+                <p><strong>DOB:</strong> {app.dob}</p>
+                <p><strong>Gender:</strong> {app.gender}</p>
+                <p><strong>Nationality:</strong> {app.nationality}</p>
+                <p><strong>Address:</strong> {app.address}</p>
+              </div>
+            </div>
+
+            {/* Academic */}
+            <div className="ad-detail-section">
+              <h4><i className="fas fa-graduation-cap" /> Academic Information</h4>
+              <div className="ad-detail-info">
+                <p><strong>Program:</strong> {app.program}</p>
+                <p><strong>Intake:</strong> {app.intake}</p>
+                <p><strong>Last School:</strong> {app.school}</p>
+                <p><strong>Year Completed:</strong> {app.yearCompleted}</p>
+                <p><strong>Grades/Results:</strong> {app.grades}</p>
+              </div>
+            </div>
+
+            {/* Documents */}
+            <div className="ad-detail-section ad-detail-section--full">
+              <h4><i className="fas fa-file-pdf" /> Supporting Documents</h4>
+              <div className="ad-doc-grid">
+                {app.nrcPassportUrl ? (
+                  <a href={app.nrcPassportUrl} target="_blank" rel="noreferrer" className="ad-doc-card">
+                    <i className="fas fa-id-card" />
+                    <span>NRC / Passport</span>
+                  </a>
+                ) : <span className="ad-muted">No NRC/Passport uploaded</span>}
+                
+                {app.academicResultsUrl ? (
+                  <a href={app.academicResultsUrl} target="_blank" rel="noreferrer" className="ad-doc-card">
+                    <i className="fas fa-file-contract" />
+                    <span>Academic Results</span>
+                  </a>
+                ) : <span className="ad-muted">No Results uploaded</span>}
+              </div>
+            </div>
+
+            {/* Extra */}
+            <div className="ad-detail-section ad-detail-section--full">
+              <h4><i className="fas fa-info-circle" /> Additional Details</h4>
+              <p><strong>Referee:</strong> {app.refereeName}</p>
+              <p><strong>How they heard:</strong> {app.howHeard || 'N/A'}</p>
+              <div className="ad-detail-box">
+                <strong>Personal Statement:</strong>
+                <p>{app.personalStatement || 'No statement provided.'}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="ad-modal__footer">
+          <div className="ad-status-indicator">
+            Status: <span className={`ad-badge ad-badge--${app.status.toLowerCase()}`}>{app.status}</span>
+          </div>
+          <div className="ad-modal__footer-actions">
+            <button className="ad-btn ad-btn--ghost" onClick={onClose}>Close</button>
+            {app.status === 'Pending' && (
+              <>
+                <button className="ad-btn ad-btn--reject" onClick={() => { onReview(app.docId, 'Rejected'); onClose(); }}>
+                  <i className="fas fa-times" /> Reject
+                </button>
+                <button className="ad-btn ad-btn--approve" onClick={() => { onReview(app.docId, 'Approved'); onClose(); }}>
+                  <i className="fas fa-check" /> Approve
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ─────────────────────────────────────────
    MAIN COMPONENT
 ───────────────────────────────────────── */
 const AdminDashboard = () => {
@@ -275,6 +376,7 @@ const AdminDashboard = () => {
   const [toasts, setToasts]       = useState([]);
   const [search, setSearch]       = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [viewingApp, setViewingApp]   = useState(null);
 
   const [students, setStudents]       = useState([]);
   const [lecturers, setLecturers]     = useState([]);
@@ -593,6 +695,13 @@ const AdminDashboard = () => {
           lecturers={lecturers}
           onClose={() => setModal(null)}
           onSave={modal.type === 'student' ? saveStudent : modal.type === 'lecturer' ? saveLecturer : saveCourse}
+        />
+      )}
+      {viewingApp && (
+        <ApplicationDetailModal 
+          app={viewingApp}
+          onClose={() => setViewingApp(null)}
+          onReview={reviewApplication}
         />
       )}
 
@@ -1021,20 +1130,25 @@ const AdminDashboard = () => {
                             <td className="ad-muted">{a.date}</td>
                             <td><span className={`ad-badge ad-badge--${a.status.toLowerCase()}`}>{a.status}</span></td>
                             <td>
-                              {a.status === 'Pending' ? (
-                                <div className="ad-actions">
-                                  <button className="ad-btn ad-btn--approve ad-btn--xs" onClick={() => reviewApplication(a.docId, 'Approved')}>
-                                    <i className="fas fa-check" /> Approve
-                                  </button>
-                                  <button className="ad-btn ad-btn--reject ad-btn--xs" onClick={() => reviewApplication(a.docId, 'Rejected')}>
-                                    <i className="fas fa-times" /> Reject
-                                  </button>
-                                </div>
-                              ) : (
-                                <button className="ad-btn ad-btn--ghost ad-btn--xs" onClick={() => reviewApplication(a.docId, 'Pending')}>
-                                  <i className="fas fa-rotate-left" /> Reset
+                              <div className="ad-actions">
+                                <button className="ad-icon-btn ad-icon-btn--view" title="View Details" onClick={() => setViewingApp(a)}>
+                                  <i className="fas fa-eye" />
                                 </button>
-                              )}
+                                {a.status === 'Pending' ? (
+                                  <>
+                                    <button className="ad-icon-btn ad-icon-btn--approve" title="Approve" onClick={() => reviewApplication(a.docId, 'Approved')}>
+                                      <i className="fas fa-check" />
+                                    </button>
+                                    <button className="ad-icon-btn ad-icon-btn--reject" title="Reject" onClick={() => reviewApplication(a.docId, 'Rejected')}>
+                                      <i className="fas fa-times" />
+                                    </button>
+                                  </>
+                                ) : (
+                                  <button className="ad-icon-btn ad-icon-btn--ghost" title="Reset to Pending" onClick={() => reviewApplication(a.docId, 'Pending')}>
+                                    <i className="fas fa-rotate-left" />
+                                  </button>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         ))}

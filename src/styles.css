@@ -931,3 +931,48 @@ main:has(.hero) {
   .submit-btn { width: 100%; padding: 12px; font-size: 15px; }
   .section-title { font-size: 22px; }
 }
+/* ============ CLOUDINARY UPLOAD ============ */
+.cloudinary-upload-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cloudinary-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: #f8f9fa;
+  border: 2px dashed #cbd5e0;
+  border-radius: 8px;
+  color: #4a5568;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+}
+
+.cloudinary-btn:hover {
+  background: #edf2f7;
+  border-color: #a0aec0;
+}
+
+.cloudinary-btn.success {
+  background: #f0fff4;
+  border-color: #48bb78;
+  color: #2f855a;
+  border-style: solid;
+}
+
+.file-name {
+  font-size: 12px;
+  color: #718096;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: #f7fafc;
+  padding: 4px 10px;
+  border-radius: 4px;
+}

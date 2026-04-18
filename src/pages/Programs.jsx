@@ -103,7 +103,7 @@ const Programs = () => {
           </div>
 
           <div className="programs-grid">
-            {filtered.map((p) => (
+            {filtered.map((p, i) => (
               <div key={p.title} className="program-card">
                 <div className="program-header">
                   <div className="program-type">{p.type}</div>

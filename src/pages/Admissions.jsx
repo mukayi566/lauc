@@ -2,14 +2,58 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../firebase';
+import { auth, db } from '../firebase';
 import toast from 'react-hot-toast';
+import { useAuth } from '../contexts/AuthContext';
 
 const Admissions = () => {
+  const { currentUser } = useAuth();
   const [alert, setAlert] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [nrcUrl, setNrcUrl] = useState('');
+  const [resultsUrl, setResultsUrl] = useState('');
+  const [nrcFileName, setNrcFileName] = useState('');
+  const [resultsFileName, setResultsFileName] = useState('');
   const formRef = useRef(null);
+
+  // Pre-fill email and name if user is logged in
+  useEffect(() => {
+    if (currentUser && formRef.current) {
+      if (!formRef.current.email.value) formRef.current.email.value = currentUser.email || '';
+      if (currentUser.displayName) {
+        const names = currentUser.displayName.split(' ');
+        if (!formRef.current.firstName.value) formRef.current.firstName.value = names[0] || '';
+        if (!formRef.current.lastName.value && names.length > 1) formRef.current.lastName.value = names.slice(1).join(' ') || '';
+      }
+    }
+  }, [currentUser]);
+
+  const openWidget = (type) => {
+    window.cloudinary.openUploadWidget(
+      {
+        cloudName: import.meta.env.VITE_CLOUDINARY_CLOUD_NAME,
+        uploadPreset: import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET,
+        sources: ['local', 'url'],
+        multiple: false,
+        resourceType: 'auto', // Important for PDF support
+      },
+      (error, result) => {
+        if (!error && result && result.event === "success") {
+          const url = result.info.secure_url;
+          const name = result.info.original_filename + '.' + result.info.format;
+          if (type === 'nrc') {
+            setNrcUrl(url);
+            setNrcFileName(name);
+            toast.success('NRC/Passport uploaded!');
+          } else {
+            setResultsUrl(url);
+            setResultsFileName(name);
+            toast.success('Academic Results uploaded!');
+          }
+        }
+      }
+    );
+  };
 
   // Scroll to apply form if hash present
   useEffect(() => {
@@ -28,21 +72,13 @@ const Admissions = () => {
       const formData = new FormData(formRef.current);
       const data = Object.fromEntries(formData.entries());
       
-      // Handle file uploads
-      const nrcFile = formData.get('nrcPassportFile');
-      const resultsFile = formData.get('academicResultsFile');
+      // Handle file uploads (Cloudinary URLs already in state)
+      if (!nrcUrl || !resultsUrl) {
+        throw new Error('Please upload all required documents.');
+      }
 
-      if (nrcFile && nrcFile.size > 0) {
-        const nrcRef = ref(storage, `applications/${Date.now()}_${nrcFile.name}`);
-        const nrcSnapshot = await uploadBytes(nrcRef, nrcFile);
-        data.nrcPassportUrl = await getDownloadURL(nrcSnapshot.ref);
-      }
-      
-      if (resultsFile && resultsFile.size > 0) {
-        const resultsRef = ref(storage, `applications/${Date.now()}_${resultsFile.name}`);
-        const resultsSnapshot = await uploadBytes(resultsRef, resultsFile);
-        data.academicResultsUrl = await getDownloadURL(resultsSnapshot.ref);
-      }
+      data.nrcPassportUrl = nrcUrl;
+      data.academicResultsUrl = resultsUrl;
 
       // Remove File objects before saving to Firestore
       delete data.nrcPassportFile;
@@ -59,6 +95,10 @@ const Admissions = () => {
       await addDoc(collection(db, 'applications'), data);
 
       formRef.current.reset();
+      setNrcUrl('');
+      setResultsUrl('');
+      setNrcFileName('');
+      setResultsFileName('');
       const msg = '🎉 Application submitted successfully! We will contact you within 2–3 business days.';
       setAlert({ type: 'success', msg });
       toast.success(msg);
@@ -333,12 +373,30 @@ const Admissions = () => {
                 <div className="form-row">
                   <div className="form-group">
                     <label htmlFor="nrcPassportFile">Upload NRC / Passport (PDF or Image) *</label>
-                    <input type="file" id="nrcPassportFile" name="nrcPassportFile" accept=".pdf,image/*" required />
+                    <div className="cloudinary-upload-wrapper">
+                      <button 
+                        type="button" 
+                        onClick={() => openWidget('nrc')}
+                        className={`cloudinary-btn ${nrcUrl ? 'success' : ''}`}
+                      >
+                        {nrcUrl ? <><i className="fas fa-check-circle"></i> Change File</> : <><i className="fas fa-upload"></i> Upload File</>}
+                      </button>
+                      {nrcFileName && <span className="file-name">{nrcFileName}</span>}
+                    </div>
                     <small style={{display: 'block', marginTop: 4, color: '#666'}}>Maximum size: 5MB</small>
                   </div>
                   <div className="form-group">
                     <label htmlFor="academicResultsFile">Upload Academic Results / Transcripts *</label>
-                    <input type="file" id="academicResultsFile" name="academicResultsFile" accept=".pdf,image/*" required />
+                    <div className="cloudinary-upload-wrapper">
+                      <button 
+                        type="button" 
+                        onClick={() => openWidget('results')}
+                        className={`cloudinary-btn ${resultsUrl ? 'success' : ''}`}
+                      >
+                        {resultsUrl ? <><i className="fas fa-check-circle"></i> Change File</> : <><i className="fas fa-upload"></i> Upload File</>}
+                      </button>
+                      {resultsFileName && <span className="file-name">{resultsFileName}</span>}
+                    </div>
                     <small style={{display: 'block', marginTop: 4, color: '#666'}}>Maximum size: 5MB</small>
                   </div>
                 </div>

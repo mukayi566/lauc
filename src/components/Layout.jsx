@@ -1,11 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import logo from '../assets/logo.png';
+import { useAuth } from '../contexts/AuthContext';
 
 const Navbar = () => {
+  const { currentUser, userRole, signOut } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
+
+  const getDashboardLink = () => {
+    if (userRole === 'admin') return '/admin-dashboard';
+    if (userRole === 'staff') return '/staff-dashboard';
+    return '/student-dashboard';
+  };
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -34,19 +42,41 @@ const Navbar = () => {
           
           {/* Mobile only buttons */}
           <div className="mobile-only-nav">
-            <Link to="/login" className="btn btn-secondary" onClick={() => setMenuOpen(false)} style={{ justifyContent: 'center' }}>
-              <i className="fas fa-sign-in-alt"></i> Login
-            </Link>
-            <Link to="/admissions#apply" className="btn btn-primary" onClick={() => setMenuOpen(false)} style={{ justifyContent: 'center' }}>
+            {currentUser ? (
+              <>
+                <Link to={getDashboardLink()} className="btn btn-secondary" onClick={() => setMenuOpen(false)} style={{ justifyContent: 'center' }}>
+                  <i className="fas fa-th-large"></i> Dashboard
+                </Link>
+                <button onClick={() => { signOut(); setMenuOpen(false); }} className="btn btn-outline-light" style={{ justifyContent: 'center', marginTop: 10 }}>
+                  <i className="fas fa-sign-out-alt"></i> Logout
+                </button>
+              </>
+            ) : (
+              <Link to="/login" className="btn btn-secondary" onClick={() => setMenuOpen(false)} style={{ justifyContent: 'center' }}>
+                <i className="fas fa-sign-in-alt"></i> Login
+              </Link>
+            )}
+            <Link to="/admissions#apply" className="btn btn-primary" onClick={() => setMenuOpen(false)} style={{ justifyContent: 'center', marginTop: 10 }}>
               <i className="fas fa-file-alt"></i> Apply Now
             </Link>
           </div>
         </div>
 
         <div className="nav-buttons">
-          <Link to="/login" className="btn btn-secondary">
-            <i className="fas fa-sign-in-alt"></i> Login
-          </Link>
+          {currentUser ? (
+            <>
+              <Link to={getDashboardLink()} className="btn btn-secondary">
+                <i className="fas fa-th-large"></i> Dashboard
+              </Link>
+              <button onClick={signOut} className="btn btn-outline-light" style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.3)', color: 'white', borderRadius: 8, padding: '8px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <i className="fas fa-sign-out-alt"></i> Logout
+              </button>
+            </>
+          ) : (
+            <Link to="/login" className="btn btn-secondary">
+              <i className="fas fa-sign-in-alt"></i> Login
+            </Link>
+          )}
           <Link to="/admissions#apply" className="btn btn-primary">
             <i className="fas fa-file-alt"></i> Apply Now
           </Link>

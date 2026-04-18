@@ -311,7 +311,7 @@ const ApplicationDetailModal = ({ app, onClose, onReview }) => {
 
         <div className="ad-modal__footer">
           <div className="ad-status-indicator">
-            Status: <span className={`ad-badge ad-badge--${app.status.toLowerCase()}`}>{app.status}</span>
+            Status: <span className={`ad-badge ad-badge--${(app.status || "pending").toLowerCase()}`}>{app.status || "Pending"}</span>
           </div>
           <div className="ad-modal__footer-actions">
             <button className="ad-btn ad-btn--ghost" onClick={onClose}>Close</button>
@@ -676,10 +676,16 @@ const AdminDashboard = () => {
 
   /* search filter helpers */
   const q = search.toLowerCase();
-  const filteredStudents     = students.filter(x => x.name.toLowerCase().includes(q) || x.email.toLowerCase().includes(q) || x.program.toLowerCase().includes(q));
-  const filteredLecturers    = lecturers.filter(x => x.name.toLowerCase().includes(q) || x.dept.toLowerCase().includes(q));
-  const filteredCourses      = courses.filter(x => x.name.toLowerCase().includes(q) || x.dept.toLowerCase().includes(q));
-  const filteredApplications = applications.filter(x => x.name.toLowerCase().includes(q) || x.program.toLowerCase().includes(q));
+  const filteredStudents     = students.filter(x => (x.name || '').toLowerCase().includes(q) || (x.email || '').toLowerCase().includes(q) || (x.program || '').toLowerCase().includes(q));
+  const filteredLecturers    = lecturers.filter(x => (x.name || '').toLowerCase().includes(q) || (x.dept || '').toLowerCase().includes(q));
+  const filteredCourses      = courses.filter(x => (x.name || '').toLowerCase().includes(q) || (x.dept || '').toLowerCase().includes(q));
+  // Applications: filter by status pill OR by text search across name/program/status
+  const filteredApplications = applications.filter(x => {
+    const name    = (x.name    || `${x.firstName || ''} ${x.lastName || ''}`).toLowerCase();
+    const program = (x.program || '').toLowerCase();
+    const status  = (x.status  || '').toLowerCase();
+    return name.includes(q) || program.includes(q) || status.includes(q);
+  });
 
   const pendingApps = applications.filter(a => a.status === 'Pending').length;
 
@@ -907,7 +913,7 @@ const AdminDashboard = () => {
                           <tr key={a.docId}>
                             <td><b>{a.name}</b></td>
                             <td className="ad-muted">{a.program}</td>
-                            <td><span className={`ad-badge ad-badge--${a.status.toLowerCase()}`}>{a.status}</span></td>
+                            <td><span className={`ad-badge ad-badge--${(a.status || "pending").toLowerCase()}`}>{a.status || "Pending"}</span></td>
                           </tr>
                         ))}
                         {applications.length === 0 && <tr><td colSpan="3" style={{padding: '2rem', textAlign: 'center', color: '#888'}}>No pending applications</td></tr>}
@@ -1105,20 +1111,23 @@ const AdminDashboard = () => {
             <div className="ad-page">
               {/* Filter pills */}
               <div className="ad-filter-bar">
-                {['All','Pending','Approved','Rejected'].map(f => (
-                  <button
-                    key={f}
-                    className={`ad-filter-pill ${search === (f === 'All' ? '' : f.toLowerCase()) ? 'active' : ''}`}
-                    onClick={() => setSearch(f === 'All' ? '' : f.toLowerCase())}
-                  >
-                    {f}
-                    {f !== 'All' && (
-                      <span className="ad-filter-pill__count">
-                        {applications.filter(a => a.status === f).length}
-                      </span>
-                    )}
-                  </button>
-                ))}
+                {['All','Pending','Approved','Rejected'].map(f => {
+                  const isActive = f === 'All' ? search === '' : search === f.toLowerCase();
+                  return (
+                    <button
+                      key={f}
+                      className={`ad-filter-pill ${isActive ? 'active' : ''}`}
+                      onClick={() => setSearch(f === 'All' ? '' : f.toLowerCase())}
+                    >
+                      {f}
+                      {f !== 'All' && (
+                        <span className="ad-filter-pill__count">
+                          {applications.filter(a => (a.status || '').toLowerCase() === f.toLowerCase()).length}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
 
               <div className="ad-card">
@@ -1136,10 +1145,10 @@ const AdminDashboard = () => {
                       <tbody>
                         {filteredApplications.map(a => (
                           <tr key={a.docId}>
-                            <td><code className="ad-code">{a.id}</code></td>
-                            <td><b>{a.name}</b></td>
+                            <td><code className="ad-code">{a.id || a.docId?.slice(0,8)}</code></td>
+                            <td><b>{a.name || ((a.firstName || "") + " " + (a.lastName || "")).trim()}</b></td>
                             <td className="ad-muted">{a.program}</td>
-                            <td className="ad-muted">{a.date}</td>
+                            <td className="ad-muted">{a.date || "—"}</td>
                             <td><span className={`ad-badge ad-badge--${a.status.toLowerCase()}`}>{a.status}</span></td>
                             <td>
                               <div className="ad-actions">

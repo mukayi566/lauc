@@ -18,40 +18,6 @@ import {
 import '../admin.css';
 
 /* ─────────────────────────────────────────
-   MOCK DATA
-───────────────────────────────────────── */
-const INITIAL_STUDENTS = [
-  { id: 'STU-001', name: 'Michael Brown',   email: 'michael.brown@lauc.edu',   program: 'BSc Computer Science',      status: 'Active' },
-  { id: 'STU-002', name: 'Sarah Wilson',    email: 'sarah.wilson@lauc.edu',    program: 'BSc Nursing',               status: 'Active' },
-  { id: 'STU-003', name: 'James Okafor',   email: 'james.okafor@lauc.edu',    program: 'BBA Business Administration',status: 'Active' },
-  { id: 'STU-004', name: 'Amara Diallo',   email: 'amara.diallo@lauc.edu',    program: 'BSc Computer Science',      status: 'Suspended' },
-  { id: 'STU-005', name: 'Emily Carter',   email: 'emily.carter@lauc.edu',    program: 'BSc Nursing',               status: 'Active' },
-];
-
-const INITIAL_LECTURERS = [
-  { id: 'LEC-101', name: 'Dr. John Smith',     email: 'j.smith@lauc.edu',     dept: 'Computer Science',      courses: 3 },
-  { id: 'LEC-102', name: 'Prof. Ada Mensah',   email: 'a.mensah@lauc.edu',    dept: 'Nursing',               courses: 2 },
-  { id: 'LEC-103', name: 'Dr. Paul Ekwere',    email: 'p.ekwere@lauc.edu',    dept: 'Business',              courses: 4 },
-  { id: 'LEC-104', name: 'Dr. Lina Owusu',     email: 'l.owusu@lauc.edu',     dept: 'Computer Science',      courses: 2 },
-];
-
-const INITIAL_COURSES = [
-  { id: 'CS101', name: 'Introduction to Programming',   dept: 'Computer Science', credits: 3, lecturer: 'Dr. John Smith',   enrolled: 42 },
-  { id: 'CS201', name: 'Data Structures & Algorithms',  dept: 'Computer Science', credits: 4, lecturer: 'Dr. Lina Owusu',   enrolled: 38 },
-  { id: 'NUR101','name': 'Foundations of Nursing',       dept: 'Nursing',          credits: 3, lecturer: 'Prof. Ada Mensah',  enrolled: 55 },
-  { id: 'BUS201', name: 'Business Strategy',            dept: 'Business',         credits: 3, lecturer: 'Dr. Paul Ekwere',   enrolled: 31 },
-  { id: 'CS301', name: 'Database Systems',              dept: 'Computer Science', credits: 4, lecturer: 'Dr. John Smith',   enrolled: 29 },
-];
-
-const INITIAL_APPLICATIONS = [
-  { id: 'APP-2026-001', name: 'Michael Brown',  program: 'BSc Computer Science',      date: '2026-04-09', status: 'Pending' },
-  { id: 'APP-2026-002', name: 'Sarah Wilson',   program: 'BSc Nursing',               date: '2026-04-08', status: 'Approved' },
-  { id: 'APP-2026-003', name: 'Ama Boateng',    program: 'BBA Business Administration',date: '2026-04-07', status: 'Pending' },
-  { id: 'APP-2026-004', name: 'Kwame Asante',   program: 'BSc Computer Science',      date: '2026-04-06', status: 'Rejected' },
-  { id: 'APP-2026-005', name: 'Fatima Bah',     program: 'BSc Nursing',               date: '2026-04-05', status: 'Pending' },
-];
-
-/* ─────────────────────────────────────────
    TOAST
 ───────────────────────────────────────── */
 const Toast = ({ toasts }) => (
@@ -130,8 +96,8 @@ const Modal = ({ type, editData, lecturers = [], onClose, onSave }) => {
           {/* COMMON FIELDS */}
           <div className="ad-form-row">
             <div className="ad-field">
-              <label>Full Name</label>
-              <input value={form.name || ''} onChange={e => handle('name', e.target.value)} placeholder="Enter full name" required />
+              <label>{type === 'course' ? 'Course Name' : 'Full Name'}</label>
+              <input value={form.name || ''} onChange={e => handle('name', e.target.value)} placeholder={type === 'course' ? "Enter course name" : "Enter full name"} required />
             </div>
             {type !== 'course' && (
               <>
@@ -382,6 +348,7 @@ const AdminDashboard = () => {
   const [lecturers, setLecturers]     = useState([]);
   const [courses, setCourses]         = useState([]);
   const [applications, setApplications] = useState([]);
+  const [allResults, setAllResults]     = useState([]);
   const [loading, setLoading]         = useState(true);
   const [settings, setSettings]       = useState({
     institutionName: 'London American University College',
@@ -424,18 +391,23 @@ const AdminDashboard = () => {
       }
     });
 
+    const unsubResults = onSnapshot(query(collection(db, 'results'), orderBy('updatedAt', 'desc')), (snapshot) => {
+      setAllResults(snapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() })));
+    });
+
     return () => {
       unsubStudents();
       unsubLecturers();
       unsubCourses();
       unsubApps();
       unsubSettings();
+      unsubResults();
     };
   }, []);
 
   /* toast helper */
   const toast = (message, type = 'success') => {
-    const id = Date.now();
+    const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     setToasts(t => [...t, { id, message, type }]);
     setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 3500);
   };
@@ -666,6 +638,42 @@ const AdminDashboard = () => {
     }
   };
 
+  /* ── RESULTS ── */
+  const handleResultAction = async (resultId, action) => {
+    try {
+      const statusMap = {
+        'approve': 'approved',
+        'reject': 'draft',
+        'publish': 'published'
+      };
+      const newStatus = statusMap[action];
+      await updateDoc(doc(db, 'results', resultId), { 
+        status: newStatus,
+        [action === 'approve' ? 'approvedBy' : action === 'publish' ? 'publishedBy' : 'rejectedBy']: settings.adminDisplayName,
+        updatedAt: serverTimestamp()
+      });
+      
+      // Notify student if published
+      if (action === 'publish') {
+        const res = allResults.find(r => r.docId === resultId);
+        if (res) {
+          await addDoc(collection(db, 'students', res.studentId, 'notifications'), {
+            text: `Results for ${res.courseCode} have been published.`,
+            time: 'Just now',
+            icon: 'fa-poll',
+            color: '#0d9488',
+            read: false,
+            createdAt: serverTimestamp()
+          });
+        }
+      }
+
+      toast(`Result ${newStatus} successfully.`);
+    } catch (err) {
+      toast('Error updating result status.', 'error');
+    }
+  };
+
   /* search filter helpers */
   const q = search.toLowerCase();
   const filteredStudents     = students.filter(x => x.name.toLowerCase().includes(q) || x.email.toLowerCase().includes(q) || x.program.toLowerCase().includes(q));
@@ -680,6 +688,7 @@ const AdminDashboard = () => {
     { key: 'students',     icon: 'fa-users',             label: 'Students' },
     { key: 'lecturers',    icon: 'fa-chalkboard-user',   label: 'Lecturers' },
     { key: 'courses',      icon: 'fa-book-open',         label: 'Courses' },
+    { key: 'results',      icon: 'fa-poll',              label: 'Results' },
     { key: 'applications', icon: 'fa-file-signature',    label: 'Applications', badge: pendingApps },
     { key: 'settings',     icon: 'fa-gear',              label: 'Settings' },
   ];
@@ -867,6 +876,9 @@ const AdminDashboard = () => {
                     </button>
                     <button className="ad-qa-btn" onClick={() => setModal({ type: 'lecturer' })}>
                       <i className="fas fa-user-tie" /> <span>Add Lecturer</span>
+                    </button>
+                    <button className="ad-qa-btn" onClick={() => setModal({ type: 'course' })}>
+                      <i className="fas fa-book-medical" /> <span>Add Course</span>
                     </button>
                     <button className="ad-qa-btn" onClick={() => setActiveTab('applications')}>
                       <i className="fas fa-file-invoice" /> <span>Review Apps</span>
@@ -1272,6 +1284,91 @@ const AdminDashboard = () => {
                      currency: 'ZMW'
                    })}>Reset to Defaults</button>
                    <button type="submit" form="brandingForm" className="ad-btn ad-btn--primary">Save Branding Changes</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════
+              RESULTS TAB
+          ══════════════════════════════════ */}
+          {activeTab === 'results' && (
+            <div className="ad-page">
+              <div className="ad-section-header">
+                <div>
+                  <h2 className="ad-section-title">Result Approval & Publishing</h2>
+                  <p className="ad-section-sub">Manage student results submitted by lecturers.</p>
+                </div>
+              </div>
+
+              <div className="ad-card" style={{ padding: 0 }}>
+                <div className="ad-table-wrapper">
+                  {allResults.length === 0 ? (
+                    <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>No results found in the system.</div>
+                  ) : (
+                    <table className="ad-table">
+                      <thead>
+                        <tr>
+                          <th>Student</th>
+                          <th>Course</th>
+                          <th>Score</th>
+                          <th>Grade</th>
+                          <th>Status</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {allResults.map(res => (
+                          <tr key={res.docId}>
+                            <td>
+                              <strong>{res.studentName}</strong>
+                              <div className="ad-muted" style={{ fontSize: 11 }}>{res.studentRegNo}</div>
+                            </td>
+                            <td>
+                              <strong>{res.courseCode}</strong>
+                              <div className="ad-muted" style={{ fontSize: 11 }}>{res.courseName}</div>
+                            </td>
+                            <td>
+                              <div style={{ fontWeight: 600 }}>{res.total} / 100</div>
+                              <div className="ad-muted" style={{ fontSize: 10 }}>CA: {res.caScore} | EX: {res.examScore}</div>
+                            </td>
+                            <td>
+                              <span className={`ad-badge ${res.grade === 'F' ? 'ad-badge--rejected' : 'ad-badge--approved'}`}>
+                                {res.grade}
+                              </span>
+                            </td>
+                            <td>
+                              <span className={`ad-badge ad-badge--${res.status}`}>
+                                {res.status.toUpperCase()}
+                              </span>
+                            </td>
+                            <td>
+                              <div style={{ display: 'flex', gap: 5 }}>
+                                {res.status === 'submitted' && (
+                                  <>
+                                    <button className="ad-icon-btn ad-icon-btn--approve" title="Approve" onClick={() => handleResultAction(res.docId, 'approve')} style={{ color: '#059669', background: '#ecfdf5', border: 'none', padding: '6px', borderRadius: '4px', cursor: 'pointer' }}>
+                                      <i className="fas fa-check" />
+                                    </button>
+                                    <button className="ad-icon-btn ad-icon-btn--reject" title="Reject" onClick={() => handleResultAction(res.docId, 'reject')} style={{ color: '#dc2626', background: '#fef2f2', border: 'none', padding: '6px', borderRadius: '4px', cursor: 'pointer' }}>
+                                      <i className="fas fa-times" />
+                                    </button>
+                                  </>
+                                )}
+                                {res.status === 'approved' && (
+                                  <button className="ad-btn ad-btn--primary" style={{ padding: '4px 8px', fontSize: 11 }} onClick={() => handleResultAction(res.docId, 'publish')}>
+                                    <i className="fas fa-upload" /> Publish
+                                  </button>
+                                )}
+                                {res.status === 'published' && (
+                                  <span className="ad-muted" style={{ fontSize: 11 }}><i className="fas fa-check-double" /> Published</span>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
                 </div>
               </div>
             </div>

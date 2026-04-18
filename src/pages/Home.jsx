@@ -29,8 +29,8 @@ const Home = () => (
             { icon: 'fa-chalkboard-user', title: 'Skilled Lecturers', desc: 'Learn from experienced and dedicated lecturers with industry expertise and academic excellence.' },
             { icon: 'fa-book', title: 'Book Library Facility', desc: 'Access a well-stocked library for your academic growth with extensive resources and modern facilities.' },
             { icon: 'fa-tag', title: 'Affordable Price', desc: 'Quality education at an affordable cost for all our programmes without compromising excellence.' },
-          ].map((f, i) => (
-            <div key={i} className="feature-card">
+          ].map((f) => (
+            <div key={f.title} className="feature-card">
               <div className="feature-icon"><i className={`fas ${f.icon}`}></i></div>
               <h3>{f.title}</h3>
               <p>{f.desc}</p>
@@ -67,8 +67,8 @@ const Home = () => (
                 { num:'1,300+', label:'Our Students' },
                 { num:'47+', label:'Skilled Lecturers' },
                 { num:'10+', label:'Departments' },
-              ].map((s, i) => (
-                <div key={i} className="stat-box">
+              ].map((s) => (
+                <div key={s.label} className="stat-box">
                   <div className="stat-number">{s.num}</div>
                   <div className="stat-label">{s.label}</div>
                 </div>
@@ -92,8 +92,8 @@ const Home = () => (
             { type:'Degree Programme', title:'Bachelor of Science in Public Health', rating:'4.8', duration:'4 years', desc:'Promotes population health and disease prevention strategies.' },
             { type:'Diploma Programme', title:'Diploma in Registered Nursing', rating:'4.6', duration:'3 years', desc:'Prepares nurses for professional practice in hospitals and communities.' },
             { type:'Diploma Programme', title:'Diploma in Public Health', rating:'4.6', duration:'3 years', desc:'Focuses on community health and disease prevention.' },
-          ].map((p, i) => (
-            <div key={i} className="program-card">
+          ].map((p) => (
+            <div key={p.title} className="program-card">
               <div className="program-header">
                 <div className="program-type">{p.type}</div>
                 <div className="program-title">{p.title}</div>
@@ -121,8 +121,8 @@ const Home = () => (
             { icon:'fa-chart-line', title:'Merit-Based Awards', sub:'50–75% scholarships' },
             { icon:'fa-hand-holding-heart', title:'Need-Based Support', sub:'Financial assistance' },
             { icon:'fa-trophy', title:'Sports & Arts Excellence', sub:'Talent recognition' },
-          ].map((s, i) => (
-            <div key={i} className="scholarship-item">
+          ].map((s) => (
+            <div key={s.title} className="scholarship-item">
               <i className={`fas ${s.icon}`}></i>
               <div>{s.title}</div>
               <small>{s.sub}</small>
@@ -152,8 +152,8 @@ const Home = () => (
             { icon:'fa-hospital', title:'Hospital on Campus', desc:'A fully equipped hospital facility for immediate healthcare access and clinical training.' },
             { icon:'fa-book-open', title:'Book Library', desc:'Well-stocked library with extensive resources for academic growth and research.' },
             { icon:'fa-utensils', title:'Dining Facilities', desc:'Modern cafeteria with nutritious meals and comfortable dining spaces.' },
-          ].map((f, i) => (
-            <div key={i} className="facility-card">
+          ].map((f) => (
+            <div key={f.title} className="facility-card">
               <div className="facility-image"><i className={`fas ${f.icon}`}></i></div>
               <div className="facility-info">
                 <h3>{f.title}</h3>
@@ -175,8 +175,8 @@ const Home = () => (
             { name:'Dr. Humphrey Monde', title:'Executive Director', msg:'"Welcome to London American University College, where excellence meets opportunity. We are committed to transforming lives through innovative healthcare education."' },
             { name:'Dr. Geoffrey Sandala', title:'Principal', msg:'"Join our vibrant community of future healthcare leaders. We are dedicated to your success through innovative teaching methodologies and hands-on experience."' },
             { name:'Parson Monde', title:'Director Finance & Administration', msg:'"Our commitment is to provide quality education at affordable prices, ensuring every deserving student can access world-class healthcare education."' },
-          ].map((l, i) => (
-            <div key={i} className="leader-card">
+          ].map((l) => (
+            <div key={l.name} className="leader-card">
               <div className="leader-image"><i className="fas fa-user-circle"></i></div>
               <div className="leader-info">
                 <div className="leader-name">{l.name}</div>
@@ -199,8 +199,8 @@ const Home = () => (
             { date:'January 06, 2026', title:'Congratulations to Mary Sinvula, the new Principal of London American University College!', excerpt:'We are delighted to announce the appointment of Mary Sinvula as the new Principal...' },
             { date:'January 2026 Intake', title:'We Are Still Enrolling for January 2026 Intake', excerpt:'Excellent news! We have available spaces for the January 2026 intake across all programs...' },
             { date:'October 17, 2025', title:'London American University College Celebrates Its 10th Graduation Ceremony', excerpt:'A momentous celebration as London American University College held its 10th graduation ceremony...' },
-          ].map((b, i) => (
-            <div key={i} className="blog-card">
+          ].map((b) => (
+            <div key={b.title} className="blog-card">
               <div className="blog-image"></div>
               <div className="blog-content">
                 <div className="blog-date"><i className="fas fa-calendar"></i> {b.date}</div>

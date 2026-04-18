@@ -103,8 +103,8 @@ const Programs = () => {
           </div>
 
           <div className="programs-grid">
-            {filtered.map((p, i) => (
-              <div key={i} className="program-card">
+            {filtered.map((p) => (
+              <div key={p.title} className="program-card">
                 <div className="program-header">
                   <div className="program-type">{p.type}</div>
                   <div className="program-title">{p.title}</div>
@@ -176,8 +176,8 @@ const Programs = () => {
               { icon: 'fa-user-md', title: 'Expert Faculty', desc: 'Learn from industry veterans and experienced professionals with decades of hands-on experience.' },
               { icon: 'fa-flask', title: 'Practical Training', desc: 'Hands-on clinical and practical training at partner hospitals and modern on-campus laboratories.' },
               { icon: 'fa-globe', title: 'Global Standards', desc: 'Curriculum designed to meet international standards ensuring graduates are competitive globally.' },
-            ].map((f, i) => (
-              <div key={i} className="feature-card">
+            ].map((f) => (
+              <div key={f.title} className="feature-card">
                 <div className="feature-icon"><i className={`fas ${f.icon}`}></i></div>
                 <h3>{f.title}</h3>
                 <p>{f.desc}</p>

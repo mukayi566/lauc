@@ -1141,3 +1141,64 @@
 .sd-err-msg i { color: #dc2626 !important; }
 
 .sd-pm-id { font-size: 12px; color: #94a3b8; margin-top: 3px; }
+
+/* ══════════════════════════════════════════════
+   RESULT MANAGEMENT STYLES
+   ══════════════════════════════════════════════ */
+.sd-input-small {
+  width: 70px;
+  padding: 6px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 13px;
+  text-align: center;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.sd-input-small:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.sd-input-small:disabled {
+  background: #f1f5f9;
+  color: #94a3b8;
+  border-color: #e2e8f0;
+  cursor: not-allowed;
+}
+
+.sd-badge.badge-draft {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.sd-badge.badge-submitted {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.sd-badge.badge-approved {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.sd-badge.badge-published {
+  background: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+}
+
+.sd-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 100px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.sd-card-footer {
+  border-top: 1px solid #f1f5f9;
+  background: #fafbfd;
+}

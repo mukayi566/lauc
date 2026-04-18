@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
+import ResultEntry from '../components/ResultEntry';
 import {
   collection, query, where, onSnapshot,
   doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc,
@@ -21,6 +22,10 @@ const Badge = ({ status }) => {
     'Inactive':  'badge-red',
     'Urgent':    'badge-red',
     'Info':      'badge-teal',
+    'draft':     'badge-draft',
+    'submitted': 'badge-submitted',
+    'approved':  'badge-approved',
+    'published': 'badge-published',
   };
   return <span className={`sd-badge ${map[status] || 'badge-teal'}`}>{status}</span>;
 };
@@ -31,17 +36,8 @@ const Spinner = () => (
   </div>
 );
 
-/* ── Default seed data ── */
-const DEFAULT_COURSES = [
-  { code: 'CSC101', name: 'Introduction to Computer Science', students: 0, status: 'Ongoing', semester: 'Spring 2026' },
-  { code: 'MTH201', name: 'Calculus II',                       students: 0, status: 'Ongoing', semester: 'Spring 2026' },
-  { code: 'CSC305', name: 'Database Management',              students: 0, status: 'Completed', semester: 'Fall 2025'  },
-];
+/* ═══════════════════════════════════════════════════════════════ */
 
-const DEFAULT_ANNOUNCEMENTS = [
-  { title: 'Mid-semester Exam Date', content: 'The mid-semester exam for CSC101 will be on April 15th.', date: '2026-03-25', status: 'Urgent' },
-  { title: 'Calculus Assignment #3', content: 'Assignment 3 is now uploaded in the portal. Due by Friday.', date: '2026-03-28', status: 'Info'  },
-];
 
 /* ═══════════════════════════════════════════════════════════════ */
 const StaffDashboard = () => {
@@ -75,17 +71,7 @@ const StaffDashboard = () => {
   const { signOut, currentUser } = useAuth();
   const uid = currentUser?.uid;
 
-  /* ═══════════════════════════════════════════════════════════════
-     SEED HELPER
-  ═══════════════════════════════════════════════════════════════ */
-  const seedCollection = async (colRef, items) => {
-    const snap = await getDocs(colRef);
-    if (snap.empty) {
-      for (const item of items) {
-        await addDoc(colRef, { ...item, createdAt: serverTimestamp() });
-      }
-    }
-  };
+
 
   /* ═══════════════════════════════════════════════════════════════
      LOAD LECTURER PROFILE
@@ -127,26 +113,20 @@ const StaffDashboard = () => {
 
     const coursesCol = collection(db, 'lecturers', uid, 'courses');
 
-    // Seed on first run then subscribe
-    seedCollection(coursesCol, DEFAULT_COURSES).then(() => {
-      const unsubCourses = onSnapshot(
-        query(coursesCol, orderBy('code')),
-        (snap) => {
-          const loaded = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          setCourses(loaded);
-          setLoading(false);
-        },
-        (err) => {
-          console.error('Courses listener error:', err);
-          setDbError('Could not load courses. Showing cached data if available.');
-          setLoading(false);
-        }
-      );
-      return unsubCourses;
-    }).catch(err => {
-      console.error('Error seeding courses:', err);
-      setLoading(false);
-    });
+    const unsubCourses = onSnapshot(
+      query(coursesCol, orderBy('code')),
+      (snap) => {
+        const loaded = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setCourses(loaded);
+        setLoading(false);
+      },
+      (err) => {
+        console.error('Courses listener error:', err);
+        setDbError('Could not load courses. Showing cached data if available.');
+        setLoading(false);
+      }
+    );
+    return unsubCourses;
   }, [uid]);
 
   /* ═══════════════════════════════════════════════════════════════
@@ -197,17 +177,14 @@ const StaffDashboard = () => {
 
     const annCol = collection(db, 'lecturers', uid, 'announcements');
 
-    // Seed defaults then subscribe
-    seedCollection(annCol, DEFAULT_ANNOUNCEMENTS).then(() => {
-      const unsubAnn = onSnapshot(
-        query(annCol, orderBy('createdAt', 'desc')),
-        (snap) => {
-          setAnnouncements(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-        },
-        (err) => console.error('Announcements listener error:', err)
-      );
-      return unsubAnn;
-    }).catch(err => console.error('Error seeding announcements:', err));
+    const unsubAnn = onSnapshot(
+      query(annCol, orderBy('createdAt', 'desc')),
+      (snap) => {
+        setAnnouncements(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      },
+      (err) => console.error('Announcements listener error:', err)
+    );
+    return unsubAnn;
   }, [uid]);
 
   /* ═══════════════════════════════════════════════════════════════
@@ -331,6 +308,7 @@ const StaffDashboard = () => {
   const navItems = [
     { id: 'dashboard',     icon: 'fa-tachometer-alt', label: 'Dashboard'     },
     { id: 'courses',       icon: 'fa-book',           label: 'My Courses'    },
+    { id: 'results',       icon: 'fa-poll',           label: 'Results'       },
     { id: 'students',      icon: 'fa-users',          label: 'Students'      },
     { id: 'announcements', icon: 'fa-bullhorn',       label: 'Announcements' },
     { id: 'settings',      icon: 'fa-cog',            label: 'Settings'      },
@@ -560,8 +538,8 @@ const StaffDashboard = () => {
                       { icon: 'fa-play-circle', val: activeCourses, lbl: 'Ongoing',         color: '#10b981', bg: 'rgba(16,185,129,0.1)' },
                       { icon: 'fa-check-circle', val: courses.filter(c => c.status === 'Completed').length, lbl: 'Completed', color: '#2563eb', bg: 'rgba(37,99,235,0.1)' },
                       { icon: 'fa-users', val: totalStudents,      lbl: 'Total Students',   color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
-                    ].map((s, i) => (
-                      <div key={i} className="sd-stat-card">
+                    ].map((s) => (
+                      <div key={s.lbl} className="sd-stat-card">
                         <div className="sd-stat-icon" style={{ background: s.bg, color: s.color }}><i className={`fas ${s.icon}`}></i></div>
                         <div className="sd-stat-val">{s.val}</div>
                         <div className="sd-stat-lbl">{s.lbl}</div>
@@ -775,6 +753,60 @@ const StaffDashboard = () => {
                       </form>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* ══════════ RESULTS TAB ══════════ */}
+              {activeTab === 'results' && (
+                <div className="sd-tab-fade">
+                  {!selectedCourse ? (
+                    <>
+                      <div className="sd-page-header">
+                        <div>
+                          <h2 className="sd-page-title">Result Management</h2>
+                          <p className="sd-page-sub">Select a course to input or manage student scores.</p>
+                        </div>
+                      </div>
+                      <div className="sd-card">
+                        <div className="sd-table-wrapper">
+                          <table className="sd-table">
+                            <thead>
+                              <tr>
+                                <th>Code</th>
+                                <th>Course Name</th>
+                                <th>Semester</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {courses.map(course => (
+                                <tr key={course.id}>
+                                  <td><span className="sd-code">{course.code}</span></td>
+                                  <td className="sd-td-bold">{course.name}</td>
+                                  <td>{course.semester}</td>
+                                  <td><Badge status={course.status} /></td>
+                                  <td>
+                                    <button className="sd-btn sd-btn-primary" style={{ padding: '6px 12px', fontSize: 13 }} 
+                                      onClick={() => setSelectedCourse(course)}>
+                                      <i className="fas fa-edit"></i> Manage Results
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <ResultEntry 
+                      lecturerId={uid} 
+                      course={selectedCourse} 
+                      onBack={() => setSelectedCourse(null)} 
+                      showSuccess={showSuccess}
+                    />
+                  )}
                 </div>
               )}
             </>

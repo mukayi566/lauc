@@ -41,60 +41,9 @@ const Spinner = () => (
   </div>
 );
 
-/* ─── default seed data (Zambian context) ──────────────────────── */
-const DEFAULT_PROFILE = {
-  name: 'Alex Mwansa',
-  email: '',
-  studentId: 'LAUC/2023/CSC/001',
-  program: 'BSc Computer Science',
-  school: 'School of Technology',
-  level: 'Year 3 – Semester 2',
-  status: 'Active',
-  phone: '+260 97 000 0001',
-  createdAt: null,
-};
-
-const DEFAULT_COURSES = [
-  { code: 'CSC301', name: 'Data Structures & Algorithms', units: 4, lecturer: 'Dr. Mwale', status: 'Registered', grade: 'A' },
-  { code: 'CSC305', name: 'Computer Networks', units: 3, lecturer: 'Prof. Banda', status: 'Registered', grade: 'B+' },
-  { code: 'MTH201', name: 'Calculus II', units: 4, lecturer: 'Dr. Phiri', status: 'Registered', grade: 'A-' },
-  { code: 'ENG201', name: 'Technical Writing', units: 2, lecturer: 'Mrs. Zulu', status: 'Registered', grade: 'B' },
-];
-
-const DEFAULT_AVAILABLE = [
-  { code: 'CSC401', name: 'Software Engineering', units: 4, lecturer: 'Dr. Lungu' },
-  { code: 'CSC403', name: 'Database Systems', units: 3, lecturer: 'Prof. Tembo' },
-  { code: 'MTH301', name: 'Linear Algebra', units: 3, lecturer: 'Dr. Phiri' },
-];
-
-const DEFAULT_RESULTS = [
-  { semester: 'Fall 2025', gpa: '3.92', courses: 6, credits: 21, status: 'Pass', grade: 'First Class' },
-  { semester: 'Spring 2025', gpa: '3.78', courses: 6, credits: 20, status: 'Pass', grade: 'First Class' },
-  { semester: 'Fall 2024', gpa: '3.65', courses: 5, credits: 18, status: 'Pass', grade: 'Second Class Upper' },
-  { semester: 'Spring 2024', gpa: '3.50', courses: 6, credits: 20, status: 'Pass', grade: 'Second Class Upper' },
-];
-
-const DEFAULT_TIMETABLE = [
-  { day: 'Monday',    slots: ['CSC301 (Rm 201)', '—', 'MTH201 (Rm 105)'] },
-  { day: 'Tuesday',   slots: ['—', 'CSC305 (Online)', '—'] },
-  { day: 'Wednesday', slots: ['MTH201 (Rm 105)', '—', 'CSC301 (Rm 201)'] },
-  { day: 'Thursday',  slots: ['ENG201 (Rm 302)', 'CSC305 (Rm 110)', '—'] },
-  { day: 'Friday',    slots: ['—', 'ENG201 (Rm 302)', '—'] },
-];
-
-const DEFAULT_TRANSACTIONS = [
-  { date: '2026-03-15', desc: 'Tuition Payment – Spring 2026', type: 'credit', amount: 12000 },
-  { date: '2026-01-22', desc: 'Library Fee', type: 'debit', amount: 350 },
-  { date: '2026-01-22', desc: 'Lab Fee (CSC305)', type: 'debit', amount: 800 },
-  { date: '2025-10-10', desc: 'Tuition Payment – Fall 2025', type: 'credit', amount: 12000 },
-  { date: '2025-09-05', desc: 'Registration Fee', type: 'debit', amount: 500 },
-];
-
-const DEFAULT_NOTIFICATIONS = [
-  { icon: 'fa-bell', color: '#f59e0b', text: 'Course registration closes in 3 days.', time: '2h ago', read: false },
-  { icon: 'fa-check-circle', color: '#10b981', text: 'Your MTH201 grade has been released.', time: '5h ago', read: false },
-  { icon: 'fa-info-circle', color: '#3b82f6', text: 'Spring 2026 timetable is now available.', time: '1d ago', read: true },
-];
+/* ─────────────────────────────────────────────────────────────────
+   DASHBOARD CONSTANTS (Live Data Only)
+───────────────────────────────────────────────────────────────── */
 
 /* ═══════════════════════════════════════════════════════════════ */
 const StudentDashboard = () => {
@@ -144,15 +93,6 @@ const StudentDashboard = () => {
   /* ══════════════════════════════════════════════
      SEED + LOAD from Firestore
   ══════════════════════════════════════════════ */
-  const seedCollection = async (colRef, items) => {
-    const snap = await getDocs(colRef);
-    if (snap.empty) {
-      for (const item of items) {
-        await addDoc(colRef, { ...item, createdAt: serverTimestamp() });
-      }
-    }
-  };
-
   const loadData = useCallback(async () => {
     if (!uid) return;
     setLoading(true);
@@ -166,15 +106,19 @@ const StudentDashboard = () => {
       let prof;
       if (!profileSnap.exists()) {
         prof = {
-          ...DEFAULT_PROFILE,
-          name: currentUser?.displayName || DEFAULT_PROFILE.name,
+          name: currentUser?.displayName || 'New Student',
           email: currentUser?.email || '',
+          studentId: '',
+          program: '',
+          school: '',
+          level: 'Year 1 – Semester 1',
+          status: 'Active',
+          phone: '',
           createdAt: serverTimestamp(),
         };
         await setDoc(studentRef, prof);
       } else {
         prof = profileSnap.data();
-        // backfill email from auth if missing
         if (!prof.email && currentUser?.email) {
           await updateDoc(studentRef, { email: currentUser.email });
           prof.email = currentUser.email;
@@ -193,44 +137,44 @@ const StudentDashboard = () => {
 
       /* ── courses ── */
       const coursesCol = collection(db, 'students', uid, 'courses');
-      await seedCollection(coursesCol, DEFAULT_COURSES);
       const coursesSnap = await getDocs(coursesCol);
       const loadedCourses = coursesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       setCourses(loadedCourses);
 
       /* ── available courses ── */
       const availCol = collection(db, 'availableCourses');
-      await seedCollection(availCol, DEFAULT_AVAILABLE);
       const availSnap = await getDocs(availCol);
       setAvailableCourses(availSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
-      /* ── results ── */
-      const resultsCol = collection(db, 'students', uid, 'results');
-      await seedCollection(resultsCol, DEFAULT_RESULTS);
-      const resultsSnap = await getDocs(resultsCol);
+      /* ── results (published only) ── */
+      const resultsQuery = query(
+        collection(db, 'results'), 
+        where('studentId', '==', uid),
+        where('status', '==', 'published')
+      );
+      const resultsSnap = await getDocs(resultsQuery);
       const loadedResults = resultsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       setResults(loadedResults);
 
-      // compute CGPA
       if (loadedResults.length > 0) {
-        const avg = loadedResults.reduce((s, r) => s + parseFloat(r.gpa || 0), 0) / loadedResults.length;
+        const totalPoints = loadedResults.reduce((s, r) => s + (parseFloat(r.gpa) || 0), 0);
+        const avg = totalPoints / loadedResults.length;
         setCgpa(avg.toFixed(2));
+      } else {
+        setCgpa('0.00');
       }
 
       /* ── timetable ── */
       const ttCol = collection(db, 'students', uid, 'timetable');
-      await seedCollection(ttCol, DEFAULT_TIMETABLE);
       const ttSnap = await getDocs(ttCol);
       setTimetable(ttSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
       /* ── transactions ── */
       const txCol = collection(db, 'students', uid, 'transactions');
-      await seedCollection(txCol, DEFAULT_TRANSACTIONS);
       const txSnap = await getDocs(query(txCol, orderBy('date', 'desc')));
       const loadedTx = txSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       setTransactions(loadedTx);
 
-      // compute balance
       const bal = loadedTx.reduce((s, t) => {
         const amt = Number(t.amount) || 0;
         return t.type === 'credit' ? s - amt : s + amt;
@@ -239,7 +183,6 @@ const StudentDashboard = () => {
 
       /* ── notifications ── */
       const notifCol = collection(db, 'students', uid, 'notifications');
-      await seedCollection(notifCol, DEFAULT_NOTIFICATIONS);
       const notifSnap = await getDocs(notifCol);
       setNotifications(notifSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
@@ -609,8 +552,8 @@ const StudentDashboard = () => {
                       { icon: 'fa-book', val: courses.length, lbl: 'Enrolled Courses', color: '#7c3aed', bg: 'rgba(124,58,237,0.12)' },
                       { icon: 'fa-layer-group', val: creditHours, lbl: 'Credit Hours', color: '#2563eb', bg: 'rgba(37,99,235,0.12)' },
                       { icon: 'fa-money-bill-wave', val: ZMW(balanceDue), lbl: 'Balance Due', color: '#dc2626', bg: 'rgba(220,38,38,0.12)' },
-                    ].map((s, i) => (
-                      <div key={i} className="sd-stat-card">
+                    ].map((s) => (
+                      <div key={s.lbl} className="sd-stat-card">
                         <div className="sd-stat-icon" style={{ background: s.bg, color: s.color }}>
                           <i className={`fas ${s.icon}`}></i>
                         </div>
@@ -663,7 +606,7 @@ const StudentDashboard = () => {
                       </div>
                       <div className="sd-card-body">
                         {courses.slice(0, 2).map((cls, i) => (
-                          <div className="sd-schedule-item" key={i}>
+                          <div className="sd-schedule-item" key={cls.id || cls.code}>
                             <div className="sd-schedule-dot" style={{ background: ['#7c3aed', '#0d9488', '#2563eb', '#f59e0b'][i % 4] }}>
                               <i className="fas fa-book"></i>
                             </div>
@@ -753,8 +696,8 @@ const StudentDashboard = () => {
                       { icon: 'fa-book', val: courses.length, lbl: 'Enrolled', color: '#0d9488', bg: 'rgba(13,148,136,0.1)' },
                       { icon: 'fa-check-double', val: courses.filter(c => c.status === 'Registered').length, lbl: 'Registered', color: '#10b981', bg: 'rgba(16,185,129,0.1)' },
                       { icon: 'fa-clock', val: courses.filter(c => c.status === 'Pending').length, lbl: 'Pending', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
-                    ].map((s, i) => (
-                      <div key={i} className="sd-stat-card">
+                    ].map((s) => (
+                      <div key={s.lbl} className="sd-stat-card">
                         <div className="sd-stat-icon" style={{ background: s.bg, color: s.color }}><i className={`fas ${s.icon}`}></i></div>
                         <div className="sd-stat-val">{s.val}</div>
                         <div className="sd-stat-lbl">{s.lbl}</div>
@@ -798,29 +741,33 @@ const StudentDashboard = () => {
                   )}
 
                   <div className="sd-card">
-                    <div className="sd-card-header"><span>Semester Summary</span></div>
+                    <div className="sd-card-header"><span>Published Results</span></div>
                     {results.length === 0
-                      ? <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}>No results found.</div>
+                      ? <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}>No results have been published yet.</div>
                       : (
                         <div className="sd-table-wrapper">
                           <table className="sd-table">
                             <thead>
-                              <tr><th>Semester</th><th>GPA</th><th>Courses</th><th>Credits</th><th>Classification</th><th>Status</th><th>Transcript</th></tr>
+                              <tr>
+                                <th>Code</th>
+                                <th>Course Name</th>
+                                <th>CA</th>
+                                <th>Exam</th>
+                                <th>Total</th>
+                                <th>Grade</th>
+                                <th>GPA</th>
+                              </tr>
                             </thead>
                             <tbody>
                               {results.map(r => (
-                                <tr key={r.id || r.semester}>
-                                  <td className="sd-td-bold">{r.semester}</td>
-                                  <td><span className="sd-grade">{r.gpa}</span></td>
-                                  <td>{r.courses}</td>
-                                  <td>{r.credits}</td>
-                                  <td><Badge status={r.grade} /></td>
-                                  <td><Badge status={r.status} /></td>
-                                  <td>
-                                    <button className="sd-dl-btn" onClick={() => downloadResult(r.semester)}>
-                                      <i className="fas fa-download"></i> Download
-                                    </button>
-                                  </td>
+                                <tr key={r.id}>
+                                  <td className="sd-td-bold">{r.courseCode}</td>
+                                  <td>{r.courseName}</td>
+                                  <td>{r.caScore}</td>
+                                  <td>{r.examScore}</td>
+                                  <td><strong>{r.total}</strong></td>
+                                  <td><span className="sd-grade">{r.grade}</span></td>
+                                  <td>{parseFloat(r.gpa).toFixed(2)}</td>
                                 </tr>
                               ))}
                             </tbody>

@@ -122,8 +122,8 @@ const Admissions = () => {
                 icon: 'fa-id-card', title: 'Legal Requirements',
                 items: ['Age 18+ years old', 'Clearance Certificate', 'Police Clearance', 'Affidavit (if needed)'],
               },
-            ].map((r, i) => (
-              <div key={i} className="requirement-card">
+            ].map((r) => (
+              <div key={r.title} className="requirement-card">
                 <div className="requirement-icon"><i className={`fas ${r.icon}`}></i></div>
                 <h3>{r.title}</h3>
                 <ul>
@@ -148,8 +148,8 @@ const Admissions = () => {
               { step: 'Results Announcement', date: 'January 20, 2026', desc: 'Admission results published online and by email.' },
               { step: 'Registration', date: 'January 25–31, 2026', desc: 'Successful candidates register and pay initial fees.' },
               { step: 'Classes Commence', date: 'February 2, 2026', desc: 'Academic year officially begins.' },
-            ].map((t, i) => (
-              <div key={i} className="timeline-item">
+            ].map((t) => (
+              <div key={t.step} className="timeline-item">
                 <h4>{t.step}</h4>
                 <p><strong>{t.date}</strong> — {t.desc}</p>
               </div>
@@ -184,8 +184,8 @@ const Admissions = () => {
                   ['Diploma in Public Health', 'Diploma', '3 years', '11,000', '33,000'],
                   ['Diploma in Environmental Health', 'Diploma', '3 years', '11,000', '33,000'],
                   ['Diploma in Social Work', 'Diploma', '3 years', '10,000', '30,000'],
-                ].map((row, i) => (
-                  <tr key={i}>
+                ].map((row) => (
+                  <tr key={row[0]}>
                     <td><strong>{row[0]}</strong></td>
                     <td><span style={{ background: 'rgba(42,82,152,0.1)', color: '#2a5298', padding: '2px 10px', borderRadius: 12, fontSize: 12, fontWeight: 700 }}>{row[1]}</span></td>
                     <td>{row[2]}</td>

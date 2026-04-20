@@ -28,8 +28,8 @@ const ProtectedRoute = ({ allowedRoles, children }) => {
   }
 
   if (allowedRoles && !allowedRoles.includes(userRole)) {
-    // Redirect to their proper dashboard
-    return <Navigate to={roleRouteMap[userRole] || '/login'} replace />;
+    // Redirect to login with error state instead of their dashboard
+    return <Navigate to="/login" state={{ error: "Access Denied: You do not have permissions to access this dashboard." }} replace />;
   }
 
   return children;

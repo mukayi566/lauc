@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { db } from '../firebase';
+import { collection, onSnapshot } from 'firebase/firestore';
 
 const programs = [
   {
@@ -64,6 +66,19 @@ const programs = [
 const Programs = () => {
   const [filter, setFilter] = useState('All');
   const [expanded, setExpanded] = useState(null);
+  const [enrollment, setEnrollment] = useState({});
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'students'), (snapshot) => {
+      const counts = {};
+      snapshot.forEach(doc => {
+        const prog = doc.data().program;
+        if (prog) counts[prog] = (counts[prog] || 0) + 1;
+      });
+      setEnrollment(counts);
+    });
+    return () => unsub();
+  }, []);
 
   const filtered = filter === 'All' ? programs : programs.filter(p => p.level === filter);
 
@@ -108,7 +123,13 @@ const Programs = () => {
                 <div className="program-header">
                   <div className="program-type">{p.type}</div>
                   <div className="program-title">{p.title}</div>
-                  <div className="program-rating"><i className="fas fa-star"></i> Quality Education ({p.rating})</div>
+                  <div className="program-rating" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span><i className="fas fa-star"></i> Quality Education ({p.rating})</span>
+                    <span className="enrolled-badge" style={{ background: '#e0f2fe', color: '#0369a1', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold' }}>
+                      <i className="fas fa-user-graduate" style={{ marginRight: '4px' }}></i>
+                      {enrollment[p.title] || 0} Enrolled
+                    </span>
+                  </div>
                 </div>
                 <div className="program-body">
                   <p className="program-description">{p.desc}</p>

@@ -188,10 +188,15 @@ const StudentDashboard = () => {
 
     } catch (err) {
       console.error('Dashboard load error:', err);
+      if (err.code === 'permission-denied') {
+        navigate('/login', { state: { error: "Access Denied: You do not have permission to view this dashboard." } });
+        return;
+      }
+      
       if (!navigator.onLine || err.code === 'unavailable') {
         setDbError('You are offline. Showing cached data if available.');
       } else {
-        setDbError('Failed to load some data. Please refresh.');
+        setDbError('Unable to load some dashboard data. Please check your connection or refresh the page.');
       }
     } finally {
       setLoading(false);
@@ -347,6 +352,16 @@ const StudentDashboard = () => {
             grade: '—',
             createdAt: serverTimestamp(),
           });
+
+          // Increment enrolled count in the main courses collection
+          if (found.docId) {
+            const courseRef = doc(db, 'courses', found.docId);
+            const courseSnap = await getDoc(courseRef);
+            if (courseSnap.exists()) {
+              const currentEnrolled = courseSnap.data().enrolled || 0;
+              await updateDoc(courseRef, { enrolled: currentEnrolled + 1 });
+            }
+          }
         }
       }
       // Refresh courses

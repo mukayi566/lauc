@@ -13,7 +13,8 @@ import {
   setDoc,
   serverTimestamp,
   query,
-  orderBy
+  orderBy,
+  where
 } from 'firebase/firestore';
 import '../admin.css';
 
@@ -72,6 +73,8 @@ const Modal = ({ type, editData, lecturers = [], onClose, onSave }) => {
       ? { name: '', email: '', dept: 'Computer Science', courses: 0 }
       : type === 'course'
       ? { name: '', dept: 'Computer Science', credits: 3, lecturer: '', enrolled: 0 }
+      : type === 'admin'
+      ? { name: '', email: '', role: 'admin' }
       : {})
   );
 
@@ -162,6 +165,24 @@ const Modal = ({ type, editData, lecturers = [], onClose, onSave }) => {
               {!editData && (
                 <div className="ad-alert ad-alert--info" style={{marginTop: '15px'}}>
                    <i className="fas fa-key" /> Default Password: <code>LAUC@Student2026</code>
+                </div>
+              )}
+            </>
+          )}
+
+          {type === 'admin' && (
+            <>
+              <div className="ad-form-row">
+                <div className="ad-field">
+                  <label>Permissions Level</label>
+                  <select value={form.role} onChange={e => handle('role', e.target.value)}>
+                    <option value="admin">Full Administrator</option>
+                  </select>
+                </div>
+              </div>
+              {!editData && (
+                <div className="ad-alert ad-alert--info" style={{marginTop: '15px'}}>
+                   <i className="fas fa-key" /> Default Password: <code>LAUC@Admin2026</code>
                 </div>
               )}
             </>
@@ -364,6 +385,7 @@ const AdminDashboard = () => {
 
   const [students, setStudents]       = useState([]);
   const [lecturers, setLecturers]     = useState([]);
+  const [admins, setAdmins]           = useState([]);
   const [courses, setCourses]         = useState([]);
   const [applications, setApplications] = useState([]);
   const [allResults, setAllResults]     = useState([]);
@@ -382,36 +404,58 @@ const AdminDashboard = () => {
   });
 
   const navigate = useNavigate();
-  const { signOut, resetPassword } = useAuth();
+  const { signOut, resetPassword, currentUser } = useAuth();
 
   /* ── REAL-TIME FETCHING ── */
   useEffect(() => {
-    const unsubStudents = onSnapshot(query(collection(db, 'students'), orderBy('createdAt', 'desc')), (snapshot) => {
-      setStudents(snapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() })));
-    });
-
-    const unsubLecturers = onSnapshot(query(collection(db, 'lecturers'), orderBy('createdAt', 'desc')), (snapshot) => {
-      setLecturers(snapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() })));
-    });
-
-    const unsubCourses = onSnapshot(query(collection(db, 'courses'), orderBy('createdAt', 'desc')), (snapshot) => {
-      setCourses(snapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() })));
-    });
-
-    const unsubApps = onSnapshot(query(collection(db, 'applications'), orderBy('date', 'desc')), (snapshot) => {
-      setApplications(snapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() })));
-      setLoading(false);
-    });
-
-    const unsubSettings = onSnapshot(doc(db, 'settings', 'general'), (snapshot) => {
-      if (snapshot.exists()) {
-        setSettings(snapshot.data());
+    const handleError = (err) => {
+      console.error('Admin sync error:', err);
+      if (err.code === 'permission-denied') {
+        navigate('/login', { state: { error: "Access Denied: You do not have administration privileges." } });
       }
-    });
+    };
 
-    const unsubResults = onSnapshot(query(collection(db, 'results'), orderBy('updatedAt', 'desc')), (snapshot) => {
-      setAllResults(snapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() })));
-    });
+    const unsubStudents = onSnapshot(query(collection(db, 'students'), orderBy('createdAt', 'desc')), 
+      (snapshot) => setStudents(snapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() }))),
+      handleError
+    );
+
+    const unsubLecturers = onSnapshot(query(collection(db, 'lecturers'), orderBy('createdAt', 'desc')), 
+      (snapshot) => setLecturers(snapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() }))),
+      handleError
+    );
+
+    const unsubCourses = onSnapshot(query(collection(db, 'courses'), orderBy('createdAt', 'desc')), 
+      (snapshot) => setCourses(snapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() }))),
+      handleError
+    );
+
+    const unsubApps = onSnapshot(query(collection(db, 'applications'), orderBy('date', 'desc')), 
+      (snapshot) => {
+        setApplications(snapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() })));
+        setLoading(false);
+      },
+      handleError
+    );
+
+    const unsubSettings = onSnapshot(doc(db, 'settings', 'general'), 
+      (snapshot) => { if (snapshot.exists()) setSettings(snapshot.data()); },
+      handleError
+    );
+
+    const unsubResults = onSnapshot(query(collection(db, 'results'), orderBy('updatedAt', 'desc')), 
+      (snapshot) => setAllResults(snapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() }))),
+      handleError
+    );
+
+    const unsubAdmins = onSnapshot(query(collection(db, 'users'), where('role', '==', 'admin')), 
+      (snapshot) => {
+        const adminListData = snapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() }));
+        console.log(`Fetched ${adminListData.length} admins from Firestore.`);
+        setAdmins(adminListData);
+      },
+      handleError
+    );
 
     return () => {
       unsubStudents();
@@ -433,7 +477,7 @@ const AdminDashboard = () => {
   /* logout */
   const logout = async () => {
     await signOut();
-    navigate('/login');
+    navigate('/login', { state: { role: 'admin' } });
   };
 
   /* SETTINGS */
@@ -617,6 +661,70 @@ const AdminDashboard = () => {
     });
   };
 
+  /* ── ADMINS ── */
+  const saveMyProfile = async (profileData) => {
+    try {
+      await updateDoc(doc(db, 'users', currentUser.uid), profileData);
+      toast('Your profile has been updated.');
+    } catch (err) {
+      toast('Error updating profile.', 'error');
+    }
+  };
+
+  const saveAdmin = async (data) => {
+    try {
+      if (data.docId) {
+        const { docId, ...updateData } = data;
+        await updateDoc(doc(db, 'users', docId), updateData);
+        toast(`${data.name} updated successfully.`);
+      } else {
+        const defaultPassword = 'LAUC@Admin2026';
+        let uid = null;
+        try {
+          const userCredential = await createUserWithEmailAndPassword(secondaryAuth, data.email, defaultPassword);
+          uid = userCredential.user.uid;
+        } catch (authErr) {
+          if (authErr.code === 'auth/email-already-in-use') {
+            toast('Error: Email is already in use.', 'error');
+          } else {
+            toast('Failed to create authentication user.', 'error');
+          }
+          throw authErr;
+        }
+
+        await setDoc(doc(db, 'users', uid), {
+          ...data,
+          role: 'admin',
+          createdAt: serverTimestamp()
+        });
+        toast(`${data.name} has been added as an administrator.`);
+      }
+    } catch (err) {
+      toast('Error saving administrator.', 'error');
+    }
+    setModal(null);
+  };
+
+  const deleteAdmin = (docId) => {
+    if (docId === currentUser?.uid) {
+      toast('Error: You cannot delete your own admin account.', 'error');
+      return;
+    }
+    setConfirm({
+      title: 'Remove Admin',
+      message: 'Are you sure you want to remove this administrator? They will lose all access immediately.',
+      action: async () => {
+        try {
+          await deleteDoc(doc(db, 'users', docId));
+          toast('Admin removed.', 'error');
+        } catch (err) {
+          toast('Error removing admin.', 'error');
+        }
+        setConfirm(null);
+      }
+    });
+  };
+
   /* ── COURSES ── */
   const saveCourse = async (data) => {
     try {
@@ -753,6 +861,7 @@ const AdminDashboard = () => {
   const q = search.toLowerCase();
   const filteredStudents     = students.filter(x => (x.name || '').toLowerCase().includes(q) || (x.email || '').toLowerCase().includes(q) || (x.program || '').toLowerCase().includes(q));
   const filteredLecturers    = lecturers.filter(x => (x.name || '').toLowerCase().includes(q) || (x.dept || '').toLowerCase().includes(q));
+  const filteredAdmins       = admins.filter(x => (x.name || '').toLowerCase().includes(q) || (x.email || '').toLowerCase().includes(q));
   const filteredCourses      = courses.filter(x => (x.name || '').toLowerCase().includes(q) || (x.dept || '').toLowerCase().includes(q));
   // Applications: filter by status pill OR by text search across name/program/status
   const filteredApplications = applications.filter(x => {
@@ -765,10 +874,23 @@ const AdminDashboard = () => {
   const pendingApps = applications.filter(a => a.status === 'Pending').length;
   const pendingResults = allResults.filter(r => r.status === 'submitted').length;
 
+  // Calculate student distribution by program
+  const programCounts = students.reduce((acc, s) => {
+    const prog = s.program || 'Other';
+    acc[prog] = (acc[prog] || 0) + 1;
+    return acc;
+  }, {});
+
+  // Identify current admin profile
+  const me = admins.find(a => a.docId === currentUser?.uid);
+  const myName = me?.name || me?.displayName || me?.adminDisplayName || settings.adminDisplayName || 'Administrator';
+  const myEmail = me?.email || currentUser?.email || settings.adminEmail;
+
   const NAV_ITEMS = [
     { key: 'dashboard',    icon: 'fa-gauge-high',       label: 'Dashboard' },
     { key: 'students',     icon: 'fa-users',             label: 'Students' },
     { key: 'lecturers',    icon: 'fa-chalkboard-user',   label: 'Lecturers' },
+    { key: 'admins',       icon: 'fa-user-shield',       label: 'Admins' },
     { key: 'courses',      icon: 'fa-book-open',         label: 'Courses' },
     { key: 'results',      icon: 'fa-poll',              label: 'Results', badge: pendingResults },
     { key: 'applications', icon: 'fa-file-signature',    label: 'Applications', badge: pendingApps },
@@ -785,7 +907,12 @@ const AdminDashboard = () => {
           editData={modal.editData}
           lecturers={lecturers}
           onClose={() => setModal(null)}
-          onSave={modal.type === 'student' ? saveStudent : modal.type === 'lecturer' ? saveLecturer : saveCourse}
+          onSave={
+            modal.type === 'student' ? saveStudent : 
+            modal.type === 'lecturer' ? saveLecturer : 
+            modal.type === 'admin' ? saveAdmin :
+            saveCourse
+          }
         />
       )}
       {viewingApp && (
@@ -860,7 +987,7 @@ const AdminDashboard = () => {
             )}
             <div className="ad-user-pill">
               <div className="ad-user-info">
-                <span className="ad-user-name">{settings.adminDisplayName}</span>
+                <span className="ad-user-name">{myName}</span>
                 <span className="ad-user-role">Administrator</span>
               </div>
               <div className="ad-avatar" title="Administrator">
@@ -871,8 +998,8 @@ const AdminDashboard = () => {
               {/* Profile Dropdown */}
               <div className="ad-profile-dropdown">
                 <div className="ad-dropdown-header">
-                   <strong>{settings.adminDisplayName}</strong>
-                   <span>{settings.adminEmail}</span>
+                   <strong>{myName}</strong>
+                   <span>{myEmail}</span>
                 </div>
                 <div className="ad-dropdown-divider" />
                 <button className="ad-dropdown-item" onClick={() => setActiveTab('settings')}>
@@ -941,9 +1068,13 @@ const AdminDashboard = () => {
                       </g>
                     </svg>
                     <div className="ad-chart-legend">
-                      <div className="ad-legend-item"><span style={{background: 'var(--ad-primary)'}}></span> Tech</div>
-                      <div className="ad-legend-item"><span style={{background: '#7c3aed'}}></span> Nursing</div>
-                      <div className="ad-legend-item"><span style={{background: '#10b981'}}></span> Business</div>
+                      {Object.entries(programCounts).slice(0, 5).map(([prog, count], idx) => (
+                        <div key={prog} className="ad-legend-item">
+                          <span style={{ background: ['#1e3c72', '#7c3aed', '#10b981', '#f59e0b', '#ef4444'][idx % 5] }}></span> 
+                          {prog.length > 20 ? prog.slice(0, 20) + '...' : prog} ({count})
+                        </div>
+                      ))}
+                      {Object.keys(programCounts).length === 0 && <div className="ad-muted">No student data</div>}
                     </div>
                   </div>
                 </div>
@@ -958,6 +1089,9 @@ const AdminDashboard = () => {
                     </button>
                     <button className="ad-qa-btn" onClick={() => setModal({ type: 'lecturer' })}>
                       <i className="fas fa-user-tie" /> <span>Add Lecturer</span>
+                    </button>
+                    <button className="ad-qa-btn" onClick={() => setModal({ type: 'admin' })}>
+                      <i className="fas fa-user-shield" /> <span>Add Admin</span>
                     </button>
                     <button className="ad-qa-btn" onClick={() => setModal({ type: 'course' })}>
                       <i className="fas fa-book-medical" /> <span>Add Course</span>
@@ -1146,6 +1280,58 @@ const AdminDashboard = () => {
           )}
 
           {/* ══════════════════════════════════
+              ADMINS TAB
+          ══════════════════════════════════ */}
+          {activeTab === 'admins' && (
+            <div className="ad-page">
+              <div className="ad-card">
+                <div className="ad-card__head">
+                  <h3><i className="fas fa-user-shield" /> Administrator Records <span className="ad-count">{filteredAdmins.length}</span></h3>
+                  <div className="ad-card__actions">
+                    <button className="ad-btn ad-btn--primary" onClick={() => setModal({ type: 'admin' })}>
+                      <i className="fas fa-plus" /> Add New Admin
+                    </button>
+                  </div>
+                </div>
+                <div className="ad-card__body ad-card__body--p0">
+                  {filteredAdmins.length === 0
+                    ? <div className="ad-empty"><i className="fas fa-search" /><p>No administrators match your search.</p></div>
+                    : (
+                    <table className="ad-table ad-table--hover">
+                      <thead>
+                        <tr><th>Name</th><th>Email</th><th>Role</th><th>Created At</th><th>Actions</th></tr>
+                      </thead>
+                      <tbody>
+                        {filteredAdmins.map(admin => (
+                          <tr key={admin.docId}>
+                            <td><b>{admin.name || admin.displayName || admin.adminDisplayName || "Administrator"}</b></td>
+                            <td className="ad-muted">{admin.email}</td>
+                            <td><span className="ad-pill ad-pill--blue">{admin.role?.toUpperCase()}</span></td>
+                            <td className="ad-muted">{admin.createdAt?.toDate ? admin.createdAt.toDate().toLocaleDateString() : 'Initial'}</td>
+                            <td>
+                              <div className="ad-actions">
+                                <button className="ad-icon-btn ad-icon-btn--edit" title="Reset Password" onClick={() => handlePasswordReset(admin.email)}>
+                                  <i className="fas fa-key" />
+                                </button>
+                                <button className="ad-icon-btn ad-icon-btn--edit" title="Edit" onClick={() => setModal({ type: 'admin', editData: admin })}>
+                                  <i className="fas fa-pen" />
+                                </button>
+                                <button className="ad-icon-btn ad-icon-btn--delete" title="Delete" onClick={() => deleteAdmin(admin.docId)}>
+                                  <i className="fas fa-trash" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════
               COURSES TAB
           ══════════════════════════════════ */}
           {activeTab === 'courses' && (
@@ -1288,22 +1474,22 @@ const AdminDashboard = () => {
                     <form className="ad-settings-form" onSubmit={e => { 
                       e.preventDefault(); 
                       const formData = new FormData(e.target);
-                      saveSettings({
-                        adminDisplayName: formData.get('displayName'),
-                        adminEmail: formData.get('email')
+                      saveMyProfile({
+                        name: formData.get('displayName'),
+                        email: formData.get('email')
                       });
                     }}>
                       <div className="ad-field">
-                        <label>Admin Display Name</label>
-                        <input name="displayName" defaultValue={settings.adminDisplayName} />
+                        <label>Your Display Name</label>
+                        <input name="displayName" defaultValue={me?.name || me?.displayName || settings.adminDisplayName} />
                       </div>
                       <div className="ad-field">
                         <label>Email Address</label>
-                        <input name="email" defaultValue={settings.adminEmail} />
+                        <input name="email" defaultValue={me?.email || currentUser?.email || settings.adminEmail} />
                       </div>
                       <div className="ad-field">
                         <label>New Password</label>
-                        <input type="password" placeholder="Leave blank to keep current" />
+                        <input type="password" name="password" placeholder="Leave blank to keep current" />
                       </div>
                       <button className="ad-btn ad-btn--primary">Save Profile</button>
                     </form>

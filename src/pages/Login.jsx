@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { auth, db } from '../firebase';
@@ -13,7 +13,23 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { currentUser, userRole } = useAuth();
+  const location = useLocation();
+  const { currentUser, userRole, signOut } = useAuth();
+
+  // Handle errors or tab selection passed from other pages
+  useEffect(() => {
+    if (location.state?.error) {
+      setError(location.state.error);
+      toast.error(location.state.error);
+      signOut();
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+    
+    // Set active tab if passed in state
+    if (location.state?.role) {
+      setForm(prev => ({ ...prev, role: location.state.role }));
+    }
+  }, [location, signOut, navigate]);
 
   // If already logged in, redirect to the correct dashboard
   useEffect(() => {
@@ -142,8 +158,12 @@ const Login = () => {
       if (role !== form.role) {
         // Special case: staff vs lecturer terminology handled internally
         if (!(role === 'staff' && form.role === 'staff') && !(role === 'student' && form.role === 'student')) {
-          setError(`Note: You are logged in as "${role}". Redirecting to the correct portal…`);
-          await new Promise(r => setTimeout(r, 1000));
+          const msg = `Access Denied: You are attempting to log in as ${form.role.toUpperCase()}, but your account has ${role.toUpperCase()} privileges. Please select the correct tab above.`;
+          setError(msg);
+          toast.error(msg);
+          await auth.signOut();
+          setLoading(false);
+          return;
         }
       }
 

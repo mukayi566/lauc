@@ -132,6 +132,10 @@ const StaffDashboard = () => {
       },
       (err) => {
         console.error('Courses listener error:', err);
+        if (err.code === 'permission-denied') {
+          navigate('/login', { state: { error: "Access Denied: You do not have staff permissions to view this dashboard." } });
+          return;
+        }
         // Fallback: check by lecturer name if UID matches failed or if no UID stored
         if (lecturerData?.name) {
           const qName = query(coursesCol, where('lecturer', '==', lecturerData.name));
@@ -140,11 +144,11 @@ const StaffDashboard = () => {
             setLoading(false);
           }).catch(e => {
             console.error('Fallback courses error:', e);
-            setDbError('Could not load courses.');
+            setDbError('Could not load assigned courses.');
             setLoading(false);
           });
         } else {
-          setDbError('Could not load courses. Showing cached data if available.');
+          setDbError('Data sync issue: Could not load assigned courses.');
           setLoading(false);
         }
       }

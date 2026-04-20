@@ -47,7 +47,7 @@ const Spinner = () => (
 
 /* ═══════════════════════════════════════════════════════════════ */
 const StudentDashboard = () => {
-  const { signOut, currentUser } = useAuth();
+  const { signOut, currentUser, changePassword } = useAuth();
   const navigate = useNavigate();
 
   /* ── local UI state ── */
@@ -142,13 +142,13 @@ const StudentDashboard = () => {
       setCourses(loadedCourses);
 
       /* ── available courses ── */
-      const availCol = collection(db, 'availableCourses');
+      const availCol = collection(db, 'courses');
       const availSnap = await getDocs(availCol);
-      setAvailableCourses(availSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setAvailableCourses(availSnap.docs.map(d => ({ docId: d.id, ...d.data(), code: d.data().code || d.data().id })));
 
       /* ── results (published only) ── */
       const resultsQuery = query(
-        collection(db, 'results'), 
+        collection(db, 'results'),
         where('studentId', '==', uid),
         where('status', '==', 'published')
       );
@@ -210,17 +210,27 @@ const StudentDashboard = () => {
       return;
     }
     try {
+      // 1. Update Firebase Auth Password
+      await changePassword(passForm.new);
+
+      // 2. Update Firestore record
       await updateDoc(doc(db, 'students', uid), {
         password: passForm.new,
         mustChangePassword: false,
         updatedAt: serverTimestamp()
       });
+
       setProfile(prev => ({ ...prev, mustChangePassword: false }));
       setShowPasswordForce(false);
+      setPassForm({ new: '', confirm: '' });
       alert("Password updated successfully!");
     } catch (err) {
       console.error(err);
-      alert("Error updating password.");
+      if (err.code === 'auth/requires-recent-login') {
+        alert('For security reasons, please log out and log back in before changing your password.');
+      } else {
+        alert("Error updating password: " + err.message);
+      }
     }
   };
 
@@ -237,14 +247,14 @@ const StudentDashboard = () => {
           await updateDoc(doc(db, 'students', uid, 'notifications', n.id), { read: true });
         }
       }
-    } catch {}
+    } catch { }
   };
 
   /* Pay fees */
   /* Pay fees simulation */
   const handlePay = async (e) => {
     if (e) e.preventDefault();
-    
+
     if (payStep === 1) {
       if (!payAmount || parseFloat(payAmount) <= 0) return;
       setPayStep(2);
@@ -254,7 +264,7 @@ const StudentDashboard = () => {
     if (payStep === 2) {
       setPayStep(3);
       setPayProgress(0);
-      
+
       // Simulate progress
       const interval = setInterval(() => {
         setPayProgress(prev => {
@@ -328,9 +338,10 @@ const StudentDashboard = () => {
         const found = availableCourses.find(c => c.id === id);
         if (found) {
           await addDoc(coursesCol, {
-            code: found.code,
+            code: found.code || found.id,
+            id: found.id || found.code,
             name: found.name,
-            units: found.units,
+            units: found.units || 3,
             lecturer: found.lecturer,
             status: 'Registered',
             grade: '—',
@@ -395,7 +406,7 @@ const StudentDashboard = () => {
     initials: (profile?.name || currentUser?.displayName || 'ST')
       .split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(),
     id: profile?.studentId || profile?.student_id ||
-        (uid ? `LAUC/${new Date().getFullYear()}/STU/${uid.slice(0, 6).toUpperCase()}` : '—'),
+      (uid ? `LAUC/${new Date().getFullYear()}/STU/${uid.slice(0, 6).toUpperCase()}` : '—'),
     program: profile?.program || '—',
     school: profile?.school || '—',
     level: profile?.level || '—',
@@ -407,11 +418,11 @@ const StudentDashboard = () => {
 
   /* ══ Nav items ══ */
   const navItems = [
-    { id: 'home',      icon: 'fa-home',         label: 'Dashboard',        group: 'Main' },
-    { id: 'courses',   icon: 'fa-book-open',     label: 'Register Courses', group: 'Academics' },
-    { id: 'results',   icon: 'fa-chart-bar',     label: 'Results',          group: 'Academics' },
-    { id: 'timetable', icon: 'fa-calendar-alt',  label: 'Timetable',        group: 'Academics' },
-    { id: 'finance',   icon: 'fa-wallet',        label: 'Payments',         group: 'Finance' },
+    { id: 'home', icon: 'fa-home', label: 'Dashboard', group: 'Main' },
+    { id: 'courses', icon: 'fa-book-open', label: 'Register Courses', group: 'Academics' },
+    { id: 'results', icon: 'fa-chart-bar', label: 'Results', group: 'Academics' },
+    { id: 'timetable', icon: 'fa-calendar-alt', label: 'Timetable', group: 'Academics' },
+    { id: 'finance', icon: 'fa-wallet', label: 'Payments', group: 'Finance' },
   ];
   const groups = [...new Set(navItems.map(i => i.group))];
 
@@ -972,8 +983,8 @@ const StudentDashboard = () => {
                     { id: 'bank_transfer', icon: 'fa-university', label: 'Bank Transfer' },
                     { id: 'cash', icon: 'fa-money-bill-wave', label: 'Cash' },
                   ].map(m => (
-                    <div 
-                      key={m.id} 
+                    <div
+                      key={m.id}
                       className={`sd-method-card ${payMethod === m.id ? 'active' : ''}`}
                       onClick={() => setPayMethod(m.id)}
                     >
@@ -1004,19 +1015,19 @@ const StudentDashboard = () => {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                       <div style={{ gridColumn: 'span 2' }}>
                         <label>Card Number</label>
-                        <input 
-                          type="text" placeholder="0000 0000 0000 0000" 
+                        <input
+                          type="text" placeholder="0000 0000 0000 0000"
                           maxLength="19"
                           value={cardData.number}
-                          onChange={e => setCardData({...cardData, number: e.target.value.replace(/\W/gi, '').replace(/(.{4})/g, '$1 ').trim()})}
+                          onChange={e => setCardData({ ...cardData, number: e.target.value.replace(/\W/gi, '').replace(/(.{4})/g, '$1 ').trim() })}
                         />
                       </div>
                       <div>
                         <label>Expiry Date</label>
-                        <input 
+                        <input
                           type="text" placeholder="MM/YY" maxLength="5"
                           value={cardData.expiry}
-                          onChange={e => setCardData({...cardData, expiry: e.target.value})}
+                          onChange={e => setCardData({ ...cardData, expiry: e.target.value })}
                         />
                       </div>
                       <div>
@@ -1067,7 +1078,7 @@ const StudentDashboard = () => {
                 </div>
                 <h3 style={{ color: '#0d9488', fontSize: '22px', marginBottom: '10px' }}>Payment Successful!</h3>
                 <p className="sd-modal-hint">Thank you for your payment. Your student account has been updated.</p>
-                
+
                 <div className="sd-receipt-card">
                   <div className="sd-receipt-row"><span>Receipt No:</span><span className="sd-receipt-val">{paySuccessMsg}</span></div>
                   <div className="sd-receipt-row"><span>Amount Paid:</span><span className="sd-receipt-val">{ZMW(payAmount)}</span></div>

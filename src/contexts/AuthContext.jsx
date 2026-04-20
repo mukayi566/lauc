@@ -1,5 +1,10 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, signOut as firebaseSignOut, sendPasswordResetEmail } from 'firebase/auth';
+import { 
+  onAuthStateChanged, 
+  signOut as firebaseSignOut, 
+  sendPasswordResetEmail,
+  updatePassword 
+} from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 
@@ -50,6 +55,13 @@ export const AuthProvider = ({ children }) => {
     return unsubscribe;
   }, []);
 
+  const changePassword = (newPassword) => {
+    if (currentUser) {
+      return updatePassword(currentUser, newPassword);
+    }
+    return Promise.reject(new Error("No user logged in"));
+  };
+
   const signOut = async () => {
     await firebaseSignOut(auth);
     setCurrentUser(null);
@@ -83,7 +95,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ currentUser, userRole, loading, signOut, resetPassword, setUserData }}>
+    <AuthContext.Provider value={{ currentUser, userRole, loading, signOut, resetPassword, setUserData, changePassword }}>
       {!loading && children}
     </AuthContext.Provider>
   );

@@ -22,7 +22,11 @@ const ResultEntry = ({ lecturerId, course, onBack, showSuccess }) => {
         
         for (const sDoc of studentsSnap.docs) {
           const sCoursesSnap = await getDocs(collection(db, 'students', sDoc.id, 'courses'));
-          const hasCourse = sCoursesSnap.docs.some(d => d.data().code === course.code);
+          const hasCourse = sCoursesSnap.docs.some(d => {
+            const cd = d.data();
+            const targetCode = (course.code || course.id || '').toUpperCase();
+            return (cd.code || cd.id || '').toUpperCase() === targetCode;
+          });
           if (hasCourse) {
             enrolledStudents.push({ id: sDoc.id, ...sDoc.data() });
           }
@@ -124,10 +128,17 @@ const ResultEntry = ({ lecturerId, course, onBack, showSuccess }) => {
 
       // Assume CSV format: StudentID, CA, Exam
       lines.slice(1).forEach(line => {
-        const [sid, ca, exam] = line.split(',').map(s => s.trim());
-        if (!sid) return;
+        const parts = line.split(',').map(s => s.trim());
+        if (parts.length < 3) return;
+        
+        const [sid, ca, exam] = parts;
+        const searchId = sid.toUpperCase();
 
-        const student = students.find(s => s.studentId === sid || s.id === sid);
+        const student = students.find(s => 
+          (s.studentId || '').toUpperCase() === searchId || 
+          (s.id || '').toUpperCase() === searchId
+        );
+
         if (student) {
           const caVal = parseFloat(ca) || 0;
           const exVal = parseFloat(exam) || 0;
@@ -187,8 +198,10 @@ const ResultEntry = ({ lecturerId, course, onBack, showSuccess }) => {
             </thead>
             <tbody>
               {students.map(student => {
-                const res = results[student.id] || { caScore: 0, examScore: 0, total: 0, grade: 'F', status: 'draft' };
-                const isLocked = res.status === 'submitted' || res.status === 'approved' || res.status === 'published';
+                const res = results[student.id] || { caScore: '', examScore: '', total: 0, grade: '—', status: 'draft' };
+                const isLocked = res.status === 'approved' || res.status === 'published'; 
+                // Note: 'submitted' remains editable by staff until approved, or as per institution policy. 
+                // If they want 'submitted' to be locked, we add it back. But they said 'ensure editable before'.
                 
                 return (
                   <tr key={student.id}>

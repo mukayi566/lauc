@@ -81,7 +81,12 @@ const Modal = ({ type, editData, lecturers = [], onClose, onSave }) => {
 
   const submit = e => {
     e.preventDefault();
-    if (!form.name || !form.email && type !== 'course') return;
+    if (!form.name) return;
+    if (type !== 'course' && !form.email) return;
+    if (type === 'course' && !form.lecturerId) {
+      alert('Please select a lecturer to assign to this course.');
+      return;
+    }
     onSave(form);
   };
 
@@ -187,9 +192,10 @@ const Modal = ({ type, editData, lecturers = [], onClose, onSave }) => {
               <div className="ad-form-row">
                 <div className="ad-field">
                   <label>Department</label>
-                  <select value={form.dept} onChange={e => {
+                  <select value={form.dept || 'Computer Science'} onChange={e => {
                     handle('dept', e.target.value);
-                    handle('lecturer', ''); // Clear lecturer on dept change
+                    handle('lecturer', '');
+                    handle('lecturerId', ''); // Clear both lecturer fields on dept change
                   }}>
                     <option>Computer Science</option>
                     <option>Nursing</option>
@@ -198,21 +204,33 @@ const Modal = ({ type, editData, lecturers = [], onClose, onSave }) => {
                 </div>
                 <div className="ad-field">
                   <label>Credit Hours</label>
-                  <input type="number" min="1" max="6" value={form.credits} onChange={e => handle('credits', Number(e.target.value))} />
+                  <input type="number" min="1" max="6" value={form.credits || 3} onChange={e => handle('credits', Number(e.target.value))} />
                 </div>
               </div>
               <div className="ad-form-row">
                 <div className="ad-field">
                   <label>Assigned Lecturer</label>
-                  <select value={form.lecturer || ''} onChange={e => handle('lecturer', e.target.value)} required>
+                  <select 
+                    value={form.lecturerId || ''} 
+                    onChange={e => {
+                      const sel = lecturers.find(l => l.docId === e.target.value);
+                      handle('lecturerId', e.target.value);
+                      handle('lecturer', sel ? sel.name : '');
+                    }}
+                  >
                     <option value="">-- Select Lecturer --</option>
                     {lecturers
-                      .filter(l => l.dept === form.dept)
+                      .filter(l => !form.dept || l.dept === form.dept)
                       .map(l => (
-                        <option key={l.docId} value={l.name}>{l.name}</option>
+                        <option key={l.docId} value={l.docId}>{l.name}</option>
                       ))
                     }
                   </select>
+                  {lecturers.filter(l => !form.dept || l.dept === form.dept).length === 0 && (
+                    <small style={{color: '#f59e0b', marginTop: '4px', display: 'block'}}>
+                      <i className="fas fa-exclamation-triangle" /> No lecturers found for this department.
+                    </small>
+                  )}
                 </div>
               </div>
             </>
@@ -364,7 +382,7 @@ const AdminDashboard = () => {
   });
 
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { signOut, resetPassword } = useAuth();
 
   /* ── REAL-TIME FETCHING ── */
   useEffect(() => {
@@ -425,6 +443,16 @@ const AdminDashboard = () => {
       toast('Settings updated successfully.');
     } catch (err) {
       toast('Error saving settings.', 'error');
+    }
+  };
+
+  /* Password Reset */
+  const handlePasswordReset = async (email) => {
+    try {
+      await resetPassword(email);
+      toast(`Password reset email sent to ${email}`);
+    } catch (err) {
+      toast('Error sending reset email: ' + err.message, 'error');
     }
   };
 
@@ -593,33 +621,80 @@ const AdminDashboard = () => {
   const saveCourse = async (data) => {
     try {
       if (data.docId) {
+        // Detect lecturer reassignment
+        const oldCourse = courses.find(c => c.docId === data.docId);
+        const oldLecturerId = oldCourse?.lecturerId;
+        const newLecturerId = data.lecturerId;
+
         const { docId, ...updateData } = data;
         await updateDoc(doc(db, 'courses', docId), updateData);
+
+        // Update lecturer course counts if lecturer changed
+        if (newLecturerId !== oldLecturerId) {
+          if (oldLecturerId) {
+            const oldLec = lecturers.find(l => l.docId === oldLecturerId);
+            if (oldLec) {
+              await updateDoc(doc(db, 'lecturers', oldLecturerId), {
+                courses: Math.max(0, (oldLec.courses || 1) - 1)
+              });
+            }
+          }
+          if (newLecturerId) {
+            const newLec = lecturers.find(l => l.docId === newLecturerId);
+            if (newLec) {
+              await updateDoc(doc(db, 'lecturers', newLecturerId), {
+                courses: (newLec.courses || 0) + 1
+              });
+            }
+          }
+        }
         toast('Course updated successfully.');
       } else {
         const id = `CS${300 + courses.length}`;
-        await addDoc(collection(db, 'courses'), { 
+        const newDocRef = await addDoc(collection(db, 'courses'), { 
           ...data, 
           id, 
+          code: id, // Explicitly add code field for consistency
           enrolled: 0, 
           createdAt: serverTimestamp() 
         });
-        toast('Course added successfully.');
+
+        // Increment the assigned lecturer's course count
+        if (data.lecturerId) {
+          const lec = lecturers.find(l => l.docId === data.lecturerId);
+          if (lec) {
+            await updateDoc(doc(db, 'lecturers', data.lecturerId), {
+              courses: (lec.courses || 0) + 1
+            });
+          }
+        }
+        toast('Course added and lecturer assigned successfully.');
       }
     } catch (err) {
+      console.error(err);
       toast('Error saving course.', 'error');
     }
     setModal(null);
   };
 
   const deleteCourse = (docId) => {
+    const course = courses.find(c => c.docId === docId);
     setConfirm({
       title: 'Delete Course',
-      message: 'This will permanently remove the course from the catalog.',
+      message: `This will permanently remove "${course?.name || 'this course'}" from the catalog. The assigned lecturer's course count will be updated.`,
       action: async () => {
         try {
+          // Decrement lecturer's course count before deleting
+          if (course?.lecturerId) {
+            const lec = lecturers.find(l => l.docId === course.lecturerId);
+            if (lec) {
+              await updateDoc(doc(db, 'lecturers', course.lecturerId), {
+                courses: Math.max(0, (lec.courses || 1) - 1)
+              });
+            }
+          }
           await deleteDoc(doc(db, 'courses', docId));
-          toast('Course deleted.', 'error');
+          toast('Course deleted.');
         } catch (err) {
           toast('Error deleting course.', 'error');
         }
@@ -688,13 +763,14 @@ const AdminDashboard = () => {
   });
 
   const pendingApps = applications.filter(a => a.status === 'Pending').length;
+  const pendingResults = allResults.filter(r => r.status === 'submitted').length;
 
   const NAV_ITEMS = [
     { key: 'dashboard',    icon: 'fa-gauge-high',       label: 'Dashboard' },
     { key: 'students',     icon: 'fa-users',             label: 'Students' },
     { key: 'lecturers',    icon: 'fa-chalkboard-user',   label: 'Lecturers' },
     { key: 'courses',      icon: 'fa-book-open',         label: 'Courses' },
-    { key: 'results',      icon: 'fa-poll',              label: 'Results' },
+    { key: 'results',      icon: 'fa-poll',              label: 'Results', badge: pendingResults },
     { key: 'applications', icon: 'fa-file-signature',    label: 'Applications', badge: pendingApps },
     { key: 'settings',     icon: 'fa-gear',              label: 'Settings' },
   ];
@@ -832,7 +908,7 @@ const AdminDashboard = () => {
                 {[
                   { icon: 'fa-users',          color: '#1e3c72', label: 'Total Students',  value: students.length,     trend: '+12%' },
                   { icon: 'fa-chalkboard-user', color: '#7c3aed', label: 'Total Lecturers', value: lecturers.length,    trend: '+2%'  },
-                  { icon: 'fa-book-open',       color: '#059669', label: 'Total Courses',   value: courses.length,      trend: '+5%'  },
+                  { icon: 'fa-poll',            color: '#0d9488', label: 'Pending Results', value: pendingResults,      trend: '' },
                   { icon: 'fa-file-signature',  color: '#d97706', label: 'Pending Apps',    value: pendingApps,         trend: '' },
                 ].map((s, i) => (
                   <div key={i} className="ad-stat" style={{ '--accent': s.color }}>
@@ -924,23 +1000,31 @@ const AdminDashboard = () => {
 
                 <div className="ad-card">
                   <div className="ad-card__head">
-                    <h3><i className="fas fa-terminal" /> System Activity</h3>
+                    <h3><i className="fas fa-poll" /> Pending Approval</h3>
+                    <button className="ad-btn ad-btn--ghost ad-btn--xs" onClick={() => setActiveTab('results')}>
+                      Review All <i className="fas fa-arrow-right" />
+                    </button>
                   </div>
-                  <div className="ad-card__body ad-activity-list">
-                    {[
-                      { msg: 'System backup completed', time: '12m ago', icon: 'fa-database' },
-                      { msg: 'New course CSC202 added', time: '1h ago', icon: 'fa-book' },
-                      { msg: 'Admissions updated', time: '3h ago', icon: 'fa-sync' },
-                      { msg: 'Server status: Healthy', time: 'Now', icon: 'fa-heartbeat' },
-                    ].map((act, i) => (
-                      <div key={i} className="ad-activity-item">
-                        <div className="ad-activity-icon"><i className={`fas ${act.icon}`} /></div>
-                        <div className="ad-activity-info">
-                          <div className="ad-activity-msg">{act.msg}</div>
-                          <div className="ad-activity-time">{act.time}</div>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="ad-card__body ad-card__body--p0">
+                    {allResults.filter(r => r.status === 'submitted').length === 0 ? (
+                       <div className="ad-empty" style={{ padding: '20px' }}>
+                         <i className="fas fa-check-circle" style={{ color: '#10b981' }} />
+                         <p>All results are up to date.</p>
+                       </div>
+                    ) : (
+                      <table className="ad-table">
+                        <thead><tr><th>Student</th><th>Course</th><th>Grade</th></tr></thead>
+                        <tbody>
+                          {allResults.filter(r => r.status === 'submitted').slice(0, 4).map(r => (
+                            <tr key={r.docId}>
+                              <td>{r.studentName}</td>
+                              <td><code className="ad-code">{r.courseCode}</code></td>
+                              <td><span className={`ad-badge ${r.grade === 'F' ? 'ad-badge--rejected' : 'ad-badge--approved'}`}>{r.grade}</span></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
                   </div>
                 </div>
               </div>
@@ -984,6 +1068,9 @@ const AdminDashboard = () => {
                             <td><span className={`ad-badge ad-badge--${s.status === 'Active' ? 'approved' : 'rejected'}`}>{s.status}</span></td>
                             <td>
                               <div className="ad-actions">
+                                <button className="ad-icon-btn ad-icon-btn--edit" title="Reset Password" onClick={() => handlePasswordReset(s.email)}>
+                                  <i className="fas fa-key" />
+                                </button>
                                 <button className="ad-icon-btn ad-icon-btn--edit" title="Edit" onClick={() => setModal({ type: 'student', editData: s })}>
                                   <i className="fas fa-pen" />
                                 </button>
@@ -1037,6 +1124,9 @@ const AdminDashboard = () => {
                             <td><span className="ad-pill">{l.courses} courses</span></td>
                             <td>
                               <div className="ad-actions">
+                                <button className="ad-icon-btn ad-icon-btn--edit" title="Reset Password" onClick={() => handlePasswordReset(l.email)}>
+                                  <i className="fas fa-key" />
+                                </button>
                                 <button className="ad-icon-btn ad-icon-btn--edit" title="Edit" onClick={() => setModal({ type: 'lecturer', editData: l })}>
                                   <i className="fas fa-pen" />
                                 </button>
@@ -1086,10 +1176,13 @@ const AdminDashboard = () => {
                             <td><span className="ad-pill ad-pill--blue">{c.enrolled}</span></td>
                             <td>
                               <div className="ad-actions">
-                                <button className="ad-icon-btn ad-icon-btn--edit" title="Edit" onClick={() => setModal({ type: 'course', editData: c })}>
+                                <button className="ad-icon-btn ad-icon-btn--edit" title="Assign / Change Lecturer" onClick={() => setModal({ type: 'course', editData: c })}>
+                                  <i className="fas fa-user-tag" />
+                                </button>
+                                <button className="ad-icon-btn ad-icon-btn--edit" title="Edit Course" onClick={() => setModal({ type: 'course', editData: c })}>
                                   <i className="fas fa-pen" />
                                 </button>
-                                <button className="ad-icon-btn ad-icon-btn--delete" title="Delete" onClick={() => deleteCourse(c.docId)}>
+                                <button className="ad-icon-btn ad-icon-btn--delete" title="Delete Course" onClick={() => deleteCourse(c.docId)}>
                                   <i className="fas fa-trash" />
                                 </button>
                               </div>

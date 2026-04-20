@@ -660,12 +660,20 @@
 
 /* ── Toast ──────────────────────────────────── */
 .sd-toast {
-  display: flex; align-items: center; gap: 10px;
-  background: #f0fdf4; border: 1px solid #bbf7d0;
-  color: #15803d; padding: 12px 18px;
-  border-radius: 10px; font-size: 14px;
-  margin-bottom: 20px;
+  display: flex; align-items: center; gap: 12px;
+  background: white; border: 1px solid #e2e8f0;
+  color: #15803d; padding: 14px 22px;
+  border-radius: 12px; font-size: 14px; font-weight: 600;
+  margin-bottom: 24px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.05);
   animation: sd-fade-in 0.3s ease;
+  border-left: 4px solid #10b981;
+}
+
+.sd-toast-err {
+  color: #b91c1c;
+  border-left-color: #ef4444;
+  background: #fffafa;
 }
 
 /* ══════════════════════════════════════════════

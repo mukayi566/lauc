@@ -50,6 +50,7 @@ const StaffDashboard = () => {
   const [showProfileModal,       setShowProfileModal]       = useState(false);
   const [showPasswordForce,      setShowPasswordForce]      = useState(false);
   const [searchQuery,            setSearchQuery]            = useState('');
+  const [showNotifPanel,         setShowNotifPanel]         = useState(false);
   const [managedStatus,          setManagedStatus]          = useState('');
   const [savingCourse,           setSavingCourse]           = useState(false);
   const [postingAnn,             setPostingAnn]             = useState(false);
@@ -68,7 +69,7 @@ const StaffDashboard = () => {
   const [announcements, setAnnouncements] = useState([]);
 
   const navigate = useNavigate();
-  const { signOut, currentUser } = useAuth();
+  const { signOut, currentUser, changePassword } = useAuth();
   const uid = currentUser?.uid;
 
 
@@ -111,23 +112,45 @@ const StaffDashboard = () => {
   useEffect(() => {
     if (!uid) return;
 
-    const coursesCol = collection(db, 'lecturers', uid, 'courses');
+    // Query the top-level courses collection for this lecturer
+    const coursesCol = collection(db, 'courses');
+    const q = query(coursesCol, where('lecturerId', '==', uid));
 
     const unsubCourses = onSnapshot(
-      query(coursesCol, orderBy('code')),
+      q,
       (snap) => {
-        const loaded = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const loaded = snap.docs.map(d => {
+          const data = d.data();
+          return { 
+            docId: d.id, 
+            ...data, 
+            code: data.code || data.id // Ensure code is accessible
+          };
+        });
         setCourses(loaded);
         setLoading(false);
       },
       (err) => {
         console.error('Courses listener error:', err);
-        setDbError('Could not load courses. Showing cached data if available.');
-        setLoading(false);
+        // Fallback: check by lecturer name if UID matches failed or if no UID stored
+        if (lecturerData?.name) {
+          const qName = query(coursesCol, where('lecturer', '==', lecturerData.name));
+          getDocs(qName).then(res => {
+            setCourses(res.docs.map(d => ({ docId: d.id, ...d.data(), code: d.data().code || d.data().id })));
+            setLoading(false);
+          }).catch(e => {
+            console.error('Fallback courses error:', e);
+            setDbError('Could not load courses.');
+            setLoading(false);
+          });
+        } else {
+          setDbError('Could not load courses. Showing cached data if available.');
+          setLoading(false);
+        }
       }
     );
     return unsubCourses;
-  }, [uid]);
+  }, [uid, lecturerData?.name]);
 
   /* ═══════════════════════════════════════════════════════════════
      LOAD STUDENTS (all students whose courses array includes
@@ -197,7 +220,12 @@ const StaffDashboard = () => {
 
   const showSuccess = (msg) => {
     setSuccessMsg(msg);
-    setTimeout(() => setSuccessMsg(''), 3000);
+    setTimeout(() => setSuccessMsg(''), 4000);
+  };
+
+  const showError = (msg) => {
+    setDbError(msg);
+    setTimeout(() => setDbError(''), 5000);
   };
 
   /* Update password (stored in Firestore) */
@@ -206,17 +234,26 @@ const StaffDashboard = () => {
     if (passForm.new !== passForm.confirm) return alert("Passwords don't match");
     if (!lecturerData?.docId) return;
     try {
+      // 1. Update Actual Firebase Auth Password
+      await changePassword(passForm.new);
+
+      // 2. Update Firestore record for reference/seeding
       await updateDoc(doc(db, 'lecturers', lecturerData.docId), {
         password: passForm.new,
         mustChangePassword: false,
         updatedAt: serverTimestamp(),
       });
+
       setShowPasswordForce(false);
       setPassForm({ new: '', confirm: '' });
       showSuccess('Password updated successfully!');
     } catch (err) {
       console.error(err);
-      alert('Error updating password');
+      if (err.code === 'auth/requires-recent-login') {
+        alert('For security reasons, please logout and log back in before changing your password.');
+      } else {
+        alert('Error updating password: ' + err.message);
+      }
     }
   };
 
@@ -254,20 +291,20 @@ const StaffDashboard = () => {
     }
   };
 
-  /* Save course status changes to Firestore */
   const handleSaveCourse = async () => {
-    if (!uid || !selectedCourse) return;
+    if (!selectedCourse?.docId) return;
     setSavingCourse(true);
     try {
-      await updateDoc(doc(db, 'lecturers', uid, 'courses', selectedCourse.id), {
+      // Corrected: Update the root 'courses' collection using docId
+      await updateDoc(doc(db, 'courses', selectedCourse.docId), {
         status: managedStatus || selectedCourse.status,
         updatedAt: serverTimestamp(),
       });
       setShowManageModal(false);
-      showSuccess(`Course ${selectedCourse.code} updated successfully!`);
+      showSuccess(`Course ${selectedCourse.code || selectedCourse.id} updated successfully!`);
     } catch (err) {
       console.error('Save course error:', err);
-      alert('Error saving course changes.');
+      showError('Error saving course changes. Please try again.');
     } finally {
       setSavingCourse(false);
     }
@@ -286,6 +323,7 @@ const StaffDashboard = () => {
     : '..';
 
   const totalStudents  = students.length;
+  const totalCourses   = courses.length;
   const activeCourses  = courses.filter(c => c.status === 'Ongoing').length;
   const weeklyHours    = lecturerData?.weeklyHours  || courses.filter(c => c.status === 'Ongoing').length * 4;
   const avgRating      = lecturerData?.avgRating    || '—';
@@ -376,9 +414,37 @@ const StaffDashboard = () => {
             {navItems.find(i => i.id === activeTab)?.label}
           </div>
           <div className="sd-topbar-right">
-            <button className="sd-icon-btn"><i className="fas fa-bell"></i>
-              {announcements.length > 0 && <span className="sd-notif-dot">{announcements.length}</span>}
-            </button>
+            <div style={{ position: 'relative' }}>
+              <button className="sd-icon-btn" onClick={() => setShowNotifPanel(!showNotifPanel)}>
+                <i className="fas fa-bell"></i>
+                {announcements.length > 0 && <span className="sd-notif-dot">{announcements.length}</span>}
+              </button>
+              
+              {showNotifPanel && (
+                <div className="sd-notif-panel" style={{ right: 0, top: '50px' }}>
+                  <div className="sd-notif-header">
+                    <span>Recent Announcements</span>
+                    <button className="sd-link-btn" onClick={() => { setActiveTab('announcements'); setShowNotifPanel(false); }}>View All</button>
+                  </div>
+                  <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                    {announcements.length === 0 ? (
+                      <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
+                        No recent announcements.
+                      </div>
+                    ) : announcements.slice(0, 5).map(ann => (
+                      <div key={ann.id} className="sd-notif-item" style={{ cursor: 'pointer' }} onClick={() => { setActiveTab('announcements'); setShowNotifPanel(false); }}>
+                        <i className={`fas ${ann.status === 'Urgent' ? 'fa-exclamation-circle' : 'fa-info-circle'}`} 
+                           style={{ color: ann.status === 'Urgent' ? '#ef4444' : '#7c3aed' }}></i>
+                        <div>
+                          <div className="sd-notif-text" style={{ fontWeight: 600 }}>{ann.title}</div>
+                          <div className="sd-notif-time">{ann.date}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="sd-topbar-avatar" onClick={() => setShowProfileModal(true)}>{displayInitials}</div>
           </div>
         </header>
@@ -408,9 +474,9 @@ const StaffDashboard = () => {
                         {lecturer.name.split(' ')[0]}!
                       </h1>
                       <p className="sd-welcome-p">
-                        {activeCourses > 0
-                          ? `You have ${activeCourses} active course${activeCourses > 1 ? 's' : ''} this semester.`
-                          : 'Welcome to the LAUC Staff Portal.'}
+                        {totalCourses > 0
+                          ? `You are assigned to ${totalCourses} course${totalCourses > 1 ? 's' : ''}: ${courses.map(c => c.code || c.id).join(', ')}.`
+                          : 'Welcome to the LAUC Staff Portal. No courses are currently assigned to you.'}
                       </p>
                     </div>
                     <div className="sd-welcome-actions">
@@ -428,9 +494,9 @@ const StaffDashboard = () => {
                       <div className="sd-stat-lbl">My Students</div>
                     </div>
                     <div className="sd-stat-card">
-                      <div className="sd-stat-icon"><i className="fas fa-book"></i></div>
-                      <div className="sd-stat-val">{activeCourses}</div>
-                      <div className="sd-stat-lbl">Active Courses</div>
+                      <div className="sd-stat-icon"><i className="fas fa-book-open"></i></div>
+                      <div className="sd-stat-val">{totalCourses}</div>
+                      <div className="sd-stat-lbl">Assigned Courses</div>
                     </div>
                     <div className="sd-stat-card">
                       <div className="sd-stat-icon"><i className="fas fa-clock"></i></div>

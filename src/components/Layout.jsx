@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import logo from '../assets/logo.png';
 import { useAuth } from '../contexts/AuthContext';
+import ApplicationChatbot from './ApplicationChatbot';
 
 const Navbar = () => {
   const { currentUser, userRole, signOut } = useAuth();
@@ -24,22 +25,18 @@ const Navbar = () => {
   const isActive = (path) => location.pathname === path;
 
   return (
-    <nav className="navbar" style={{
-      background: scrolled ? 'rgba(15, 30, 75, 0.92)' : 'rgba(20, 40, 90, 0.55)',
-      boxShadow: scrolled ? '0 4px 24px rgba(0,0,0,0.25)' : 'none',
-    }}>
+    <nav className={`navbar ${scrolled ? 'navbar-scrolled' : 'navbar-transparent'}`}>
       <div className="nav-container">
         <Link to="/" className="nav-brand">
-          <img src={logo} alt="LAUC Logo" className="nav-logo" />
-          <span className="nav-text">London American University College</span>
+          <img src={logo} alt="Fairview University Logo" className="nav-logo" />
+          <span className="nav-text">Fairview University College</span>
         </Link>
-
         <div className={`nav-links${menuOpen ? ' open' : ''}`}>
           <Link to="/" className={isActive('/') ? 'active' : ''} onClick={() => setMenuOpen(false)}>Home</Link>
           <Link to="/about" className={isActive('/about') ? 'active' : ''} onClick={() => setMenuOpen(false)}>About Us</Link>
           <Link to="/programs" className={isActive('/programs') ? 'active' : ''} onClick={() => setMenuOpen(false)}>Programs</Link>
           <Link to="/admissions" className={isActive('/admissions') ? 'active' : ''} onClick={() => setMenuOpen(false)}>Admissions</Link>
-          
+
           {/* Mobile only buttons */}
           <div className="mobile-only-nav">
             {currentUser ? (
@@ -51,11 +48,7 @@ const Navbar = () => {
                   <i className="fas fa-sign-out-alt"></i> Logout
                 </button>
               </>
-            ) : (
-              <Link to="/login" className="btn btn-secondary" onClick={() => setMenuOpen(false)} style={{ justifyContent: 'center' }}>
-                <i className="fas fa-sign-in-alt"></i> Login
-              </Link>
-            )}
+            ) : null}
             <Link to="/admissions#apply" className="btn btn-primary" onClick={() => setMenuOpen(false)} style={{ justifyContent: 'center', marginTop: 10 }}>
               <i className="fas fa-file-alt"></i> Apply Now
             </Link>
@@ -68,15 +61,11 @@ const Navbar = () => {
               <Link to={getDashboardLink()} className="btn btn-secondary">
                 <i className="fas fa-th-large"></i> Dashboard
               </Link>
-              <button onClick={signOut} className="btn btn-outline-light" style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.3)', color: 'white', borderRadius: 8, padding: '8px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button onClick={signOut} className="btn btn-outline-light" style={{ background: 'transparent', border: '1.5px solid #1e3c72', color: '#1e3c72', borderRadius: 8, padding: '8px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <i className="fas fa-sign-out-alt"></i> Logout
               </button>
             </>
-          ) : (
-            <Link to="/login" className="btn btn-secondary">
-              <i className="fas fa-sign-in-alt"></i> Login
-            </Link>
-          )}
+          ) : null}
           <Link to="/admissions#apply" className="btn btn-primary">
             <i className="fas fa-file-alt"></i> Apply Now
           </Link>
@@ -93,7 +82,7 @@ const Footer = () => (
   <footer className="footer" id="contact">
     <div className="footer-content">
       <div className="footer-section">
-        <h3><i className="fas fa-graduation-cap" style={{ marginRight: 8 }}></i>London American University College</h3>
+        <h3><i className="fas fa-graduation-cap" style={{ marginRight: 8 }}></i>Fairview University College</h3>
         <p style={{ color: '#ccc', lineHeight: 1.9, fontSize: 13 }}>
           A registered and accredited institution providing quality higher education in healthcare, business, and humanities programs.
         </p>
@@ -111,16 +100,20 @@ const Footer = () => (
         <Link to="/about">About Us</Link>
         <Link to="/programs">Programs</Link>
         <Link to="/admissions">Admissions</Link>
+        <Link to="/student-login" style={{ color: '#facc15', fontWeight: 600 }}>
+          <i className="fas fa-user-lock" style={{ marginRight: 6 }}></i>Student Portal
+        </Link>
         <a href="#">FAQ's</a>
       </div>
 
       <div className="footer-section">
         <h3>Contact Information</h3>
         <div className="footer-contact">
-          <div><i className="fas fa-map-marker-alt"></i> Balastone Park, Plot G13/42B873, Lusaka</div>
-          <div style={{ marginTop: 8 }}><i className="fas fa-envelope"></i> contact@londonamericanuniversitycollege.com</div>
-          <div style={{ marginTop: 8 }}><i className="fas fa-phone"></i> +260977476614</div>
-          <div style={{ marginTop: 8 }}><i className="fas fa-phone"></i> +260770839120</div>
+          <div><i className="fas fa-map-marker-alt"></i> 11 Lubambe Road, Plot 70A, Lusaka</div>
+          <div style={{ marginTop: 8 }}><i className="fas fa-envelope"></i> contact@fairviewuniversity.com</div>
+          <div style={{ marginTop: 8 }}><i className="fas fa-phone"></i> +260977787114</div>
+          <div style={{ marginTop: 8 }}><i className="fas fa-phone"></i> +260966787114</div>
+          <div style={{ marginTop: 8 }}><i className="fas fa-phone"></i> +260977210769</div>
         </div>
       </div>
 
@@ -137,7 +130,7 @@ const Footer = () => (
     </div>
 
     <div className="footer-bottom">
-      <p>© Copyright {new Date().getFullYear()} London American University College. All Rights Reserved.</p>
+      <p>© Copyright {new Date().getFullYear()} Fairview University. All Rights Reserved.</p>
     </div>
   </footer>
 );
@@ -147,6 +140,7 @@ const Layout = ({ children }) => (
     <Navbar />
     <main>{children}</main>
     <Footer />
+    <ApplicationChatbot />
   </>
 );
 

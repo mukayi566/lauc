@@ -1,5 +1,5 @@
 /**
- * Grade calculation logic for LAUC
+ * Grade calculation logic for Fairview University College
  * @param {number} totalScore 
  * @returns {string} Grade (A, B+, B, C+, C, D, F)
  */

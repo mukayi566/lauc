@@ -5,11 +5,18 @@ import Layout from '../components/Layout';
 const About = () => (
   <Layout>
     {/* HERO */}
-    <section className="hero">
+    <section className="hero" style={{ backgroundImage: `linear-gradient(rgba(13, 43, 94, 0.75), rgba(30, 60, 114, 0.65)), url(/fairview-about-us.jpg)`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
       <div className="hero-content">
         <div className="page-breadcrumb"><i className="fas fa-home"></i> Home / About Us</div>
-        <h1>About London American University College</h1>
+        <h1>About Fairview University College</h1>
         <p>Excellence in Healthcare Education | Christian Principles | Community Focus</p>
+      </div>
+
+      {/* Seamless Curved Wave Divider */}
+      <div className="hero-divider">
+        <svg viewBox="0 0 1440 120" preserveAspectRatio="none">
+          <path d="M0,96L120,101.3C240,107,480,117,720,117.3C960,117,1200,107,1320,101.3L1440,96L1440,120L1320,120C1200,120,960,120,720,120C480,120,240,120,120,120L0,120Z" fill="#ffffff"></path>
+        </svg>
       </div>
     </section>
 
@@ -36,11 +43,11 @@ const About = () => (
     {/* WHO WE ARE */}
     <section className="section section-alt">
       <div className="container">
-        <h2 className="section-title">Welcome to London American University College</h2>
+        <h2 className="section-title">Welcome to Fairview University College</h2>
         <div className="about-two-col" style={{ marginTop: 40 }}>
           <div className="about-text">
             <h2>Who We Are</h2>
-            <p>London American University College (formerly UNICOHS) is an institution of higher learning in Lusaka, Zambia, with a mission to provide holistic, Christian-based education and a vision to produce practitioners with a community focus.</p>
+            <p>Fairview University College is an institution of higher learning in Lusaka, Zambia, with a mission to provide holistic, Christian-based education and a vision to produce practitioners with a community focus.</p>
             <p>We are registered and accredited by the Higher Education Authority and the Health Professions Council of Zambia, offering programs in Health Sciences, Humanities, Social Sciences, Business Studies, and TEVETA courses.</p>
             <p>Key areas of study include nursing, clinical medicine, environmental health, public health, social work, and various business and TEVETA programs.</p>
             <p style={{ marginTop: 16 }}>We are delighted to have you join our community where excellence, integrity, and faith guide all we do. Together, we strive to shape not only successful professionals but also responsible leaders with strong values.</p>
@@ -130,7 +137,7 @@ const About = () => (
         <p className="section-subtitle">Recognised by leading national and international bodies</p>
         <div style={{ background: 'white', padding: '36px', borderRadius: 16, boxShadow: '0 5px 20px rgba(0,0,0,0.08)' }}>
           <p style={{ color: '#666', lineHeight: 1.9, marginBottom: 10, fontSize: 15 }}>
-            London American University College is registered and accredited by the following bodies, ensuring our programs meet the highest educational standards.
+            Fairview University College is registered and accredited by the following bodies, ensuring our programs meet the highest educational standards.
           </p>
           <div className="accreditation-list">
             {[
@@ -157,7 +164,7 @@ const About = () => (
       <div className="container">
         <div className="cta-box">
           <h2>Ready to Join Our Community?</h2>
-          <p>Take the first step toward an extraordinary academic journey at London American University College.</p>
+          <p>Take the first step toward an extraordinary academic journey at Fairview University.</p>
           <div className="cta-buttons">
             <Link to="/admissions#apply" className="btn btn-primary">
               <i className="fas fa-file-alt"></i> Apply Now

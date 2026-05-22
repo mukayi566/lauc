@@ -91,6 +91,13 @@ const Programs = () => {
           <h1>Academic Programs</h1>
           <p>Explore our diverse range of healthcare, business, and social science programs designed to launch your career.</p>
         </div>
+
+        {/* Seamless Curved Wave Divider */}
+        <div className="hero-divider">
+          <svg viewBox="0 0 1440 120" preserveAspectRatio="none">
+            <path d="M0,96L120,101.3C240,107,480,117,720,117.3C960,117,1200,107,1320,101.3L1440,96L1440,120L1320,120C1200,120,960,120,720,120C480,120,240,120,120,120L0,120Z" fill="#f8faff"></path>
+          </svg>
+        </div>
       </section>
 
       {/* INTRO */}
@@ -189,7 +196,7 @@ const Programs = () => {
       {/* WHY STUDY HERE */}
       <section className="section">
         <div className="container">
-          <h2 className="section-title">Why Study at LAUC?</h2>
+          <h2 className="section-title">Why Study at Fairview University College?</h2>
           <p className="section-subtitle">We provide a transformative educational experience that prepares you for a successful career.</p>
           <div className="features-grid">
             {[

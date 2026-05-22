@@ -202,7 +202,7 @@ const Login = () => {
               <div style={{ fontSize: 48, color: '#1e3c72', marginBottom: 10 }}>
                 <i className={`fas ${roleConfig[form.role].icon}`}></i>
               </div>
-              <h2 style={{ fontSize: 24, fontWeight: 800, color: '#1e3c72', margin: 0 }}>LAUC {form.role.charAt(0).toUpperCase() + form.role.slice(1)} Portal</h2>
+              <h2 style={{ fontSize: 24, fontWeight: 800, color: '#1e3c72', margin: 0 }}>Fairview {form.role.charAt(0).toUpperCase() + form.role.slice(1)} Portal</h2>
               <p style={{ color: '#666', fontSize: 14, marginTop: 6 }}>Sign in to your {form.role} account</p>
             </div>
 

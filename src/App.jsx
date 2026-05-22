@@ -10,6 +10,10 @@ import Home from './pages/Home';
 import About from './pages/About';
 import Programs from './pages/Programs';
 import Admissions from './pages/Admissions';
+import PortalGateway from './pages/PortalGateway';
+import StudentLogin from './pages/StudentLogin';
+import StaffLogin from './pages/StaffLogin';
+import AdminLogin from './pages/AdminLogin';
 import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
 import AdminDashboard from './pages/AdminDashboard';
@@ -27,7 +31,12 @@ function App() {
           <Route path="/about"      element={<About />} />
           <Route path="/programs"   element={<Programs />} />
           <Route path="/admissions" element={<Admissions />} />
-          <Route path="/login"      element={<Login />} />
+
+          {/* Portal gateway + individual login pages */}
+          <Route path="/login"         element={<PortalGateway />} />
+          <Route path="/student-login" element={<StudentLogin />} />
+          <Route path="/staff-login"   element={<StaffLogin />} />
+          <Route path="/admin-login"   element={<AdminLogin />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
 
           {/* Protected dashboard routes */}

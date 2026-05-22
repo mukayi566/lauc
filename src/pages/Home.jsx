@@ -6,6 +6,74 @@ import { collection, onSnapshot } from 'firebase/firestore';
 
 const Home = () => {
   const [enrollment, setEnrollment] = useState({});
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  const slides = [
+    {
+      image: '/hero-image1.png',
+      title: 'Welcome to Fairview University College',
+      subtitle: 'Excellence in Healthcare Education | Christian Principles | Community Focus',
+      btn1Text: 'Apply Now',
+      btn1Link: '/admissions#apply',
+      btn1Icon: 'fa-file-alt',
+      btn2Text: 'Login',
+      btn2Link: '/login',
+      btn2Icon: 'fa-sign-in-alt',
+      btn2Class: 'btn-secondary'
+    },
+    {
+      image: '/hero-image2.jpg',
+      title: 'Shaping Future Healthcare Leaders',
+      subtitle: 'Accredited Nursing, Public Health and Clinical Sciences programmes designed for professional success.',
+      btn1Text: 'Our Programs',
+      btn1Link: '/programs',
+      btn1Icon: 'fa-graduation-cap',
+      btn2Text: 'Apply Now',
+      btn2Link: '/admissions#apply',
+      btn2Icon: 'fa-file-alt',
+      btn2Class: 'btn-outline'
+    },
+    {
+      image: '/hero-image3.png',
+      title: 'World-Class Academic Resources',
+      subtitle: 'A vibrant learning community supported by state-of-the-art library facilities and highly qualified lecturers.',
+      btn1Text: 'Explore Programs',
+      btn1Link: '/programs',
+      btn1Icon: 'fa-book-open',
+      btn2Text: 'Contact Us',
+      btn2Link: 'tel:+260770839120',
+      btn2Icon: 'fa-phone',
+      btn2Class: 'btn-secondary'
+    },
+    {
+      image: '/hero-image4.png',
+      title: 'Advanced Practical Simulation Labs',
+      subtitle: 'Hands-on clinical training, high-tech patient simulators, and safe campus accommodation to elevate your studies.',
+      btn1Text: 'Apply Now',
+      btn1Link: '/admissions#apply',
+      btn1Icon: 'fa-file-alt',
+      btn2Text: 'Student Portal',
+      btn2Link: '/login',
+      btn2Icon: 'fa-user-lock',
+      btn2Class: 'btn-outline'
+    }
+  ];
+
+  // Auto transition slides
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % slides.length);
+    }, 6000);
+    return () => clearInterval(timer);
+  }, [slides.length]);
+
+  const nextSlide = () => {
+    setCurrentSlide((prev) => (prev + 1) % slides.length);
+  };
+
+  const prevSlide = () => {
+    setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
+  };
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'students'), (snapshot) => {
@@ -23,17 +91,78 @@ const Home = () => {
     <Layout>
       {/* HERO */}
       <section className="hero" id="home">
-        <div className="hero-content">
-          <h1>Welcome to London American University College</h1>
-          <p>Excellence in Healthcare Education | Christian Principles | Community Focus</p>
-          <div className="hero-buttons">
-            <Link to="/admissions#apply" className="btn btn-primary">
-              <i className="fas fa-file-alt"></i> Apply Now
-            </Link>
-            <Link to="/login" className="btn btn-secondary">
-              <i className="fas fa-sign-in-alt"></i> Login
-            </Link>
-          </div>
+        {/* Slide Backgrounds */}
+        <div className="hero-slides">
+          {slides.map((slide, index) => (
+            <div
+              key={index}
+              className={`hero-slide-bg ${index === currentSlide ? 'active' : ''}`}
+              style={{ backgroundImage: `url(${slide.image})` }}
+            />
+          ))}
+        </div>
+
+        {/* Slide Content */}
+        <div className="hero-container container">
+          {slides.map((slide, index) => (
+            <div
+              key={index}
+              className={`hero-slide-content ${index === currentSlide ? 'active' : ''}`}
+            >
+              <div className="hero-content">
+                <h1>{slide.title}</h1>
+                <p>{slide.subtitle}</p>
+                <div className="hero-buttons">
+                  {slide.btn1Link.startsWith('http') || slide.btn1Link.startsWith('tel') ? (
+                    <a href={slide.btn1Link} className="btn btn-primary">
+                      <i className={`fas ${slide.btn1Icon}`}></i> {slide.btn1Text}
+                    </a>
+                  ) : (
+                    <Link to={slide.btn1Link} className="btn btn-primary">
+                      <i className={`fas ${slide.btn1Icon}`}></i> {slide.btn1Text}
+                    </Link>
+                  )}
+
+                  {slide.btn2Link.startsWith('http') || slide.btn2Link.startsWith('tel') ? (
+                    <a href={slide.btn2Link} className={`btn ${slide.btn2Class || 'btn-secondary'}`}>
+                      <i className={`fas ${slide.btn2Icon}`}></i> {slide.btn2Text}
+                    </a>
+                  ) : (
+                    <Link to={slide.btn2Link} className={`btn ${slide.btn2Class || 'btn-secondary'}`}>
+                      <i className={`fas ${slide.btn2Icon}`}></i> {slide.btn2Text}
+                    </Link>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Slide Controls */}
+        <button className="hero-control prev" onClick={prevSlide} aria-label="Previous slide">
+          <i className="fas fa-chevron-left"></i>
+        </button>
+        <button className="hero-control next" onClick={nextSlide} aria-label="Next slide">
+          <i className="fas fa-chevron-right"></i>
+        </button>
+
+        {/* Dots */}
+        <div className="hero-dots">
+          {slides.map((_, index) => (
+            <button
+              key={index}
+              className={`hero-dot ${index === currentSlide ? 'active' : ''}`}
+              onClick={() => setCurrentSlide(index)}
+              aria-label={`Go to slide ${index + 1}`}
+            />
+          ))}
+        </div>
+
+        {/* Seamless Curved Wave Divider */}
+        <div className="hero-divider">
+          <svg viewBox="0 0 1440 120" preserveAspectRatio="none">
+            <path d="M0,96L120,101.3C240,107,480,117,720,117.3C960,117,1200,107,1320,101.3L1440,96L1440,120L1320,120C1200,120,960,120,720,120C480,120,240,120,120,120L0,120Z" fill="#ffffff"></path>
+          </svg>
         </div>
       </section>
 
@@ -62,8 +191,8 @@ const Home = () => {
         <div className="container">
           <div className="about-two-col">
             <div className="about-text">
-              <h2>About London American University College</h2>
-              <p>London American University College is a registered and accredited institution, focused on providing higher education in health, business, humanities, and TEVETA programs. The Institution is located in Barlastone, Lusaka, Zambia.</p>
+              <h2>About Fairview University College</h2>
+              <p>Fairview University College is a registered and accredited institution, focused on providing higher education in health, business, humanities, and TEVETA programs. The Institution is located in Barlastone, Lusaka, Zambia.</p>
               <div style={{ background:'white', padding:'18px 22px', borderRadius:10, marginBottom:14, borderLeft:'4px solid #2a5298' }}>
                 <h4 style={{ color:'#2a5298', marginBottom:6, fontWeight:700 }}><i className="fas fa-bullseye" style={{ marginRight:8 }}></i>Our Mission</h4>
                 <p style={{ color:'#666', fontSize:14 }}>To provide sustained holistic tertiary education based on Christian principles for service to society.</p>
@@ -166,7 +295,7 @@ const Home = () => {
     <section className="section">
       <div className="container">
         <h2 className="section-title">Our Facilities</h2>
-        <p className="section-subtitle">Discover world-class facilities at London American University College</p>
+        <p className="section-subtitle">Discover world-class facilities at Fairview University</p>
         <div className="facilities-grid">
           {[
             { icon:'fa-bed', title:'Modern Accommodation', desc:'Safe, fully equipped hostels with 24/7 security and student lounges.' },
@@ -195,7 +324,7 @@ const Home = () => {
         <p className="section-subtitle">Meet the visionary leaders shaping the future of healthcare education</p>
         <div className="leadership-grid">
           {[
-            { name:'Dr. Humphrey Monde', title:'Executive Director', msg:'"Welcome to London American University College, where excellence meets opportunity. We are committed to transforming lives through innovative healthcare education."' },
+            { name:'Dr. Humphrey Monde', title:'Executive Director', msg:'"Welcome to Fairview University, where excellence meets opportunity. We are committed to transforming lives through innovative healthcare education."' },
             { name:'Dr. Geoffrey Sandala', title:'Principal', msg:'"Join our vibrant community of future healthcare leaders. We are dedicated to your success through innovative teaching methodologies and hands-on experience."' },
             { name:'Parson Monde', title:'Director Finance & Administration', msg:'"Our commitment is to provide quality education at affordable prices, ensuring every deserving student can access world-class healthcare education."' },
           ].map((l) => (
@@ -216,12 +345,12 @@ const Home = () => {
     <section className="section">
       <div className="container">
         <h2 className="section-title">Latest News &amp; Blog</h2>
-        <p className="section-subtitle">Stay updated with the latest news and stories from London American University College</p>
+        <p className="section-subtitle">Stay updated with the latest news and stories from Fairview University</p>
         <div className="blog-grid">
           {[
-            { date:'January 06, 2026', title:'Congratulations to Mary Sinvula, the new Principal of London American University College!', excerpt:'We are delighted to announce the appointment of Mary Sinvula as the new Principal...' },
+            { date:'January 06, 2026', title:'Congratulations to Mary Sinvula, the new Principal of Fairview University!', excerpt:'We are delighted to announce the appointment of Mary Sinvula as the new Principal...' },
             { date:'January 2026 Intake', title:'We Are Still Enrolling for January 2026 Intake', excerpt:'Excellent news! We have available spaces for the January 2026 intake across all programs...' },
-            { date:'October 17, 2025', title:'London American University College Celebrates Its 10th Graduation Ceremony', excerpt:'A momentous celebration as London American University College held its 10th graduation ceremony...' },
+            { date:'October 17, 2025', title:'Fairview University Celebrates Its 10th Graduation Ceremony', excerpt:'A momentous celebration as Fairview University held its 10th graduation ceremony...' },
           ].map((b) => (
             <div key={b.title} className="blog-card">
               <div className="blog-image"></div>
@@ -241,7 +370,7 @@ const Home = () => {
     <section className="section section-gold">
       <div className="scholarship-content">
         <h2 className="scholarship-title">Ready to Transform Your Future?</h2>
-        <p style={{ fontSize:16, color:'#333', marginBottom:28 }}>Join London American University College and become part of a vibrant academic community dedicated to your success.</p>
+        <p style={{ fontSize:16, color:'#333', marginBottom:28 }}>Join Fairview University College and become part of a vibrant academic community dedicated to your success.</p>
         <div style={{ display:'flex', gap:15, justifyContent:'center', flexWrap:'wrap' }}>
           <Link to="/login" className="btn" style={{ background:'#1e3c72', color:'white' }}>
             <i className="fas fa-sign-in-alt"></i> Login
@@ -254,5 +383,6 @@ const Home = () => {
     </section>
   </Layout>
 );
+}
 
 export default Home;

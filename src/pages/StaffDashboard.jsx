@@ -369,7 +369,7 @@ const StaffDashboard = () => {
         <div className="sd-sidebar-logo">
           <div className="sd-logo-icon"><i className="fas fa-chalkboard-teacher"></i></div>
           <div>
-            <div className="sd-logo-title">LAUC Portal</div>
+            <div className="sd-logo-title">Fairview Portal</div>
             <div className="sd-logo-sub">Staff Panel</div>
           </div>
         </div>
@@ -480,7 +480,7 @@ const StaffDashboard = () => {
                       <p className="sd-welcome-p">
                         {totalCourses > 0
                           ? `You are assigned to ${totalCourses} course${totalCourses > 1 ? 's' : ''}: ${courses.map(c => c.code || c.id).join(', ')}.`
-                          : 'Welcome to the LAUC Staff Portal. No courses are currently assigned to you.'}
+                          : 'Welcome to the Fairview Staff Portal. No courses are currently assigned to you.'}
                       </p>
                     </div>
                     <div className="sd-welcome-actions">
@@ -971,7 +971,7 @@ const StaffDashboard = () => {
             </div>
             <div className="sd-modal-body">
               <p style={{ marginBottom: 20 }}>
-                Welcome to the LAUC Staff Portal, <strong>{lecturer.name}</strong>. For security reasons, you must change your default password before proceeding.
+                Welcome to the Fairview Staff Portal, <strong>{lecturer.name}</strong>. For security reasons, you must change your default password before proceeding.
               </p>
               <form className="sd-modal-form" id="forcePassForm" onSubmit={updatePassword}>
                 <label>New Password</label>

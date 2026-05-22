@@ -421,7 +421,7 @@ const StudentDashboard = () => {
     initials: (profile?.name || currentUser?.displayName || 'ST')
       .split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(),
     id: profile?.studentId || profile?.student_id ||
-      (uid ? `LAUC/${new Date().getFullYear()}/STU/${uid.slice(0, 6).toUpperCase()}` : '—'),
+      (uid ? `FU/${new Date().getFullYear()}/STU/${uid.slice(0, 6).toUpperCase()}` : '—'),
     program: profile?.program || '—',
     school: profile?.school || '—',
     level: profile?.level || '—',
@@ -449,7 +449,7 @@ const StudentDashboard = () => {
       <div className="sd-sidebar-logo">
         <div className="sd-logo-icon"><i className="fas fa-graduation-cap"></i></div>
         <div>
-          <div className="sd-logo-title">LAUC Portal</div>
+          <div className="sd-logo-title">Fairview Portal</div>
           <div className="sd-logo-sub">Student</div>
         </div>
       </div>

@@ -119,7 +119,7 @@ const Admissions = () => {
         <div className="hero-content">
           <div className="page-breadcrumb"><i className="fas fa-home"></i> Home / Admissions</div>
           <h1>Admissions 2026</h1>
-          <p>Information about the admissions process at London American University College</p>
+          <p>Information about the admissions process at Fairview University College</p>
           <div className="hero-buttons">
             <a href="#apply" className="btn btn-primary">
               <i className="fas fa-file-alt"></i> Apply Now
@@ -128,6 +128,13 @@ const Admissions = () => {
               <i className="fas fa-list-check"></i> View Requirements
             </a>
           </div>
+        </div>
+
+        {/* Seamless Curved Wave Divider */}
+        <div className="hero-divider">
+          <svg viewBox="0 0 1440 120" preserveAspectRatio="none">
+            <path d="M0,96L120,101.3C240,107,480,117,720,117.3C960,117,1200,107,1320,101.3L1440,96L1440,120L1320,120C1200,120,960,120,720,120C480,120,240,120,120,120L0,120Z" fill="#ffffff"></path>
+          </svg>
         </div>
       </section>
 
@@ -247,7 +254,7 @@ const Admissions = () => {
       <section className="section section-alt" id="apply">
         <div className="container">
           <h2 className="section-title">Apply Now</h2>
-          <p className="section-subtitle">Complete this form to submit your application to London American University College</p>
+          <p className="section-subtitle">Complete this form to submit your application to Fairview University College</p>
 
           <div className="form-container">
             {alert && (
@@ -403,7 +410,7 @@ const Admissions = () => {
                 <div className="form-row full">
                   <div className="form-group">
                     <label htmlFor="personalStatement">Personal Statement</label>
-                    <textarea id="personalStatement" name="personalStatement" placeholder="Tell us about yourself, your goals, and why you want to study at LAUC..."></textarea>
+                    <textarea id="personalStatement" name="personalStatement" placeholder="Tell us about yourself, your goals, and why you want to study at Fairview University College..."></textarea>
                   </div>
                 </div>
                 <div className="form-row full">
@@ -445,7 +452,7 @@ const Admissions = () => {
               <a href="tel:+260977476614" className="btn btn-primary">
                 <i className="fas fa-phone"></i> +260977476614
               </a>
-              <a href="mailto:contact@londonamericanuniversitycollege.com" className="btn btn-secondary">
+              <a href="mailto:contact@fairviewuniversity.com" className="btn btn-secondary">
                 <i className="fas fa-envelope"></i> Email Us
               </a>
             </div>

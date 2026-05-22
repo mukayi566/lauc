@@ -164,7 +164,7 @@ const Modal = ({ type, editData, lecturers = [], onClose, onSave }) => {
               </div>
               {!editData && (
                 <div className="ad-alert ad-alert--info" style={{marginTop: '15px'}}>
-                   <i className="fas fa-key" /> Default Password: <code>LAUC@Student2026</code>
+                   <i className="fas fa-key" /> Default Password: <code>Fairview@Student2026</code>
                 </div>
               )}
             </>
@@ -182,7 +182,7 @@ const Modal = ({ type, editData, lecturers = [], onClose, onSave }) => {
               </div>
               {!editData && (
                 <div className="ad-alert ad-alert--info" style={{marginTop: '15px'}}>
-                   <i className="fas fa-key" /> Default Password: <code>LAUC@Admin2026</code>
+                   <i className="fas fa-key" /> Default Password: <code>Fairview@Admin2026</code>
                 </div>
               )}
             </>
@@ -202,7 +202,7 @@ const Modal = ({ type, editData, lecturers = [], onClose, onSave }) => {
               </div>
               {!editData && (
                 <div className="ad-alert ad-alert--info" style={{marginTop: '15px'}}>
-                   <i className="fas fa-key" /> Default Password: <code>LAUC@Lecturer2026</code>
+                   <i className="fas fa-key" /> Default Password: <code>Fairview@Lecturer2026</code>
                 </div>
               )}
             </>
@@ -391,7 +391,7 @@ const AdminDashboard = () => {
   const [allResults, setAllResults]     = useState([]);
   const [loading, setLoading]         = useState(true);
   const [settings, setSettings]       = useState({
-    institutionName: 'London American University College',
+    institutionName: 'Fairview University College',
     systemMotto: 'Education for the Future',
     timezone: 'Zambia (CAT)',
     currency: 'ZMW',
@@ -400,7 +400,7 @@ const AdminDashboard = () => {
     twoFactorAuth: false,
     autoArchiving: true,
     adminDisplayName: 'Super Admin',
-    adminEmail: 'admin@lauc.edu'
+    adminEmail: 'admin@fairview.edu'
   });
 
   const navigate = useNavigate();
@@ -528,7 +528,7 @@ const AdminDashboard = () => {
         await updateDoc(doc(db, 'students', docId), updateData);
         toast(`${data.name} updated successfully.`);
       } else {
-        // Automatic Student ID Generation (Format: LAUC/Year/PROG/001)
+        // Automatic Student ID Generation (Format: FU/Year/PROG/001)
         const year = new Date().getFullYear();
         const progMap = {
           'BSc Computer Science': 'CSC',
@@ -539,9 +539,9 @@ const AdminDashboard = () => {
         
         // Use document count or timestamp for unique sequence
         const sequence = String(students.length + 1).padStart(3, '0');
-        const studentId = `LAUC/${year}/${progCode}/${sequence}`;
+        const studentId = `FU/${year}/${progCode}/${sequence}`;
 
-        const defaultPassword = 'LAUC@Student2026';
+        const defaultPassword = 'Fairview@Student2026';
         let uid = null;
         try {
           const userCredential = await createUserWithEmailAndPassword(secondaryAuth, data.email, defaultPassword);
@@ -605,7 +605,7 @@ const AdminDashboard = () => {
         toast(`${data.name} updated successfully.`);
       } else {
         const id = `LEC-${110 + lecturers.length}`;
-        const defaultPassword = 'LAUC@Lecturer2026';
+        const defaultPassword = 'Fairview@Lecturer2026';
         let uid = null;
 
         try {
@@ -678,7 +678,7 @@ const AdminDashboard = () => {
         await updateDoc(doc(db, 'users', docId), updateData);
         toast(`${data.name} updated successfully.`);
       } else {
-        const defaultPassword = 'LAUC@Admin2026';
+        const defaultPassword = 'Fairview@Admin2026';
         let uid = null;
         try {
           const userCredential = await createUserWithEmailAndPassword(secondaryAuth, data.email, defaultPassword);
@@ -930,7 +930,7 @@ const AdminDashboard = () => {
             <i className="fas fa-university" />
           </div>
           <div>
-            <div className="ad-sidebar__name">LAUC Admin</div>
+            <div className="ad-sidebar__name">Fairview Admin</div>
             <div className="ad-sidebar__sub">Management Portal</div>
           </div>
         </div>
@@ -1566,7 +1566,7 @@ const AdminDashboard = () => {
                 </div>
                 <div className="ad-card-footer-actions">
                    <button className="ad-btn ad-btn--ghost" onClick={() => saveSettings({
-                     institutionName: 'London American University College',
+                     institutionName: 'Fairview University College',
                      systemMotto: 'Education for the Future',
                      timezone: 'Zambia (CAT)',
                      currency: 'ZMW'

@@ -558,7 +558,7 @@ const StudentDashboard = () => {
                         Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}, {student.name.split(' ')[0]} 👋
                       </h1>
                       <p className="sd-welcome-p">
-                        Spring 2026 · {new Date().toLocaleDateString('en-ZM', { weekday: 'long', day: 'numeric', month: 'long' })}
+                      {new Date().toLocaleDateString('en-ZM', { weekday: 'long', day: 'numeric', month: 'long' })}
                       </p>
                     </div>
                     <div className="sd-welcome-actions">

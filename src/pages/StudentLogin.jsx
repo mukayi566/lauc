@@ -123,8 +123,8 @@ const StudentLogin = () => {
         <div style={{ position: 'absolute', bottom: -60, left: -60, width: 200, height: 200, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', pointerEvents: 'none' }} />
 
         <div style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
-          <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'rgba(255, 255, 255, 1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', fontSize: 36, color: '#f59e0b', backdropFilter: 'blur(8px)' }}>
-            <img src={logo} alt="Fairview Logo" />
+          <div style={{ width: 100, height: 95, borderRadius: '50%', background: 'rgba(255, 255, 255, 1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', fontSize: 36, color: '#f59e0b', backdropFilter: 'blur(8px)', boxShadow: '0 8px 32px rgba(0,0,0,0.1)' }}>
+            <img src={logo} alt="Fairview Logo" style={{ width: 105 }} />
           </div>
           <h1 style={{ color: 'white', fontWeight: 800, fontSize: 26, marginBottom: 10, letterSpacing: '-0.02em' }}>Student Portal</h1>
           <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: 14, lineHeight: 1.8, maxWidth: 280 }}>
@@ -154,6 +154,13 @@ const StudentLogin = () => {
         padding: '40px 24px',
       }}>
         <div style={{ width: '100%', maxWidth: 420 }}>
+          {/* Mobile Logo — Only visible on small screens */}
+          <div className="mobile-logo-header" style={{ display: 'none', justifyContent: 'center', marginBottom: 32 }}>
+            <div style={{ width: 100, height: 95, borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
+              <img src={logo} alt="University Logo" style={{ width: 105 }} />
+            </div>
+          </div>
+
           {view === 'login' ? (
             <>
               <div style={{ marginBottom: 32 }}>
@@ -307,6 +314,7 @@ const StudentLogin = () => {
       <style>{`
         @media (max-width: 768px) {
           .portal-left-panel { display: none !important; }
+          .mobile-logo-header { display: flex !important; }
         }
       `}</style>
     </div>

@@ -55,8 +55,13 @@ const RegistrarDashboard = () => {
         address: '',
         gender: 'Male',
         dob: '',
+        nrcPassportUrl: '',
+        registrarPhotoUrl: '',
     });
     const [registering, setRegistering] = useState(false);
+    const [isCameraOpen, setIsCameraOpen] = useState(false);
+    const videoRef = React.useRef(null);
+    const canvasRef = React.useRef(null);
 
     /* ── Form state (Enrollment) ── */
     const [selectedStudent, setSelectedStudent] = useState(null);
@@ -137,7 +142,8 @@ const RegistrarDashboard = () => {
             showSuccess('Student registered successfully!');
             setRegForm({
                 name: '', email: '', studentId: '', department: '',
-                program: '', phone: '', address: '', gender: 'Male', dob: ''
+                program: '', phone: '', address: '', gender: 'Male', dob: '',
+                nrcPassportUrl: '', registrarPhotoUrl: ''
             });
             setActiveTab('students');
         } catch (err) {
@@ -186,6 +192,59 @@ const RegistrarDashboard = () => {
     const toggleCourseSelection = (code) => {
         setSelectedCourses(prev =>
             prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code]
+        );
+    };
+
+    /* ── Camera Helpers ── */
+    const startCamera = async () => {
+        setIsCameraOpen(true);
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+            }
+        } catch (err) {
+            console.error("Camera error:", err);
+            handleError("Could not access camera.");
+        }
+    };
+
+    const stopCamera = () => {
+        if (videoRef.current && videoRef.current.srcObject) {
+            videoRef.current.srcObject.getTracks().forEach(track => track.stop());
+        }
+        setIsCameraOpen(false);
+    };
+
+    const capturePhoto = () => {
+        if (videoRef.current && canvasRef.current) {
+            const video = videoRef.current;
+            const canvas = canvasRef.current;
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const dataUrl = canvas.toDataURL('image/png');
+            setRegForm(prev => ({ ...prev, registrarPhotoUrl: dataUrl }));
+            stopCamera();
+        }
+    };
+
+    const openUploadWidget = () => {
+        window.cloudinary.openUploadWidget(
+            {
+                cloudName: import.meta.env.VITE_CLOUDINARY_CLOUD_NAME,
+                uploadPreset: import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET,
+                sources: ['local', 'url'],
+                multiple: false,
+                resourceType: 'auto',
+            },
+            (error, result) => {
+                if (!error && result && result.event === "success") {
+                    setRegForm(prev => ({ ...prev, nrcPassportUrl: result.info.secure_url }));
+                    showSuccess('Document uploaded successfully!');
+                }
+            }
         );
     };
 
@@ -419,6 +478,32 @@ const RegistrarDashboard = () => {
                                                 <input className="sd-input" type="text" value={regForm.address} onChange={e => setRegForm({ ...regForm, address: e.target.value })} placeholder="e.g. 123 University Way" style={{ border: 'none', background: 'transparent', outline: 'none', fontWeight: 600, padding: '4px 0' }} />
                                             </div>
 
+                                            {/* ── Photo & Document ── */}
+                                            <div className="sd-kv" style={{ gridColumn: 'span 1' }}>
+                                                <label className="sd-kv-key">NRC / Passport</label>
+                                                <div style={{ marginTop: 8, display: 'flex', gap: 10, alignItems: 'center' }}>
+                                                    <button type="button" className="sd-btn sd-btn-ghost sd-btn-xs" onClick={openUploadWidget}>
+                                                        <i className="fas fa-upload"></i> {regForm.nrcPassportUrl ? 'Change Doc' : 'Upload Doc'}
+                                                    </button>
+                                                    {regForm.nrcPassportUrl && <i className="fas fa-check-circle" style={{ color: '#10b981' }}></i>}
+                                                </div>
+                                            </div>
+
+                                            <div className="sd-kv" style={{ gridColumn: 'span 1' }}>
+                                                <label className="sd-kv-key">Live Photo capture</label>
+                                                <div style={{ marginTop: 8, display: 'flex', gap: 10, alignItems: 'center' }}>
+                                                    <button type="button" className="sd-btn sd-btn-secondary sd-btn-xs" onClick={startCamera}>
+                                                        <i className="fas fa-camera"></i> {regForm.registrarPhotoUrl ? 'Retake Photo' : 'Capture Photo'}
+                                                    </button>
+                                                    {regForm.registrarPhotoUrl && (
+                                                        <div style={{ position: 'relative' }}>
+                                                            <img src={regForm.registrarPhotoUrl} alt="captured" style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover', border: '2px solid #e2e8f0' }} />
+                                                            <i className="fas fa-check-circle" style={{ position: 'absolute', bottom: -2, right: -2, color: '#10b981', fontSize: 10, background: 'white', borderRadius: '50%' }}></i>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
                                             <div style={{ gridColumn: 'span 2', marginTop: 20 }}>
                                                 <button type="submit" className="sd-btn sd-btn-primary" style={{ width: '100%', justifyContent: 'center' }} disabled={registering}>
                                                     {registering ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-user-plus"></i>}
@@ -426,6 +511,28 @@ const RegistrarDashboard = () => {
                                                 </button>
                                             </div>
                                         </form>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Camera Modal */}
+                            {isCameraOpen && (
+                                <div className="sd-modal-overlay" style={{ zIndex: 3000 }}>
+                                    <div className="sd-modal" style={{ maxWidth: 500 }}>
+                                        <div className="sd-modal-head">
+                                            <h3><i className="fas fa-camera"></i> Take Student Photo</h3>
+                                            <button className="sd-close-btn" onClick={stopCamera}>&times;</button>
+                                        </div>
+                                        <div className="sd-modal-body" style={{ textAlign: 'center' }}>
+                                            <video ref={videoRef} autoPlay playsInline style={{ width: '100%', borderRadius: 12, background: '#000', maxHeight: 350 }} />
+                                            <canvas ref={canvasRef} style={{ display: 'none' }} />
+                                            <div className="sd-modal-actions" style={{ justifyContent: 'center', marginTop: 20 }}>
+                                                <button className="sd-btn sd-btn-ghost" onClick={stopCamera}>Cancel</button>
+                                                <button className="sd-btn sd-btn-primary" onClick={capturePhoto}>
+                                                    <i className="fas fa-circle"></i> Capture
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             )}

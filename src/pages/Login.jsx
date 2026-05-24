@@ -6,6 +6,7 @@ import { auth, db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import Layout from '../components/Layout';
 import toast from 'react-hot-toast';
+import logo from '../assets/logo.png';
 
 const Login = () => {
   const [view, setView] = useState('login'); // 'login' or 'forgot'
@@ -222,11 +223,11 @@ const Login = () => {
             {view === 'login' ? (
               <>
                 {/* Logo */}
-                <div style={{ textAlign: 'center', marginBottom: 28 }}>
-                  <div style={{ fontSize: 48, color: '#1e3c72', marginBottom: 10 }}>
-                    <i className={`fas ${roleConfig[form.role].icon}`}></i>
+                <div style={{ textAlign: 'center', marginBottom: 32 }}>
+                  <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px', boxShadow: '0 8px 32px rgba(0,0,0,0.08)' }}>
+                    <img src={logo} alt="Fairview Logo" style={{ width: 56 }} />
                   </div>
-                  <h2 style={{ fontSize: 24, fontWeight: 800, color: '#1e3c72', margin: 0 }}>Fairview {form.role.charAt(0).toUpperCase() + form.role.slice(1)} Portal</h2>
+                  <h2 style={{ fontSize: 24, fontWeight: 800, color: '#1e3c72', margin: 0 }}>Fairview Portal</h2>
                   <p style={{ color: '#666', fontSize: 14, marginTop: 6 }}>Sign in to your {form.role} account</p>
                 </div>
 

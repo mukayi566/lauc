@@ -528,7 +528,17 @@ const StudentDashboard = () => {
     if (!docketRef.current) return;
     setGeneratingPdf(true);
     try {
-      const canvas = await html2canvas(docketRef.current, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+      // Ensure images are loaded before capturing
+      const images = docketRef.current.querySelectorAll('img');
+      await Promise.all([...images].map(img => {
+        if (img.complete) return Promise.resolve();
+        return new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = resolve; // Continue anyway
+        });
+      }));
+
+      const canvas = await html2canvas(docketRef.current, { scale: 2, useCORS: true, backgroundColor: '#ffffff', allowTaint: true });
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       const pdfW = pdf.internal.pageSize.getWidth();
@@ -1207,6 +1217,30 @@ const StudentDashboard = () => {
                             ))}
                           </div>
 
+                          {/* Identification Images */}
+                          <div className="sd-docket-ident-images">
+                            <div className="sd-docket-ident-item">
+                              <div className="sd-docket-ident-label">Registrar Capture</div>
+                              <div className="sd-docket-ident-box">
+                                {profile?.registrarPhotoUrl ? (
+                                  <img src={profile.registrarPhotoUrl} alt="Registrar Capture" className="sd-docket-ident-img" />
+                                ) : (
+                                  <div className="sd-docket-ident-placeholder"><i className="fas fa-camera"></i></div>
+                                )}
+                              </div>
+                            </div>
+                            <div className="sd-docket-ident-item">
+                              <div className="sd-docket-ident-label">PassPort / NRC</div>
+                              <div className="sd-docket-ident-box">
+                                {profile?.nrcPassportUrl ? (
+                                  <img src={profile.nrcPassportUrl} alt="NRC / Passport" className="sd-docket-ident-img" crossOrigin="anonymous" />
+                                ) : (
+                                  <div className="sd-docket-ident-placeholder"><i className="fas fa-id-card"></i></div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
                           {/* Exam Table */}
                           <div className="sd-docket-table-wrap">
                             <div className="sd-docket-table-title">
@@ -1226,7 +1260,7 @@ const StudentDashboard = () => {
                                     <th>Date</th>
                                     <th>Time</th>
                                     <th>Venue</th>
-                                    <th>Seat No.</th>
+                                    <th>Signature invigilator</th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -1238,7 +1272,7 @@ const StudentDashboard = () => {
                                       <td>{ex.date ? new Date(ex.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</td>
                                       <td><span className="sd-docket-time">{ex.time}</span></td>
                                       <td>{ex.venue}</td>
-                                      <td><span className="sd-docket-seat">{ex.seat}</span></td>
+                                      <td><span className="sd-docket-signature" style={{ borderBottom: '1px solid #000', minWidth: '100px', display: 'inline-block' }}>&nbsp;</span></td>
                                     </tr>
                                   ))}
                                 </tbody>
@@ -1293,7 +1327,7 @@ const StudentDashboard = () => {
                                     <div className="sd-eeb-meta">
                                       <span><i className="fas fa-clock"></i> {ex.time}</span>
                                       <span><i className="fas fa-map-marker-alt"></i> {ex.venue}</span>
-                                      <span><i className="fas fa-chair"></i> Seat {ex.seat}</span>
+                                      <span><i className="fas fa-pen-nib"></i> Sign: ________________</span>
                                     </div>
                                   </div>
                                   <div className="sd-exam-event-status">

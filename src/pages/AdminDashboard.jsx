@@ -562,6 +562,7 @@ const AdminDashboard = () => {
         try {
           const userCredential = await createUserWithEmailAndPassword(secondaryAuth, data.email, defaultPassword);
           uid = userCredential.user.uid;
+          await secondaryAuth.signOut();
         } catch (authErr) {
           if (authErr.code === 'auth/email-already-in-use') {
             toast('Error: Email is already in use.', 'error');
@@ -627,6 +628,7 @@ const AdminDashboard = () => {
         try {
           const userCredential = await createUserWithEmailAndPassword(secondaryAuth, data.email, defaultPassword);
           uid = userCredential.user.uid;
+          await secondaryAuth.signOut();
         } catch (authErr) {
           if (authErr.code === 'auth/email-already-in-use') {
             toast('Error: Email is already in use.', 'error');
@@ -699,24 +701,32 @@ const AdminDashboard = () => {
         try {
           const userCredential = await createUserWithEmailAndPassword(secondaryAuth, data.email, defaultPassword);
           uid = userCredential.user.uid;
+          // IMPORTANT: Always sign out of secondaryAuth after creation
+          await secondaryAuth.signOut();
         } catch (authErr) {
           if (authErr.code === 'auth/email-already-in-use') {
             toast('Error: Email is already in use.', 'error');
           } else {
-            toast('Failed to create authentication user.', 'error');
+            toast(`Failed to create auth user: ${authErr.message}`, 'error');
           }
           throw authErr;
         }
 
         await setDoc(doc(db, 'users', uid), {
-          ...data,
+          name: data.name,
+          email: data.email,
           role: 'admin',
           createdAt: serverTimestamp()
         });
-        toast(`${data.name} has been added as an administrator.`);
+        try {
+          await resetPassword(data.email);
+          toast(`${data.name} added! A password setup email has been sent to ${data.email}.`);
+        } catch (_) {
+          toast(`${data.name} has been added as an administrator. Default password: ${defaultPassword}`);
+        }
       }
     } catch (err) {
-      toast('Error saving administrator.', 'error');
+      if (!err.code) toast('Error saving administrator.', 'error');
     }
     setModal(null);
   };
@@ -754,24 +764,36 @@ const AdminDashboard = () => {
         try {
           const userCredential = await createUserWithEmailAndPassword(secondaryAuth, data.email, defaultPassword);
           uid = userCredential.user.uid;
+          // IMPORTANT: Always sign out of secondaryAuth after creation to prevent auth state contamination
+          await secondaryAuth.signOut();
         } catch (authErr) {
           if (authErr.code === 'auth/email-already-in-use') {
-            toast('Error: Email is already in use.', 'error');
+            toast('Error: Email is already in use. Use the \u{1F511} reset button to send them a new password.', 'error');
           } else {
-            toast('Failed to create authentication user.', 'error');
+            toast(`Failed to create auth user: ${authErr.message}`, 'error');
           }
           throw authErr;
         }
 
+        // Save only clean fields — avoid spreading raw form data that might include stale keys
         await setDoc(doc(db, 'users', uid), {
-          ...data,
+          name: data.name,
+          email: data.email,
           role: 'registrar',
+          defaultPassword: defaultPassword, // stored for reference; login uses Firebase Auth
           createdAt: serverTimestamp()
         });
-        toast(`${data.name} has been added as a Registrar Officer.`);
+
+        // Immediately send a password reset so the registrar sets their own password
+        try {
+          await resetPassword(data.email);
+          toast(`${data.name} added! A password setup email has been sent to ${data.email}.`);
+        } catch (_) {
+          toast(`${data.name} added as Registrar Officer. Default password: ${defaultPassword}`);
+        }
       }
     } catch (err) {
-      toast('Error saving registrar.', 'error');
+      if (!err.code) toast('Error saving registrar.', 'error');
     }
     setModal(null);
   };

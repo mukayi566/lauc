@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
 import ResultEntry from '../components/ResultEntry';
+import ExamManager from '../components/lecturer/ExamManager';
 import {
   collection, query, where, onSnapshot,
   doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc,
@@ -118,8 +119,8 @@ const StaffDashboard = () => {
 
     const unsubCourses = onSnapshot(
       q,
-      (snap) => {
-        const loaded = snap.docs.map(d => {
+      async (snap) => {
+        let loaded = snap.docs.map(d => {
           const data = d.data();
           return {
             docId: d.id,
@@ -127,6 +128,22 @@ const StaffDashboard = () => {
             code: data.code || data.id // Ensure code is accessible
           };
         });
+
+        // Fallback: check by lecturer name if UID query returns no results and lecturer name is known
+        if (loaded.length === 0 && lecturerData?.name) {
+          try {
+            const qName = query(coursesCol, where('lecturer', '==', lecturerData.name));
+            const res = await getDocs(qName);
+            loaded = res.docs.map(d => ({
+              docId: d.id,
+              ...d.data(),
+              code: d.data().code || d.data().id
+            }));
+          } catch (e) {
+            console.error('Fallback courses error:', e);
+          }
+        }
+
         setCourses(loaded);
         setLoading(false);
       },
@@ -136,21 +153,8 @@ const StaffDashboard = () => {
           navigate('/login', { state: { error: "Access Denied: You do not have staff permissions to view this dashboard." } });
           return;
         }
-        // Fallback: check by lecturer name if UID matches failed or if no UID stored
-        if (lecturerData?.name) {
-          const qName = query(coursesCol, where('lecturer', '==', lecturerData.name));
-          getDocs(qName).then(res => {
-            setCourses(res.docs.map(d => ({ docId: d.id, ...d.data(), code: d.data().code || d.data().id })));
-            setLoading(false);
-          }).catch(e => {
-            console.error('Fallback courses error:', e);
-            setDbError('Could not load assigned courses.');
-            setLoading(false);
-          });
-        } else {
-          setDbError('Data sync issue: Could not load assigned courses.');
-          setLoading(false);
-        }
+        setDbError('Could not load assigned courses.');
+        setLoading(false);
       }
     );
     return unsubCourses;
@@ -161,32 +165,73 @@ const StaffDashboard = () => {
      any of this lecturer's course codes)
   ═══════════════════════════════════════════════════════════════ */
   useEffect(() => {
-    if (!uid || courses.length === 0) return;
+    if (!uid || courses.length === 0) {
+      setStudents([]);
+      return;
+    }
 
-    const courseCodes = courses.map(c => c.code);
+    const courseKeys = courses.flatMap(c => {
+      const code = c.code || c.id || '';
+      const docId = c.docId || '';
+      return [code, docId].filter(Boolean);
+    });
+    const courseKeySet = new Set(courseKeys.map(v => String(v).trim().toUpperCase()));
 
-    // Fetch all students, then filter client-side (Firestore array-contains-any
-    // supports up to 30 values, which is sufficient here)
     const fetchStudents = async () => {
       try {
-        const studentsSnap = await getDocs(collection(db, 'students'));
-        const allStudents = studentsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        // 1. Try querying by enrolledIn array (efficient)
+        const codes = Array.from(courseKeySet);
+        // Firestore supports up to 30 values in array-contains-any
+        const batches = [];
+        for (let i = 0; i < codes.length; i += 30) {
+          batches.push(codes.slice(i, i + 30));
+        }
 
-        // For each student, check their sub-collection courses
-        const matched = [];
+        let enrolledStudents = [];
+        for (const batch of batches) {
+          const q = query(collection(db, 'students'), where('enrolledIn', 'array-contains-any', batch));
+          const snap = await getDocs(q);
+          enrolledStudents = [...enrolledStudents, ...snap.docs.map(d => ({ id: d.id, ...d.data() }))];
+        }
+
+        // Remove duplicates
+        const studentMap = new Map();
+        enrolledStudents.forEach(s => studentMap.set(s.id, s));
+
+        // 2. Fallback: For students who don't have enrolledIn set (legacy or self-registered before fix)
+        // We still fetch all students but we only check those not already found
+        const allStudentsSnap = await getDocs(collection(db, 'students'));
+        const allStudents = allStudentsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        const matched = Array.from(studentMap.values()).map(s => ({
+          ...s,
+          enrolledIn: (s.enrolledIn || []).filter(code => courseKeySet.has(String(code).toUpperCase())),
+          course: (s.enrolledIn || []).find(code => courseKeySet.has(String(code).toUpperCase())) || codes[0]
+        }));
+
+        const matchedIds = new Set(matched.map(s => s.id));
+
+        // Check remaining students via sub-collection
         for (const student of allStudents) {
+          if (matchedIds.has(student.id)) continue;
+
           const studentCoursesSnap = await getDocs(collection(db, 'students', student.id, 'courses'));
-          const studentCodes = studentCoursesSnap.docs.map(d => d.data().code);
-          const matchingCodes = studentCodes.filter(c => courseCodes.includes(c));
-          if (matchingCodes.length > 0) {
+          const studentCourseKeys = studentCoursesSnap.docs.flatMap(d => {
+            const data = d.data();
+            return [data.code, data.id, data.courseId, data.courseCode].filter(Boolean);
+          }).map(v => String(v).trim().toUpperCase());
+
+          const matchingKeys = studentCourseKeys.filter(key => courseKeySet.has(key));
+
+          if (matchingKeys.length > 0) {
             matched.push({
               ...student,
-              enrolledIn: matchingCodes,
-              // Display first matching course
-              course: matchingCodes[0],
+              enrolledIn: matchingKeys,
+              course: matchingKeys[0],
             });
           }
         }
+        
         setStudents(matched);
       } catch (err) {
         console.error('Error loading students:', err);
@@ -375,6 +420,7 @@ const StaffDashboard = () => {
   const navItems = [
     { id: 'dashboard', icon: 'fa-tachometer-alt', label: 'Dashboard' },
     { id: 'courses', icon: 'fa-book', label: 'My Courses' },
+    { id: 'exams', icon: 'fa-file-signature', label: 'Exams' },
     { id: 'results', icon: 'fa-poll', label: 'Results' },
     { id: 'students', icon: 'fa-users', label: 'Students' },
     { id: 'announcements', icon: 'fa-bullhorn', label: 'Announcements' },
@@ -686,6 +732,15 @@ const StaffDashboard = () => {
               )}
 
               {/* ══════════ STUDENTS TAB ══════════ */}
+              {activeTab === 'exams' && (
+                <ExamManager
+                  courses={courses}
+                  lecturerId={uid}
+                  showSuccess={showSuccess}
+                  showError={showError}
+                />
+              )}
+
               {activeTab === 'students' && (
                 <div className="sd-tab-fade">
                   <div className="sd-page-header">

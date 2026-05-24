@@ -11,6 +11,7 @@ import { db } from '../firebase';
 import '../dashboards.css';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import StudentExamView from '../components/lecturer/StudentExamView';
 
 /* ─────────────────────────────────────────────────────────────────
    HELPERS
@@ -73,6 +74,7 @@ const StudentDashboard = () => {
   const [profileForm, setProfileForm] = useState({});
   const [profileSuccessMsg, setProfileSuccessMsg] = useState('');
   const [downloadMsg, setDownloadMsg] = useState('');
+  const [examSuccessMsg, setExamSuccessMsg] = useState('');
   const [showPasswordForce, setShowPasswordForce] = useState(false);
   const [passForm, setPassForm] = useState({ new: '', confirm: '' });
   const [savingProfile, setSavingProfile] = useState(false);
@@ -420,15 +422,16 @@ const StudentDashboard = () => {
     setRegisteringCourse(true);
     try {
       const coursesCol = collection(db, 'students', uid, 'courses');
+      const newCourseCodes = [];
+
       for (const id of regSelected) {
         const found = availableCourses.find(c => c.id === id);
         if (found) {
+          const courseCode = found.code || found.id;
+          newCourseCodes.push(courseCode);
+
           await addDoc(coursesCol, {
-            code: found.code || found.id,
-            id: found.id || found.code,
-            name: found.name,
-            units: found.units || 3,
-            lecturer: found.lecturer,
+            ...found,
             status: 'Registered',
             grade: '—',
             createdAt: serverTimestamp(),
@@ -445,6 +448,15 @@ const StudentDashboard = () => {
           }
         }
       }
+
+      // Update student's top-level enrolledIn array for faster staff lookup
+      if (newCourseCodes.length > 0) {
+        const studentRef = doc(db, 'students', uid);
+        const currentEnrolled = profile?.enrolledIn || [];
+        const updatedEnrolled = [...new Set([...currentEnrolled, ...newCourseCodes])];
+        await updateDoc(studentRef, { enrolledIn: updatedEnrolled });
+      }
+
       // Refresh all dashboard data
       await loadData();
       setRegSuccessMsg('Courses registered successfully! Your timetable and docket have been updated.');
@@ -517,6 +529,7 @@ const StudentDashboard = () => {
     { id: 'courses', icon: 'fa-book-open', label: 'Register Courses', group: 'Academics' },
     { id: 'results', icon: 'fa-chart-bar', label: 'Results', group: 'Academics' },
     { id: 'timetable', icon: 'fa-calendar-alt', label: 'Timetable', group: 'Academics' },
+    { id: 'online-exams', icon: 'fa-laptop', label: 'Online Exams', group: 'Academics' },
     { id: 'docket', icon: 'fa-id-card', label: 'Exam Docket', group: 'Academics' },
     { id: 'finance', icon: 'fa-wallet', label: 'Payments', group: 'Finance' },
     { id: 'hostel', icon: 'fa-hotel', label: 'Hostel & Housing', group: 'Services' },
@@ -655,6 +668,11 @@ const StudentDashboard = () => {
         {dbError && (
           <div className="sd-toast sd-toast-err">
             <i className="fas fa-exclamation-triangle"></i> {dbError}
+          </div>
+        )}
+        {examSuccessMsg && (
+          <div className="sd-toast" style={{ background: 'linear-gradient(135deg,#059669,#10b981)' }}>
+            <i className="fas fa-check-circle"></i> {examSuccessMsg}
           </div>
         )}
 
@@ -1056,6 +1074,19 @@ const StudentDashboard = () => {
                 </div>
               )}
               {/* ═══════════ EXAM DOCKET ═══════════ */}
+              {activeTab === 'online-exams' && (
+                <StudentExamView
+                  student={student}
+                  courses={courses}
+                  courseCatalog={availableCourses}
+                  showError={(msg) => setDbError(msg)}
+                  showSuccess={(msg) => {
+                    setExamSuccessMsg(msg);
+                    setTimeout(() => setExamSuccessMsg(''), 5000);
+                  }}
+                />
+              )}
+
               {activeTab === 'docket' && (
                 <div className="sd-tab-fade">
                   <div className="sd-page-header">

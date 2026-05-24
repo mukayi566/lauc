@@ -3,13 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { db, secondaryAuth } from '../firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { 
-  collection, 
-  onSnapshot, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc, 
+import {
+  collection,
+  onSnapshot,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
   setDoc,
   serverTimestamp,
   query,
@@ -60,22 +60,24 @@ const ConfirmDialog = ({ config, onConfirm, onCancel }) => {
 const Modal = ({ type, editData, lecturers = [], onClose, onSave }) => {
   const [form, setForm] = useState(
     editData || (type === 'student'
-      ? { 
-          name: '', 
-          email: '', 
-          phone: '',
-          level: 'Year 1 – Semester 1',
-          school: 'School of Technology',
-          program: 'BSc Computer Science', 
-          status: 'Active' 
-        }
+      ? {
+        name: '',
+        email: '',
+        phone: '',
+        level: 'Year 1 – Semester 1',
+        school: 'School of Technology',
+        program: 'BSc Computer Science',
+        status: 'Active'
+      }
       : type === 'lecturer'
-      ? { name: '', email: '', dept: 'Computer Science', courses: 0 }
-      : type === 'course'
-      ? { name: '', dept: 'Computer Science', credits: 3, lecturer: '', enrolled: 0 }
-      : type === 'admin'
-      ? { name: '', email: '', role: 'admin' }
-      : {})
+        ? { name: '', email: '', dept: 'Computer Science', courses: 0 }
+        : type === 'course'
+          ? { name: '', dept: 'Computer Science', credits: 3, lecturer: '', enrolled: 0 }
+          : type === 'admin'
+            ? { name: '', email: '', role: 'admin' }
+            : type === 'registrar'
+              ? { name: '', email: '', role: 'registrar' }
+              : {})
   );
 
   const title = editData ? `Edit ${type}` : `Add New ${type}`;
@@ -163,26 +165,30 @@ const Modal = ({ type, editData, lecturers = [], onClose, onSave }) => {
                 </div>
               </div>
               {!editData && (
-                <div className="ad-alert ad-alert--info" style={{marginTop: '15px'}}>
-                   <i className="fas fa-key" /> Default Password: <code>Fairview@Student2026</code>
+                <div className="ad-alert ad-alert--info" style={{ marginTop: '15px' }}>
+                  <i className="fas fa-key" /> Default Password: <code>Fairview@Student2026</code>
                 </div>
               )}
             </>
           )}
 
-          {type === 'admin' && (
+          {(type === 'admin' || type === 'registrar') && (
             <>
               <div className="ad-form-row">
                 <div className="ad-field">
                   <label>Permissions Level</label>
                   <select value={form.role} onChange={e => handle('role', e.target.value)}>
-                    <option value="admin">Full Administrator</option>
+                    {type === 'admin' ? (
+                      <option value="admin">Full Administrator</option>
+                    ) : (
+                      <option value="registrar">Registrar Officer</option>
+                    )}
                   </select>
                 </div>
               </div>
               {!editData && (
-                <div className="ad-alert ad-alert--info" style={{marginTop: '15px'}}>
-                   <i className="fas fa-key" /> Default Password: <code>Fairview@Admin2026</code>
+                <div className="ad-alert ad-alert--info" style={{ marginTop: '15px' }}>
+                  <i className="fas fa-key" /> Default Password: <code>{type === 'admin' ? 'Fairview@Admin2026' : 'Fairview@Registrar2026'}</code>
                 </div>
               )}
             </>
@@ -201,8 +207,8 @@ const Modal = ({ type, editData, lecturers = [], onClose, onSave }) => {
                 </div>
               </div>
               {!editData && (
-                <div className="ad-alert ad-alert--info" style={{marginTop: '15px'}}>
-                   <i className="fas fa-key" /> Default Password: <code>Fairview@Lecturer2026</code>
+                <div className="ad-alert ad-alert--info" style={{ marginTop: '15px' }}>
+                  <i className="fas fa-key" /> Default Password: <code>Fairview@Lecturer2026</code>
                 </div>
               )}
             </>
@@ -231,8 +237,8 @@ const Modal = ({ type, editData, lecturers = [], onClose, onSave }) => {
               <div className="ad-form-row">
                 <div className="ad-field">
                   <label>Assigned Lecturer</label>
-                  <select 
-                    value={form.lecturerId || ''} 
+                  <select
+                    value={form.lecturerId || ''}
                     onChange={e => {
                       const sel = lecturers.find(l => l.docId === e.target.value);
                       handle('lecturerId', e.target.value);
@@ -248,7 +254,7 @@ const Modal = ({ type, editData, lecturers = [], onClose, onSave }) => {
                     }
                   </select>
                   {lecturers.filter(l => !form.dept || l.dept === form.dept).length === 0 && (
-                    <small style={{color: '#f59e0b', marginTop: '4px', display: 'block'}}>
+                    <small style={{ color: '#f59e0b', marginTop: '4px', display: 'block' }}>
                       <i className="fas fa-exclamation-triangle" /> No lecturers found for this department.
                     </small>
                   )}
@@ -286,7 +292,7 @@ const ApplicationDetailModal = ({ app, onClose, onReview }) => {
           </div>
           <button className="ad-modal__close" onClick={onClose}><i className="fas fa-times" /></button>
         </div>
-        
+
         <div className="ad-modal__body">
           <div className="ad-detail-grid">
             {/* Personal */}
@@ -325,7 +331,7 @@ const ApplicationDetailModal = ({ app, onClose, onReview }) => {
                     <span>NRC / Passport</span>
                   </a>
                 ) : <span className="ad-muted">No NRC/Passport uploaded</span>}
-                
+
                 {app.academicResultsUrl ? (
                   <a href={app.academicResultsUrl} target="_blank" rel="noreferrer" className="ad-doc-card">
                     <i className="fas fa-file-contract" />
@@ -376,21 +382,22 @@ const ApplicationDetailModal = ({ app, onClose, onReview }) => {
 ───────────────────────────────────────── */
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [modal, setModal]         = useState(null); // { type, editData }
-  const [confirm, setConfirm]     = useState(null); // { title, message, action }
-  const [toasts, setToasts]       = useState([]);
-  const [search, setSearch]       = useState('');
+  const [modal, setModal] = useState(null); // { type, editData }
+  const [confirm, setConfirm] = useState(null); // { title, message, action }
+  const [toasts, setToasts] = useState([]);
+  const [search, setSearch] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [viewingApp, setViewingApp]   = useState(null);
+  const [viewingApp, setViewingApp] = useState(null);
 
-  const [students, setStudents]       = useState([]);
-  const [lecturers, setLecturers]     = useState([]);
-  const [admins, setAdmins]           = useState([]);
-  const [courses, setCourses]         = useState([]);
+  const [students, setStudents] = useState([]);
+  const [lecturers, setLecturers] = useState([]);
+  const [admins, setAdmins] = useState([]);
+  const [registrars, setRegistrars] = useState([]);
+  const [courses, setCourses] = useState([]);
   const [applications, setApplications] = useState([]);
-  const [allResults, setAllResults]     = useState([]);
-  const [loading, setLoading]         = useState(true);
-  const [settings, setSettings]       = useState({
+  const [allResults, setAllResults] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [settings, setSettings] = useState({
     institutionName: 'Fairview University College',
     systemMotto: 'Education for the Future',
     timezone: 'Zambia (CAT)',
@@ -415,22 +422,22 @@ const AdminDashboard = () => {
       }
     };
 
-    const unsubStudents = onSnapshot(query(collection(db, 'students'), orderBy('createdAt', 'desc')), 
+    const unsubStudents = onSnapshot(query(collection(db, 'students'), orderBy('createdAt', 'desc')),
       (snapshot) => setStudents(snapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() }))),
       handleError
     );
 
-    const unsubLecturers = onSnapshot(query(collection(db, 'lecturers'), orderBy('createdAt', 'desc')), 
+    const unsubLecturers = onSnapshot(query(collection(db, 'lecturers'), orderBy('createdAt', 'desc')),
       (snapshot) => setLecturers(snapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() }))),
       handleError
     );
 
-    const unsubCourses = onSnapshot(query(collection(db, 'courses'), orderBy('createdAt', 'desc')), 
+    const unsubCourses = onSnapshot(query(collection(db, 'courses'), orderBy('createdAt', 'desc')),
       (snapshot) => setCourses(snapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() }))),
       handleError
     );
 
-    const unsubApps = onSnapshot(query(collection(db, 'applications'), orderBy('date', 'desc')), 
+    const unsubApps = onSnapshot(query(collection(db, 'applications'), orderBy('date', 'desc')),
       (snapshot) => {
         setApplications(snapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() })));
         setLoading(false);
@@ -438,21 +445,28 @@ const AdminDashboard = () => {
       handleError
     );
 
-    const unsubSettings = onSnapshot(doc(db, 'settings', 'general'), 
+    const unsubSettings = onSnapshot(doc(db, 'settings', 'general'),
       (snapshot) => { if (snapshot.exists()) setSettings(snapshot.data()); },
       handleError
     );
 
-    const unsubResults = onSnapshot(query(collection(db, 'results'), orderBy('updatedAt', 'desc')), 
+    const unsubResults = onSnapshot(query(collection(db, 'results'), orderBy('updatedAt', 'desc')),
       (snapshot) => setAllResults(snapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() }))),
       handleError
     );
 
-    const unsubAdmins = onSnapshot(query(collection(db, 'users'), where('role', '==', 'admin')), 
+    const unsubAdmins = onSnapshot(query(collection(db, 'users'), where('role', '==', 'admin')),
       (snapshot) => {
         const adminListData = snapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() }));
         console.log(`Fetched ${adminListData.length} admins from Firestore.`);
         setAdmins(adminListData);
+      },
+      handleError
+    );
+
+    const unsubRegistrars = onSnapshot(query(collection(db, 'users'), where('role', '==', 'registrar')),
+      (snapshot) => {
+        setRegistrars(snapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() })));
       },
       handleError
     );
@@ -464,6 +478,8 @@ const AdminDashboard = () => {
       unsubApps();
       unsubSettings();
       unsubResults();
+      unsubAdmins();
+      unsubRegistrars();
     };
   }, []);
 
@@ -536,7 +552,7 @@ const AdminDashboard = () => {
           'BBA Business Administration': 'BBA'
         };
         const progCode = progMap[data.program] || 'GEN';
-        
+
         // Use document count or timestamp for unique sequence
         const sequence = String(students.length + 1).padStart(3, '0');
         const studentId = `FU/${year}/${progCode}/${sequence}`;
@@ -563,12 +579,12 @@ const AdminDashboard = () => {
         });
 
         // Add to students collection
-        await setDoc(doc(db, 'students', uid), { 
-          ...data, 
-          id: studentId, 
+        await setDoc(doc(db, 'students', uid), {
+          ...data,
+          id: studentId,
           password: defaultPassword,
           mustChangePassword: true,
-          createdAt: serverTimestamp() 
+          createdAt: serverTimestamp()
         });
         toast(`${data.name} has been added with a default password.`);
       }
@@ -628,13 +644,13 @@ const AdminDashboard = () => {
         });
 
         // Add to lecturers collection
-        await setDoc(doc(db, 'lecturers', uid), { 
-          ...data, 
-          id, 
-          courses: 0, 
+        await setDoc(doc(db, 'lecturers', uid), {
+          ...data,
+          id,
+          courses: 0,
           password: defaultPassword,
           mustChangePassword: true,
-          createdAt: serverTimestamp() 
+          createdAt: serverTimestamp()
         });
         toast(`${data.name} has been added with a default password.`);
       }
@@ -725,6 +741,57 @@ const AdminDashboard = () => {
     });
   };
 
+  /* ── REGISTRARS ── */
+  const saveRegistrar = async (data) => {
+    try {
+      if (data.docId) {
+        const { docId, ...updateData } = data;
+        await updateDoc(doc(db, 'users', docId), updateData);
+        toast(`${data.name} updated successfully.`);
+      } else {
+        const defaultPassword = 'Fairview@Registrar2026';
+        let uid = null;
+        try {
+          const userCredential = await createUserWithEmailAndPassword(secondaryAuth, data.email, defaultPassword);
+          uid = userCredential.user.uid;
+        } catch (authErr) {
+          if (authErr.code === 'auth/email-already-in-use') {
+            toast('Error: Email is already in use.', 'error');
+          } else {
+            toast('Failed to create authentication user.', 'error');
+          }
+          throw authErr;
+        }
+
+        await setDoc(doc(db, 'users', uid), {
+          ...data,
+          role: 'registrar',
+          createdAt: serverTimestamp()
+        });
+        toast(`${data.name} has been added as a Registrar Officer.`);
+      }
+    } catch (err) {
+      toast('Error saving registrar.', 'error');
+    }
+    setModal(null);
+  };
+
+  const deleteRegistrar = (docId) => {
+    setConfirm({
+      title: 'Remove Registrar',
+      message: 'Are you sure you want to remove this registrar officer? They will lose all access immediately.',
+      action: async () => {
+        try {
+          await deleteDoc(doc(db, 'users', docId));
+          toast('Registrar removed.', 'error');
+        } catch (err) {
+          toast('Error removing registrar.', 'error');
+        }
+        setConfirm(null);
+      }
+    });
+  };
+
   /* ── COURSES ── */
   const saveCourse = async (data) => {
     try {
@@ -759,12 +826,12 @@ const AdminDashboard = () => {
         toast('Course updated successfully.');
       } else {
         const id = `CS${300 + courses.length}`;
-        const newDocRef = await addDoc(collection(db, 'courses'), { 
-          ...data, 
-          id, 
+        const newDocRef = await addDoc(collection(db, 'courses'), {
+          ...data,
+          id,
           code: id, // Explicitly add code field for consistency
-          enrolled: 0, 
-          createdAt: serverTimestamp() 
+          enrolled: 0,
+          createdAt: serverTimestamp()
         });
 
         // Increment the assigned lecturer's course count
@@ -830,12 +897,12 @@ const AdminDashboard = () => {
         'publish': 'published'
       };
       const newStatus = statusMap[action];
-      await updateDoc(doc(db, 'results', resultId), { 
+      await updateDoc(doc(db, 'results', resultId), {
         status: newStatus,
         [action === 'approve' ? 'approvedBy' : action === 'publish' ? 'publishedBy' : 'rejectedBy']: settings.adminDisplayName,
         updatedAt: serverTimestamp()
       });
-      
+
       // Notify student if published
       if (action === 'publish') {
         const res = allResults.find(r => r.docId === resultId);
@@ -859,15 +926,16 @@ const AdminDashboard = () => {
 
   /* search filter helpers */
   const q = search.toLowerCase();
-  const filteredStudents     = students.filter(x => (x.name || '').toLowerCase().includes(q) || (x.email || '').toLowerCase().includes(q) || (x.program || '').toLowerCase().includes(q));
-  const filteredLecturers    = lecturers.filter(x => (x.name || '').toLowerCase().includes(q) || (x.dept || '').toLowerCase().includes(q));
-  const filteredAdmins       = admins.filter(x => (x.name || '').toLowerCase().includes(q) || (x.email || '').toLowerCase().includes(q));
-  const filteredCourses      = courses.filter(x => (x.name || '').toLowerCase().includes(q) || (x.dept || '').toLowerCase().includes(q));
+  const filteredStudents = students.filter(x => (x.name || '').toLowerCase().includes(q) || (x.email || '').toLowerCase().includes(q) || (x.program || '').toLowerCase().includes(q));
+  const filteredLecturers = lecturers.filter(x => (x.name || '').toLowerCase().includes(q) || (x.dept || '').toLowerCase().includes(q));
+  const filteredAdmins = admins.filter(x => (x.name || '').toLowerCase().includes(q) || (x.email || '').toLowerCase().includes(q));
+  const filteredRegistrars = registrars.filter(x => (x.name || '').toLowerCase().includes(q) || (x.email || '').toLowerCase().includes(q));
+  const filteredCourses = courses.filter(x => (x.name || '').toLowerCase().includes(q) || (x.dept || '').toLowerCase().includes(q));
   // Applications: filter by status pill OR by text search across name/program/status
   const filteredApplications = applications.filter(x => {
-    const name    = (x.name    || `${x.firstName || ''} ${x.lastName || ''}`).toLowerCase();
+    const name = (x.name || `${x.firstName || ''} ${x.lastName || ''}`).toLowerCase();
     const program = (x.program || '').toLowerCase();
-    const status  = (x.status  || '').toLowerCase();
+    const status = (x.status || '').toLowerCase();
     return name.includes(q) || program.includes(q) || status.includes(q);
   });
 
@@ -887,14 +955,15 @@ const AdminDashboard = () => {
   const myEmail = me?.email || currentUser?.email || settings.adminEmail;
 
   const NAV_ITEMS = [
-    { key: 'dashboard',    icon: 'fa-gauge-high',       label: 'Dashboard' },
-    { key: 'students',     icon: 'fa-users',             label: 'Students' },
-    { key: 'lecturers',    icon: 'fa-chalkboard-user',   label: 'Lecturers' },
-    { key: 'admins',       icon: 'fa-user-shield',       label: 'Admins' },
-    { key: 'courses',      icon: 'fa-book-open',         label: 'Courses' },
-    { key: 'results',      icon: 'fa-poll',              label: 'Results', badge: pendingResults },
-    { key: 'applications', icon: 'fa-file-signature',    label: 'Applications', badge: pendingApps },
-    { key: 'settings',     icon: 'fa-gear',              label: 'Settings' },
+    { key: 'dashboard', icon: 'fa-gauge-high', label: 'Dashboard' },
+    { key: 'students', icon: 'fa-users', label: 'Students' },
+    { key: 'lecturers', icon: 'fa-chalkboard-user', label: 'Lecturers' },
+    { key: 'registrars', icon: 'fa-id-card-clip', label: 'Registrars' },
+    { key: 'admins', icon: 'fa-user-shield', label: 'Admins' },
+    { key: 'courses', icon: 'fa-book-open', label: 'Courses' },
+    { key: 'results', icon: 'fa-poll', label: 'Results', badge: pendingResults },
+    { key: 'applications', icon: 'fa-file-signature', label: 'Applications', badge: pendingApps },
+    { key: 'settings', icon: 'fa-gear', label: 'Settings' },
   ];
 
   return (
@@ -908,15 +977,16 @@ const AdminDashboard = () => {
           lecturers={lecturers}
           onClose={() => setModal(null)}
           onSave={
-            modal.type === 'student' ? saveStudent : 
-            modal.type === 'lecturer' ? saveLecturer : 
-            modal.type === 'admin' ? saveAdmin :
-            saveCourse
+            modal.type === 'student' ? saveStudent :
+              modal.type === 'lecturer' ? saveLecturer :
+                modal.type === 'admin' ? saveAdmin :
+                  modal.type === 'registrar' ? saveRegistrar :
+                    saveCourse
           }
         />
       )}
       {viewingApp && (
-        <ApplicationDetailModal 
+        <ApplicationDetailModal
           app={viewingApp}
           onClose={() => setViewingApp(null)}
           onReview={reviewApplication}
@@ -998,8 +1068,8 @@ const AdminDashboard = () => {
               {/* Profile Dropdown */}
               <div className="ad-profile-dropdown">
                 <div className="ad-dropdown-header">
-                   <strong>{myName}</strong>
-                   <span>{myEmail}</span>
+                  <strong>{myName}</strong>
+                  <span>{myEmail}</span>
                 </div>
                 <div className="ad-dropdown-divider" />
                 <button className="ad-dropdown-item" onClick={() => setActiveTab('settings')}>
@@ -1033,10 +1103,10 @@ const AdminDashboard = () => {
               {/* Stats */}
               <div className="ad-stats-grid">
                 {[
-                  { icon: 'fa-users',          color: '#1e3c72', label: 'Total Students',  value: students.length,     trend: '+12%' },
-                  { icon: 'fa-chalkboard-user', color: '#7c3aed', label: 'Total Lecturers', value: lecturers.length,    trend: '+2%'  },
-                  { icon: 'fa-poll',            color: '#0d9488', label: 'Pending Results', value: pendingResults,      trend: '' },
-                  { icon: 'fa-file-signature',  color: '#d97706', label: 'Pending Apps',    value: pendingApps,         trend: '' },
+                  { icon: 'fa-users', color: '#1e3c72', label: 'Total Students', value: students.length, trend: '+12%' },
+                  { icon: 'fa-chalkboard-user', color: '#7c3aed', label: 'Total Lecturers', value: lecturers.length, trend: '+2%' },
+                  { icon: 'fa-poll', color: '#0d9488', label: 'Pending Results', value: pendingResults, trend: '' },
+                  { icon: 'fa-file-signature', color: '#d97706', label: 'Pending Apps', value: pendingApps, trend: '' },
                 ].map((s, i) => (
                   <div key={i} className="ad-stat" style={{ '--accent': s.color }}>
                     <div className="ad-stat__icon"><i className={`fas ${s.icon}`} /></div>
@@ -1070,7 +1140,7 @@ const AdminDashboard = () => {
                     <div className="ad-chart-legend">
                       {Object.entries(programCounts).slice(0, 5).map(([prog, count], idx) => (
                         <div key={prog} className="ad-legend-item">
-                          <span style={{ background: ['#1e3c72', '#7c3aed', '#10b981', '#f59e0b', '#ef4444'][idx % 5] }}></span> 
+                          <span style={{ background: ['#1e3c72', '#7c3aed', '#10b981', '#f59e0b', '#ef4444'][idx % 5] }}></span>
                           {prog.length > 20 ? prog.slice(0, 20) + '...' : prog} ({count})
                         </div>
                       ))}
@@ -1126,7 +1196,7 @@ const AdminDashboard = () => {
                             <td><span className={`ad-badge ad-badge--${(a.status || "pending").toLowerCase()}`}>{a.status || "Pending"}</span></td>
                           </tr>
                         ))}
-                        {applications.length === 0 && <tr><td colSpan="3" style={{padding: '2rem', textAlign: 'center', color: '#888'}}>No pending applications</td></tr>}
+                        {applications.length === 0 && <tr><td colSpan="3" style={{ padding: '2rem', textAlign: 'center', color: '#888' }}>No pending applications</td></tr>}
                       </tbody>
                     </table>
                   </div>
@@ -1141,10 +1211,10 @@ const AdminDashboard = () => {
                   </div>
                   <div className="ad-card__body ad-card__body--p0">
                     {allResults.filter(r => r.status === 'submitted').length === 0 ? (
-                       <div className="ad-empty" style={{ padding: '20px' }}>
-                         <i className="fas fa-check-circle" style={{ color: '#10b981' }} />
-                         <p>All results are up to date.</p>
-                       </div>
+                      <div className="ad-empty" style={{ padding: '20px' }}>
+                        <i className="fas fa-check-circle" style={{ color: '#10b981' }} />
+                        <p>All results are up to date.</p>
+                      </div>
                     ) : (
                       <table className="ad-table">
                         <thead><tr><th>Student</th><th>Course</th><th>Grade</th></tr></thead>
@@ -1186,38 +1256,38 @@ const AdminDashboard = () => {
                   {filteredStudents.length === 0
                     ? <div className="ad-empty"><i className="fas fa-search" /><p>No students match your search.</p></div>
                     : (
-                    <table className="ad-table ad-table--hover">
-                      <thead>
-                        <tr><th>ID</th><th>Full Name</th><th>Email</th><th>Phone</th><th>Level</th><th>Program</th><th>Status</th><th>Actions</th></tr>
-                      </thead>
-                      <tbody>
-                        {filteredStudents.map(s => (
-                          <tr key={s.docId}>
-                            <td><code className="ad-code">{s.id}</code></td>
-                            <td><b>{s.name}</b></td>
-                            <td className="ad-muted">{s.email}</td>
-                            <td>{s.phone}</td>
-                            <td><span className="ad-pill">{s.level}</span></td>
-                            <td>{s.program || s.dept}</td>
-                            <td><span className={`ad-badge ad-badge--${s.status === 'Active' ? 'approved' : 'rejected'}`}>{s.status}</span></td>
-                            <td>
-                              <div className="ad-actions">
-                                <button className="ad-icon-btn ad-icon-btn--edit" title="Reset Password" onClick={() => handlePasswordReset(s.email)}>
-                                  <i className="fas fa-key" />
-                                </button>
-                                <button className="ad-icon-btn ad-icon-btn--edit" title="Edit" onClick={() => setModal({ type: 'student', editData: s })}>
-                                  <i className="fas fa-pen" />
-                                </button>
-                                <button className="ad-icon-btn ad-icon-btn--delete" title="Delete" onClick={() => deleteStudent(s.docId)}>
-                                  <i className="fas fa-trash" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
+                      <table className="ad-table ad-table--hover">
+                        <thead>
+                          <tr><th>ID</th><th>Full Name</th><th>Email</th><th>Phone</th><th>Level</th><th>Program</th><th>Status</th><th>Actions</th></tr>
+                        </thead>
+                        <tbody>
+                          {filteredStudents.map(s => (
+                            <tr key={s.docId}>
+                              <td><code className="ad-code">{s.id}</code></td>
+                              <td><b>{s.name}</b></td>
+                              <td className="ad-muted">{s.email}</td>
+                              <td>{s.phone}</td>
+                              <td><span className="ad-pill">{s.level}</span></td>
+                              <td>{s.program || s.dept}</td>
+                              <td><span className={`ad-badge ad-badge--${s.status === 'Active' ? 'approved' : 'rejected'}`}>{s.status}</span></td>
+                              <td>
+                                <div className="ad-actions">
+                                  <button className="ad-icon-btn ad-icon-btn--edit" title="Reset Password" onClick={() => handlePasswordReset(s.email)}>
+                                    <i className="fas fa-key" />
+                                  </button>
+                                  <button className="ad-icon-btn ad-icon-btn--edit" title="Edit" onClick={() => setModal({ type: 'student', editData: s })}>
+                                    <i className="fas fa-pen" />
+                                  </button>
+                                  <button className="ad-icon-btn ad-icon-btn--delete" title="Delete" onClick={() => deleteStudent(s.docId)}>
+                                    <i className="fas fa-trash" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
                 </div>
               </div>
             </div>
@@ -1244,36 +1314,88 @@ const AdminDashboard = () => {
                   {filteredLecturers.length === 0
                     ? <div className="ad-empty"><i className="fas fa-search" /><p>No lecturers match your search.</p></div>
                     : (
-                    <table className="ad-table ad-table--hover">
-                      <thead>
-                        <tr><th>ID</th><th>Name</th><th>Email</th><th>Department</th><th>Courses</th><th>Actions</th></tr>
-                      </thead>
-                      <tbody>
-                        {filteredLecturers.map(l => (
-                          <tr key={l.docId}>
-                            <td><code className="ad-code">{l.id}</code></td>
-                            <td><b>{l.name}</b></td>
-                            <td className="ad-muted">{l.email}</td>
-                            <td>{l.dept}</td>
-                            <td><span className="ad-pill">{l.courses} courses</span></td>
-                            <td>
-                              <div className="ad-actions">
-                                <button className="ad-icon-btn ad-icon-btn--edit" title="Reset Password" onClick={() => handlePasswordReset(l.email)}>
-                                  <i className="fas fa-key" />
-                                </button>
-                                <button className="ad-icon-btn ad-icon-btn--edit" title="Edit" onClick={() => setModal({ type: 'lecturer', editData: l })}>
-                                  <i className="fas fa-pen" />
-                                </button>
-                                <button className="ad-icon-btn ad-icon-btn--delete" title="Delete" onClick={() => deleteLecturer(l.docId)}>
-                                  <i className="fas fa-trash" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
+                      <table className="ad-table ad-table--hover">
+                        <thead>
+                          <tr><th>ID</th><th>Name</th><th>Email</th><th>Department</th><th>Courses</th><th>Actions</th></tr>
+                        </thead>
+                        <tbody>
+                          {filteredLecturers.map(l => (
+                            <tr key={l.docId}>
+                              <td><code className="ad-code">{l.id}</code></td>
+                              <td><b>{l.name}</b></td>
+                              <td className="ad-muted">{l.email}</td>
+                              <td>{l.dept}</td>
+                              <td><span className="ad-pill">{l.courses} courses</span></td>
+                              <td>
+                                <div className="ad-actions">
+                                  <button className="ad-icon-btn ad-icon-btn--edit" title="Reset Password" onClick={() => handlePasswordReset(l.email)}>
+                                    <i className="fas fa-key" />
+                                  </button>
+                                  <button className="ad-icon-btn ad-icon-btn--edit" title="Edit" onClick={() => setModal({ type: 'lecturer', editData: l })}>
+                                    <i className="fas fa-pen" />
+                                  </button>
+                                  <button className="ad-icon-btn ad-icon-btn--delete" title="Delete" onClick={() => deleteLecturer(l.docId)}>
+                                    <i className="fas fa-trash" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════
+              REGISTRARS TAB
+          ══════════════════════════════════ */}
+          {activeTab === 'registrars' && (
+            <div className="ad-page">
+              <div className="ad-card">
+                <div className="ad-card__head">
+                  <h3><i className="fas fa-id-card-clip" /> Registrar Officer Records <span className="ad-count">{filteredRegistrars.length}</span></h3>
+                  <div className="ad-card__actions">
+                    <button className="ad-btn ad-btn--primary" onClick={() => setModal({ type: 'registrar' })}>
+                      <i className="fas fa-plus" /> Add New Registrar
+                    </button>
+                  </div>
+                </div>
+                <div className="ad-card__body ad-card__body--p0">
+                  {filteredRegistrars.length === 0
+                    ? <div className="ad-empty"><i className="fas fa-search" /><p>No registrars match your search.</p></div>
+                    : (
+                      <table className="ad-table ad-table--hover">
+                        <thead>
+                          <tr><th>Name</th><th>Email</th><th>Role</th><th>Created At</th><th>Actions</th></tr>
+                        </thead>
+                        <tbody>
+                          {filteredRegistrars.map(reg => (
+                            <tr key={reg.docId}>
+                              <td><b>{reg.name || "Registrar Officer"}</b></td>
+                              <td className="ad-muted">{reg.email}</td>
+                              <td><span className="ad-pill ad-pill--blue">REGISTRAR</span></td>
+                              <td className="ad-muted">{reg.createdAt?.toDate ? reg.createdAt.toDate().toLocaleDateString() : 'Initial'}</td>
+                              <td>
+                                <div className="ad-actions">
+                                  <button className="ad-icon-btn ad-icon-btn--edit" title="Reset Password" onClick={() => handlePasswordReset(reg.email)}>
+                                    <i className="fas fa-key" />
+                                  </button>
+                                  <button className="ad-icon-btn ad-icon-btn--edit" title="Edit" onClick={() => setModal({ type: 'registrar', editData: reg })}>
+                                    <i className="fas fa-pen" />
+                                  </button>
+                                  <button className="ad-icon-btn ad-icon-btn--delete" title="Delete" onClick={() => deleteRegistrar(reg.docId)}>
+                                    <i className="fas fa-trash" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
                 </div>
               </div>
             </div>
@@ -1297,35 +1419,35 @@ const AdminDashboard = () => {
                   {filteredAdmins.length === 0
                     ? <div className="ad-empty"><i className="fas fa-search" /><p>No administrators match your search.</p></div>
                     : (
-                    <table className="ad-table ad-table--hover">
-                      <thead>
-                        <tr><th>Name</th><th>Email</th><th>Role</th><th>Created At</th><th>Actions</th></tr>
-                      </thead>
-                      <tbody>
-                        {filteredAdmins.map(admin => (
-                          <tr key={admin.docId}>
-                            <td><b>{admin.name || admin.displayName || admin.adminDisplayName || "Administrator"}</b></td>
-                            <td className="ad-muted">{admin.email}</td>
-                            <td><span className="ad-pill ad-pill--blue">{admin.role?.toUpperCase()}</span></td>
-                            <td className="ad-muted">{admin.createdAt?.toDate ? admin.createdAt.toDate().toLocaleDateString() : 'Initial'}</td>
-                            <td>
-                              <div className="ad-actions">
-                                <button className="ad-icon-btn ad-icon-btn--edit" title="Reset Password" onClick={() => handlePasswordReset(admin.email)}>
-                                  <i className="fas fa-key" />
-                                </button>
-                                <button className="ad-icon-btn ad-icon-btn--edit" title="Edit" onClick={() => setModal({ type: 'admin', editData: admin })}>
-                                  <i className="fas fa-pen" />
-                                </button>
-                                <button className="ad-icon-btn ad-icon-btn--delete" title="Delete" onClick={() => deleteAdmin(admin.docId)}>
-                                  <i className="fas fa-trash" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
+                      <table className="ad-table ad-table--hover">
+                        <thead>
+                          <tr><th>Name</th><th>Email</th><th>Role</th><th>Created At</th><th>Actions</th></tr>
+                        </thead>
+                        <tbody>
+                          {filteredAdmins.map(admin => (
+                            <tr key={admin.docId}>
+                              <td><b>{admin.name || admin.displayName || admin.adminDisplayName || "Administrator"}</b></td>
+                              <td className="ad-muted">{admin.email}</td>
+                              <td><span className="ad-pill ad-pill--blue">{admin.role?.toUpperCase()}</span></td>
+                              <td className="ad-muted">{admin.createdAt?.toDate ? admin.createdAt.toDate().toLocaleDateString() : 'Initial'}</td>
+                              <td>
+                                <div className="ad-actions">
+                                  <button className="ad-icon-btn ad-icon-btn--edit" title="Reset Password" onClick={() => handlePasswordReset(admin.email)}>
+                                    <i className="fas fa-key" />
+                                  </button>
+                                  <button className="ad-icon-btn ad-icon-btn--edit" title="Edit" onClick={() => setModal({ type: 'admin', editData: admin })}>
+                                    <i className="fas fa-pen" />
+                                  </button>
+                                  <button className="ad-icon-btn ad-icon-btn--delete" title="Delete" onClick={() => deleteAdmin(admin.docId)}>
+                                    <i className="fas fa-trash" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
                 </div>
               </div>
             </div>
@@ -1347,37 +1469,37 @@ const AdminDashboard = () => {
                   {filteredCourses.length === 0
                     ? <div className="ad-empty"><i className="fas fa-search" /><p>No courses match your search.</p></div>
                     : (
-                    <table className="ad-table ad-table--hover">
-                      <thead>
-                        <tr><th>Code</th><th>Course Name</th><th>Department</th><th>Credits</th><th>Lecturer</th><th>Enrolled</th><th>Actions</th></tr>
-                      </thead>
-                      <tbody>
-                        {filteredCourses.map(c => (
-                          <tr key={c.docId}>
-                            <td><code className="ad-code">{c.id}</code></td>
-                            <td><b>{c.name}</b></td>
-                            <td>{c.dept}</td>
-                            <td><span className="ad-pill">{c.credits} cr</span></td>
-                            <td className="ad-muted">{c.lecturer}</td>
-                            <td><span className="ad-pill ad-pill--blue">{c.enrolled}</span></td>
-                            <td>
-                              <div className="ad-actions">
-                                <button className="ad-icon-btn ad-icon-btn--edit" title="Assign / Change Lecturer" onClick={() => setModal({ type: 'course', editData: c })}>
-                                  <i className="fas fa-user-tag" />
-                                </button>
-                                <button className="ad-icon-btn ad-icon-btn--edit" title="Edit Course" onClick={() => setModal({ type: 'course', editData: c })}>
-                                  <i className="fas fa-pen" />
-                                </button>
-                                <button className="ad-icon-btn ad-icon-btn--delete" title="Delete Course" onClick={() => deleteCourse(c.docId)}>
-                                  <i className="fas fa-trash" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
+                      <table className="ad-table ad-table--hover">
+                        <thead>
+                          <tr><th>Code</th><th>Course Name</th><th>Department</th><th>Credits</th><th>Lecturer</th><th>Enrolled</th><th>Actions</th></tr>
+                        </thead>
+                        <tbody>
+                          {filteredCourses.map(c => (
+                            <tr key={c.docId}>
+                              <td><code className="ad-code">{c.id}</code></td>
+                              <td><b>{c.name}</b></td>
+                              <td>{c.dept}</td>
+                              <td><span className="ad-pill">{c.credits} cr</span></td>
+                              <td className="ad-muted">{c.lecturer}</td>
+                              <td><span className="ad-pill ad-pill--blue">{c.enrolled}</span></td>
+                              <td>
+                                <div className="ad-actions">
+                                  <button className="ad-icon-btn ad-icon-btn--edit" title="Assign / Change Lecturer" onClick={() => setModal({ type: 'course', editData: c })}>
+                                    <i className="fas fa-user-tag" />
+                                  </button>
+                                  <button className="ad-icon-btn ad-icon-btn--edit" title="Edit Course" onClick={() => setModal({ type: 'course', editData: c })}>
+                                    <i className="fas fa-pen" />
+                                  </button>
+                                  <button className="ad-icon-btn ad-icon-btn--delete" title="Delete Course" onClick={() => deleteCourse(c.docId)}>
+                                    <i className="fas fa-trash" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
                 </div>
               </div>
             </div>
@@ -1390,7 +1512,7 @@ const AdminDashboard = () => {
             <div className="ad-page">
               {/* Filter pills */}
               <div className="ad-filter-bar">
-                {['All','Pending','Approved','Rejected'].map(f => {
+                {['All', 'Pending', 'Approved', 'Rejected'].map(f => {
                   const isActive = f === 'All' ? search === '' : search === f.toLowerCase();
                   return (
                     <button
@@ -1417,44 +1539,44 @@ const AdminDashboard = () => {
                   {filteredApplications.length === 0
                     ? <div className="ad-empty"><i className="fas fa-inbox" /><p>No applications found.</p></div>
                     : (
-                    <table className="ad-table ad-table--hover">
-                      <thead>
-                        <tr><th>App ID</th><th>Applicant</th><th>Program</th><th>Date</th><th>Status</th><th>Actions</th></tr>
-                      </thead>
-                      <tbody>
-                        {filteredApplications.map(a => (
-                          <tr key={a.docId}>
-                            <td><code className="ad-code">{a.id || a.docId?.slice(0,8)}</code></td>
-                            <td><b>{a.name || ((a.firstName || "") + " " + (a.lastName || "")).trim()}</b></td>
-                            <td className="ad-muted">{a.program}</td>
-                            <td className="ad-muted">{a.date || "—"}</td>
-                            <td><span className={`ad-badge ad-badge--${a.status.toLowerCase()}`}>{a.status}</span></td>
-                            <td>
-                              <div className="ad-actions">
-                                <button className="ad-icon-btn ad-icon-btn--view" title="View Details" onClick={() => setViewingApp(a)}>
-                                  <i className="fas fa-eye" />
-                                </button>
-                                {a.status === 'Pending' ? (
-                                  <>
-                                    <button className="ad-icon-btn ad-icon-btn--approve" title="Approve" onClick={() => reviewApplication(a.docId, 'Approved')}>
-                                      <i className="fas fa-check" />
-                                    </button>
-                                    <button className="ad-icon-btn ad-icon-btn--reject" title="Reject" onClick={() => reviewApplication(a.docId, 'Rejected')}>
-                                      <i className="fas fa-times" />
-                                    </button>
-                                  </>
-                                ) : (
-                                  <button className="ad-icon-btn ad-icon-btn--ghost" title="Reset to Pending" onClick={() => reviewApplication(a.docId, 'Pending')}>
-                                    <i className="fas fa-rotate-left" />
+                      <table className="ad-table ad-table--hover">
+                        <thead>
+                          <tr><th>App ID</th><th>Applicant</th><th>Program</th><th>Date</th><th>Status</th><th>Actions</th></tr>
+                        </thead>
+                        <tbody>
+                          {filteredApplications.map(a => (
+                            <tr key={a.docId}>
+                              <td><code className="ad-code">{a.id || a.docId?.slice(0, 8)}</code></td>
+                              <td><b>{a.name || ((a.firstName || "") + " " + (a.lastName || "")).trim()}</b></td>
+                              <td className="ad-muted">{a.program}</td>
+                              <td className="ad-muted">{a.date || "—"}</td>
+                              <td><span className={`ad-badge ad-badge--${a.status.toLowerCase()}`}>{a.status}</span></td>
+                              <td>
+                                <div className="ad-actions">
+                                  <button className="ad-icon-btn ad-icon-btn--view" title="View Details" onClick={() => setViewingApp(a)}>
+                                    <i className="fas fa-eye" />
                                   </button>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
+                                  {a.status === 'Pending' ? (
+                                    <>
+                                      <button className="ad-icon-btn ad-icon-btn--approve" title="Approve" onClick={() => reviewApplication(a.docId, 'Approved')}>
+                                        <i className="fas fa-check" />
+                                      </button>
+                                      <button className="ad-icon-btn ad-icon-btn--reject" title="Reject" onClick={() => reviewApplication(a.docId, 'Rejected')}>
+                                        <i className="fas fa-times" />
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <button className="ad-icon-btn ad-icon-btn--ghost" title="Reset to Pending" onClick={() => reviewApplication(a.docId, 'Pending')}>
+                                      <i className="fas fa-rotate-left" />
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
                 </div>
               </div>
             </div>
@@ -1471,8 +1593,8 @@ const AdminDashboard = () => {
                     <h3><i className="fas fa-user-gear" /> Account Settings</h3>
                   </div>
                   <div className="ad-card__body">
-                    <form className="ad-settings-form" onSubmit={e => { 
-                      e.preventDefault(); 
+                    <form className="ad-settings-form" onSubmit={e => {
+                      e.preventDefault();
                       const formData = new FormData(e.target);
                       saveMyProfile({
                         name: formData.get('displayName'),
@@ -1514,10 +1636,10 @@ const AdminDashboard = () => {
                             <div className="ad-setting-title">{s.title}</div>
                             <div className="ad-setting-desc">{s.desc}</div>
                           </div>
-                          <input 
-                            type="checkbox" 
-                            className="ad-toggle" 
-                            checked={settings[s.key]} 
+                          <input
+                            type="checkbox"
+                            className="ad-toggle"
+                            checked={settings[s.key]}
                             onChange={e => saveSettings({ [s.key]: e.target.checked })}
                           />
                         </div>
@@ -1532,46 +1654,46 @@ const AdminDashboard = () => {
                   <h3><i className="fas fa-building-columns" /> Institution Branding & Regional</h3>
                 </div>
                 <div className="ad-card__body">
-                   <form id="brandingForm" className="ad-branding-grid" onSubmit={e => {
-                     e.preventDefault();
-                     const formData = new FormData(e.target);
-                     saveSettings({
-                        institutionName: formData.get('instName'),
-                        systemMotto: formData.get('motto'),
-                        timezone: formData.get('timezone'),
-                        currency: formData.get('currency')
-                     });
-                   }}>
-                      <div className="ad-field">
-                        <label>Institution Name</label>
-                        <input name="instName" defaultValue={settings.institutionName} />
-                      </div>
-                      <div className="ad-field">
-                        <label>System Motto</label>
-                        <input name="motto" defaultValue={settings.systemMotto} />
-                      </div>
-                      <div className="ad-field">
-                        <label>Primary Timezone</label>
-                        <select name="timezone" defaultValue={settings.timezone}>
-                          <option>Zambia (CAT)</option>
-                          <option>United Kingdom (GMT)</option>
-                          <option>USA (EST)</option>
-                        </select>
-                      </div>
-                      <div className="ad-field">
-                        <label>Currency Symbol</label>
-                        <input name="currency" defaultValue={settings.currency} />
-                      </div>
-                   </form>
+                  <form id="brandingForm" className="ad-branding-grid" onSubmit={e => {
+                    e.preventDefault();
+                    const formData = new FormData(e.target);
+                    saveSettings({
+                      institutionName: formData.get('instName'),
+                      systemMotto: formData.get('motto'),
+                      timezone: formData.get('timezone'),
+                      currency: formData.get('currency')
+                    });
+                  }}>
+                    <div className="ad-field">
+                      <label>Institution Name</label>
+                      <input name="instName" defaultValue={settings.institutionName} />
+                    </div>
+                    <div className="ad-field">
+                      <label>System Motto</label>
+                      <input name="motto" defaultValue={settings.systemMotto} />
+                    </div>
+                    <div className="ad-field">
+                      <label>Primary Timezone</label>
+                      <select name="timezone" defaultValue={settings.timezone}>
+                        <option>Zambia (CAT)</option>
+                        <option>United Kingdom (GMT)</option>
+                        <option>USA (EST)</option>
+                      </select>
+                    </div>
+                    <div className="ad-field">
+                      <label>Currency Symbol</label>
+                      <input name="currency" defaultValue={settings.currency} />
+                    </div>
+                  </form>
                 </div>
                 <div className="ad-card-footer-actions">
-                   <button className="ad-btn ad-btn--ghost" onClick={() => saveSettings({
-                     institutionName: 'Fairview University College',
-                     systemMotto: 'Education for the Future',
-                     timezone: 'Zambia (CAT)',
-                     currency: 'ZMW'
-                   })}>Reset to Defaults</button>
-                   <button type="submit" form="brandingForm" className="ad-btn ad-btn--primary">Save Branding Changes</button>
+                  <button className="ad-btn ad-btn--ghost" onClick={() => saveSettings({
+                    institutionName: 'Fairview University College',
+                    systemMotto: 'Education for the Future',
+                    timezone: 'Zambia (CAT)',
+                    currency: 'ZMW'
+                  })}>Reset to Defaults</button>
+                  <button type="submit" form="brandingForm" className="ad-btn ad-btn--primary">Save Branding Changes</button>
                 </div>
               </div>
             </div>

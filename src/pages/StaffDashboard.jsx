@@ -15,16 +15,16 @@ import '../dashboards.css';
 ───────────────────────────────────────────────────────────────── */
 const Badge = ({ status }) => {
   const map = {
-    'Ongoing':   'badge-green',
+    'Ongoing': 'badge-green',
     'Completed': 'badge-teal',
-    'Canceled':  'badge-red',
-    'Active':    'badge-green',
-    'Inactive':  'badge-red',
-    'Urgent':    'badge-red',
-    'Info':      'badge-teal',
-    'draft':     'badge-draft',
+    'Canceled': 'badge-red',
+    'Active': 'badge-green',
+    'Inactive': 'badge-red',
+    'Urgent': 'badge-red',
+    'Info': 'badge-teal',
+    'draft': 'badge-draft',
     'submitted': 'badge-submitted',
-    'approved':  'badge-approved',
+    'approved': 'badge-approved',
     'published': 'badge-published',
   };
   return <span className={`sd-badge ${map[status] || 'badge-teal'}`}>{status}</span>;
@@ -42,30 +42,30 @@ const Spinner = () => (
 /* ═══════════════════════════════════════════════════════════════ */
 const StaffDashboard = () => {
   /* ── UI state ── */
-  const [activeTab,              setActiveTab]              = useState('dashboard');
-  const [sidebarOpen,            setSidebarOpen]            = useState(false);
-  const [showManageModal,        setShowManageModal]        = useState(false);
-  const [selectedCourse,         setSelectedCourse]         = useState(null);
-  const [showAnnouncementModal,  setShowAnnouncementModal]  = useState(false);
-  const [showProfileModal,       setShowProfileModal]       = useState(false);
-  const [showPasswordForce,      setShowPasswordForce]      = useState(false);
-  const [searchQuery,            setSearchQuery]            = useState('');
-  const [showNotifPanel,         setShowNotifPanel]         = useState(false);
-  const [managedStatus,          setManagedStatus]          = useState('');
-  const [savingCourse,           setSavingCourse]           = useState(false);
-  const [postingAnn,             setPostingAnn]             = useState(false);
-  const [successMsg,             setSuccessMsg]             = useState('');
-  const [dbError,                setDbError]                = useState('');
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showManageModal, setShowManageModal] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState(null);
+  const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showPasswordForce, setShowPasswordForce] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showNotifPanel, setShowNotifPanel] = useState(false);
+  const [managedStatus, setManagedStatus] = useState('');
+  const [savingCourse, setSavingCourse] = useState(false);
+  const [postingAnn, setPostingAnn] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
+  const [dbError, setDbError] = useState('');
 
   /* ── Form state ── */
-  const [newAnn,    setNewAnn]    = useState({ title: '', content: '', status: 'Info' });
-  const [passForm,  setPassForm]  = useState({ new: '', confirm: '' });
+  const [newAnn, setNewAnn] = useState({ title: '', content: '', status: 'Info', targetCourse: 'All My Students' });
+  const [passForm, setPassForm] = useState({ new: '', confirm: '' });
 
   /* ── DB data state ── */
-  const [loading,       setLoading]       = useState(true);
-  const [lecturerData,  setLecturerData]  = useState(null);
-  const [courses,       setCourses]       = useState([]);
-  const [students,      setStudents]      = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [lecturerData, setLecturerData] = useState(null);
+  const [courses, setCourses] = useState([]);
+  const [students, setStudents] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
 
   const navigate = useNavigate();
@@ -121,9 +121,9 @@ const StaffDashboard = () => {
       (snap) => {
         const loaded = snap.docs.map(d => {
           const data = d.data();
-          return { 
-            docId: d.id, 
-            ...data, 
+          return {
+            docId: d.id,
+            ...data,
             code: data.code || data.id // Ensure code is accessible
           };
         });
@@ -267,15 +267,40 @@ const StaffDashboard = () => {
     if (!uid) return;
     setPostingAnn(true);
     try {
+      // 1. Save to lecturer's own records
       await addDoc(collection(db, 'lecturers', uid, 'announcements'), {
         ...newAnn,
         date: new Date().toISOString().split('T')[0],
         createdAt: serverTimestamp(),
         postedBy: lecturerData?.name || currentUser?.email,
       });
+
+      // 2. Resolve target students
+      const targetStudents = newAnn.targetCourse === 'All My Students'
+        ? students
+        : students.filter(s => s.enrolledIn?.includes(newAnn.targetCourse));
+
+      const today = new Date().toISOString().split('T')[0];
+
+      // 3. Push to each student's notifications sub-collection
+      const notifyPromises = targetStudents.map(student => {
+        return addDoc(collection(db, 'students', student.id, 'notifications'), {
+          title: newAnn.title,
+          text: newAnn.content,
+          type: newAnn.status === 'Urgent' ? 'alert' : 'info',
+          date: today,
+          read: false,
+          sender: lecturerData?.name || 'Lecturer',
+          courseCode: newAnn.targetCourse === 'All My Students' ? 'General' : newAnn.targetCourse,
+          createdAt: serverTimestamp(),
+        });
+      });
+
+      await Promise.all(notifyPromises);
+
       setShowAnnouncementModal(false);
-      setNewAnn({ title: '', content: '', status: 'Info' });
-      showSuccess('Announcement posted successfully!');
+      setNewAnn({ title: '', content: '', status: 'Info', targetCourse: 'All My Students' });
+      showSuccess(`Announcement posted and sent to ${targetStudents.length} students!`);
     } catch (err) {
       console.error('Post announcement error:', err);
       alert('Error posting announcement. Please try again.');
@@ -316,21 +341,21 @@ const StaffDashboard = () => {
 
   /* ── Derived display values ── */
   const lecturer = {
-    name:  lecturerData?.name     || currentUser?.displayName || 'Loading...',
-    role:  lecturerData?.role     || lecturerData?.department || 'Lecturer',
-    email: lecturerData?.email    || currentUser?.email       || '—',
-    id:    lecturerData?.staffId  || lecturerData?.docId      || '—',
+    name: lecturerData?.name || currentUser?.displayName || 'Loading...',
+    role: lecturerData?.role || lecturerData?.department || 'Lecturer',
+    email: lecturerData?.email || currentUser?.email || '—',
+    id: lecturerData?.staffId || lecturerData?.docId || '—',
   };
 
   const displayInitials = lecturer.name !== 'Loading...'
     ? lecturer.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
     : '..';
 
-  const totalStudents  = students.length;
-  const totalCourses   = courses.length;
-  const activeCourses  = courses.filter(c => c.status === 'Ongoing').length;
-  const weeklyHours    = lecturerData?.weeklyHours  || courses.filter(c => c.status === 'Ongoing').length * 4;
-  const avgRating      = lecturerData?.avgRating    || '—';
+  const totalStudents = students.length;
+  const totalCourses = courses.length;
+  const activeCourses = courses.filter(c => c.status === 'Ongoing').length;
+  const weeklyHours = lecturerData?.weeklyHours || courses.filter(c => c.status === 'Ongoing').length * 4;
+  const avgRating = lecturerData?.avgRating || '—';
 
   /* Resolve the best display ID for a student */
   const getStudentId = (s) =>
@@ -339,21 +364,21 @@ const StaffDashboard = () => {
   const filteredStudents = students.filter(s => {
     const q = searchQuery.toLowerCase();
     return (
-      (s.name        || '').toLowerCase().includes(q) ||
-      (s.studentId   || '').toLowerCase().includes(q) ||
-      (s.student_id  || '').toLowerCase().includes(q) ||
-      (s.email       || '').toLowerCase().includes(q) ||
-      (s.id          || '').toLowerCase().includes(q)
+      (s.name || '').toLowerCase().includes(q) ||
+      (s.studentId || '').toLowerCase().includes(q) ||
+      (s.student_id || '').toLowerCase().includes(q) ||
+      (s.email || '').toLowerCase().includes(q) ||
+      (s.id || '').toLowerCase().includes(q)
     );
   });
 
   const navItems = [
-    { id: 'dashboard',     icon: 'fa-tachometer-alt', label: 'Dashboard'     },
-    { id: 'courses',       icon: 'fa-book',           label: 'My Courses'    },
-    { id: 'results',       icon: 'fa-poll',           label: 'Results'       },
-    { id: 'students',      icon: 'fa-users',          label: 'Students'      },
-    { id: 'announcements', icon: 'fa-bullhorn',       label: 'Announcements' },
-    { id: 'settings',      icon: 'fa-cog',            label: 'Settings'      },
+    { id: 'dashboard', icon: 'fa-tachometer-alt', label: 'Dashboard' },
+    { id: 'courses', icon: 'fa-book', label: 'My Courses' },
+    { id: 'results', icon: 'fa-poll', label: 'Results' },
+    { id: 'students', icon: 'fa-users', label: 'Students' },
+    { id: 'announcements', icon: 'fa-bullhorn', label: 'Announcements' },
+    { id: 'settings', icon: 'fa-cog', label: 'Settings' },
   ];
 
   /* ═══════════════════════════════════════════════════════════════
@@ -386,8 +411,8 @@ const StaffDashboard = () => {
           <div className="sd-nav-group">Management</div>
           {navItems.map(item => (
             <a key={item.id} href="#"
-               className={`sd-nav-link ${activeTab === item.id ? 'active' : ''}`}
-               onClick={(e) => { e.preventDefault(); setActiveTab(item.id); setSidebarOpen(false); }}>
+              className={`sd-nav-link ${activeTab === item.id ? 'active' : ''}`}
+              onClick={(e) => { e.preventDefault(); setActiveTab(item.id); setSidebarOpen(false); }}>
               <i className={`fas ${item.icon}`}></i>
               <span>{item.label}</span>
               {item.id === 'announcements' && announcements.length > 0 && (
@@ -423,7 +448,7 @@ const StaffDashboard = () => {
                 <i className="fas fa-bell"></i>
                 {announcements.length > 0 && <span className="sd-notif-dot">{announcements.length}</span>}
               </button>
-              
+
               {showNotifPanel && (
                 <div className="sd-notif-panel" style={{ right: 0, top: '50px' }}>
                   <div className="sd-notif-header">
@@ -437,8 +462,8 @@ const StaffDashboard = () => {
                       </div>
                     ) : announcements.slice(0, 5).map(ann => (
                       <div key={ann.id} className="sd-notif-item" style={{ cursor: 'pointer' }} onClick={() => { setActiveTab('announcements'); setShowNotifPanel(false); }}>
-                        <i className={`fas ${ann.status === 'Urgent' ? 'fa-exclamation-circle' : 'fa-info-circle'}`} 
-                           style={{ color: ann.status === 'Urgent' ? '#ef4444' : '#7c3aed' }}></i>
+                        <i className={`fas ${ann.status === 'Urgent' ? 'fa-exclamation-circle' : 'fa-info-circle'}`}
+                          style={{ color: ann.status === 'Urgent' ? '#ef4444' : '#7c3aed' }}></i>
                         <div>
                           <div className="sd-notif-text" style={{ fontWeight: 600 }}>{ann.title}</div>
                           <div className="sd-notif-time">{ann.date}</div>
@@ -604,10 +629,10 @@ const StaffDashboard = () => {
                   {/* Summary stats */}
                   <div className="sd-stats-row" style={{ marginBottom: 24 }}>
                     {[
-                      { icon: 'fa-book', val: courses.length,     lbl: 'Total Courses',    color: '#7c3aed', bg: 'rgba(124,58,237,0.1)' },
-                      { icon: 'fa-play-circle', val: activeCourses, lbl: 'Ongoing',         color: '#10b981', bg: 'rgba(16,185,129,0.1)' },
+                      { icon: 'fa-book', val: courses.length, lbl: 'Total Courses', color: '#7c3aed', bg: 'rgba(124,58,237,0.1)' },
+                      { icon: 'fa-play-circle', val: activeCourses, lbl: 'Ongoing', color: '#10b981', bg: 'rgba(16,185,129,0.1)' },
                       { icon: 'fa-check-circle', val: courses.filter(c => c.status === 'Completed').length, lbl: 'Completed', color: '#2563eb', bg: 'rgba(37,99,235,0.1)' },
-                      { icon: 'fa-users', val: totalStudents,      lbl: 'Total Students',   color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
+                      { icon: 'fa-users', val: totalStudents, lbl: 'Total Students', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
                     ].map((s) => (
                       <div key={s.lbl} className="sd-stat-card">
                         <div className="sd-stat-icon" style={{ background: s.bg, color: s.color }}><i className={`fas ${s.icon}`}></i></div>
@@ -812,9 +837,9 @@ const StaffDashboard = () => {
                         <label>Department / Role</label>
                         <input type="text" value={lecturer.role} readOnly style={{ background: '#f8fafc' }} />
                         <label>New Password</label>
-                        <input type="password" required value={passForm.new} onChange={e => setPassForm({...passForm, new: e.target.value})} placeholder="Enter new password" />
+                        <input type="password" required value={passForm.new} onChange={e => setPassForm({ ...passForm, new: e.target.value })} placeholder="Enter new password" />
                         <label>Confirm Password</label>
-                        <input type="password" required value={passForm.confirm} onChange={e => setPassForm({...passForm, confirm: e.target.value})} placeholder="Repeat password" />
+                        <input type="password" required value={passForm.confirm} onChange={e => setPassForm({ ...passForm, confirm: e.target.value })} placeholder="Repeat password" />
                         <div style={{ marginTop: 24 }}>
                           <button type="submit" className="sd-btn sd-btn-primary">
                             <i className="fas fa-shield-alt"></i> Update Password
@@ -857,7 +882,7 @@ const StaffDashboard = () => {
                                   <td>{course.semester}</td>
                                   <td><Badge status={course.status} /></td>
                                   <td>
-                                    <button className="sd-btn sd-btn-primary" style={{ padding: '6px 12px', fontSize: 13 }} 
+                                    <button className="sd-btn sd-btn-primary" style={{ padding: '6px 12px', fontSize: 13 }}
                                       onClick={() => setSelectedCourse(course)}>
                                       <i className="fas fa-edit"></i> Manage Results
                                     </button>
@@ -870,10 +895,10 @@ const StaffDashboard = () => {
                       </div>
                     </>
                   ) : (
-                    <ResultEntry 
-                      lecturerId={uid} 
-                      course={selectedCourse} 
-                      onBack={() => setSelectedCourse(null)} 
+                    <ResultEntry
+                      lecturerId={uid}
+                      course={selectedCourse}
+                      onBack={() => setSelectedCourse(null)}
                       showSuccess={showSuccess}
                     />
                   )}
@@ -935,7 +960,7 @@ const StaffDashboard = () => {
                   placeholder="Announcement Title"
                   required
                   value={newAnn.title}
-                  onChange={(e) => setNewAnn({...newAnn, title: e.target.value})}
+                  onChange={(e) => setNewAnn({ ...newAnn, title: e.target.value })}
                 />
                 <label>Message</label>
                 <textarea
@@ -943,12 +968,20 @@ const StaffDashboard = () => {
                   placeholder="Write your announcement here..."
                   required
                   value={newAnn.content}
-                  onChange={(e) => setNewAnn({...newAnn, content: e.target.value})}
+                  onChange={(e) => setNewAnn({ ...newAnn, content: e.target.value })}
                 />
                 <label>Priority</label>
-                <select value={newAnn.status} onChange={(e) => setNewAnn({...newAnn, status: e.target.value})}>
+                <select value={newAnn.status} onChange={(e) => setNewAnn({ ...newAnn, status: e.target.value })}>
                   <option value="Info">Normal (Info)</option>
                   <option value="Urgent">Important (Urgent)</option>
+                </select>
+
+                <label>Target Recipients</label>
+                <select value={newAnn.targetCourse} onChange={(e) => setNewAnn({ ...newAnn, targetCourse: e.target.value })}>
+                  <option value="All My Students">All My Students ({students.length})</option>
+                  {courses.map(c => (
+                    <option key={c.docId || c.id} value={c.code || c.id}>{c.code || c.id} – {c.name}</option>
+                  ))}
                 </select>
               </div>
               <div className="sd-modal-actions">
@@ -975,9 +1008,9 @@ const StaffDashboard = () => {
               </p>
               <form className="sd-modal-form" id="forcePassForm" onSubmit={updatePassword}>
                 <label>New Password</label>
-                <input type="password" required value={passForm.new} onChange={e => setPassForm({...passForm, new: e.target.value})} placeholder="Enter a secure password" />
+                <input type="password" required value={passForm.new} onChange={e => setPassForm({ ...passForm, new: e.target.value })} placeholder="Enter a secure password" />
                 <label>Confirm Password</label>
-                <input type="password" required value={passForm.confirm} onChange={e => setPassForm({...passForm, confirm: e.target.value})} placeholder="Repeat password" />
+                <input type="password" required value={passForm.confirm} onChange={e => setPassForm({ ...passForm, confirm: e.target.value })} placeholder="Repeat password" />
               </form>
             </div>
             <div className="sd-modal-actions">
@@ -1008,9 +1041,9 @@ const StaffDashboard = () => {
             </div>
             <div style={{ padding: '0 24px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               {[
-                ['Courses',  courses.length],
+                ['Courses', courses.length],
                 ['Students', totalStudents],
-                ['Active',   activeCourses],
+                ['Active', activeCourses],
                 ['Announcements', announcements.length],
               ].map(([k, v]) => (
                 <div key={k} style={{ background: '#f8fafc', borderRadius: 10, padding: '12px 16px', textAlign: 'center' }}>

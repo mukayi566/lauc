@@ -61,7 +61,7 @@ const Navbar = () => {
               <Link to={getDashboardLink()} className="btn btn-secondary">
                 <i className="fas fa-th-large"></i> Dashboard
               </Link>
-              <button onClick={signOut} className="btn btn-outline-light" style={{ background: 'transparent', border: '1.5px solid #1e3c72', color: '#1e3c72', borderRadius: 8, padding: '8px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button onClick={signOut} className="btn btn-outline-light" style={{ background: 'transparent', border: '1.5px solid var(--clr-blue)', color: 'var(--clr-blue)', borderRadius: 8, padding: '8px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <i className="fas fa-sign-out-alt"></i> Logout
               </button>
             </>

@@ -97,7 +97,7 @@ const ResultEntry = ({ lecturerId, course, onBack, showSuccess }) => {
           status: status,
           submittedBy: lecturerId,
           updatedAt: serverTimestamp(),
-          semester: course.semester || 'Spring 2026'
+          semester: course.semester
         };
 
         if (res.id) {

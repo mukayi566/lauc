@@ -1,13 +1,16 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { QRCodeCanvas } from 'qrcode.react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   doc, getDoc, setDoc, updateDoc,
-  collection, getDocs, addDoc, onSnapshot,
-  serverTimestamp, query, orderBy
+  collection, getDocs, addDoc,
+  serverTimestamp, query, orderBy, where
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import '../dashboards.css';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 /* ─────────────────────────────────────────────────────────────────
    HELPERS
@@ -55,6 +58,7 @@ const StudentDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showPayModal, setShowPayModal] = useState(false);
   const [showRegModal, setShowRegModal] = useState(false);
+  const [showHostelModal, setShowHostelModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showNotifPanel, setShowNotifPanel] = useState(false);
   const [payAmount, setPayAmount] = useState('');
@@ -74,6 +78,9 @@ const StudentDashboard = () => {
   const [savingProfile, setSavingProfile] = useState(false);
   const [payingFee, setPayingFee] = useState(false);
   const [registeringCourse, setRegisteringCourse] = useState(false);
+  const [selectedHostel, setSelectedHostel] = useState(null);
+  const [bookingHostel, setBookingHostel] = useState(false);
+  const [bookingSuccessMsg, setBookingSuccessMsg] = useState('');
 
   /* ── DB data state ── */
   const [loading, setLoading] = useState(true);
@@ -87,6 +94,13 @@ const StudentDashboard = () => {
   const [notifications, setNotifications] = useState([]);
   const [cgpa, setCgpa] = useState('—');
   const [balanceDue, setBalanceDue] = useState(0);
+
+  /* ── Exam Docket state ── */
+  const [examDocket, setExamDocket] = useState(null);
+  const [clearanceStatus, setClearanceStatus] = useState(null);
+  const [docketView, setDocketView] = useState('docket'); // 'docket' | 'timetable'
+  const [generatingPdf, setGeneratingPdf] = useState(false);
+  const docketRef = useRef(null);
 
   const uid = currentUser?.uid;
 
@@ -179,7 +193,73 @@ const StudentDashboard = () => {
         const amt = Number(t.amount) || 0;
         return t.type === 'credit' ? s - amt : s + amt;
       }, 0);
-      setBalanceDue(Math.max(0, bal));
+      const currentBalance = Math.max(0, bal);
+      setBalanceDue(currentBalance);
+
+      /* ── exam docket ── */
+      const docketRef2 = doc(db, 'students', uid, 'examDocket', 'current');
+      const docketSnap = await getDoc(docketRef2);
+      let docketData;
+      if (!docketSnap.exists()) {
+        docketData = {
+          academicYear: '2025/2026',
+          semester: 'Semester 2',
+          examPeriod: 'June 9 – June 27, 2026',
+          clearance: {
+            fees: currentBalance === 0,
+            library: prof.libraryCleared ?? true,
+            hostel: prof.hostelCleared ?? true,
+            academic: true,
+          },
+          exams: (loadedCourses.length > 0 ? loadedCourses : []).map((c, i) => {
+            const dates = ['2026-06-10', '2026-06-12', '2026-06-14', '2026-06-16', '2026-06-18', '2026-06-20', '2026-06-23', '2026-06-25'];
+            const times = ['08:00 – 10:00', '10:30 – 12:30', '14:00 – 16:00'];
+            const venues = ['Hall A – Room 101', 'Hall B – Room 204', 'LT 1', 'LT 2', 'Main Hall', 'Hall C – Room 308'];
+            return {
+              code: c.code,
+              name: c.name,
+              date: dates[i % dates.length],
+              time: times[i % times.length],
+              venue: venues[i % venues.length],
+              seat: `${String.fromCharCode(65 + (i % 6))}${String(Math.floor(Math.random() * 40) + 1).padStart(2, '0')}`,
+            };
+          }),
+          createdAt: serverTimestamp(),
+        };
+        await setDoc(docketRef2, docketData);
+      } else {
+        docketData = docketSnap.data();
+        // Dynamically update fees clearance based on current balance
+        if (docketData.clearance) {
+          docketData.clearance.fees = currentBalance === 0;
+        }
+        if (!docketData.exams || docketData.exams.length === 0) {
+          const dates = ['2026-06-10', '2026-06-12', '2026-06-14', '2026-06-16', '2026-06-18', '2026-06-20'];
+          const times = ['08:00 – 10:00', '10:30 – 12:30', '14:00 – 16:00'];
+          const venues = ['Hall A – Room 101', 'Hall B – Room 204', 'LT 1', 'LT 2', 'Main Hall'];
+          docketData.exams = loadedCourses.map((c, i) => ({
+            code: c.code,
+            name: c.name,
+            date: dates[i % dates.length],
+            time: times[i % times.length],
+            venue: venues[i % venues.length],
+            seat: `${String.fromCharCode(65 + (i % 5))}${String(i + 1).padStart(2, '0')}`,
+          }));
+        }
+      }
+      setExamDocket(docketData);
+
+      // Derive clearance status
+      const cl = docketData.clearance || {};
+      const blocked = Object.entries(cl).filter(([, v]) => !v);
+      setClearanceStatus({
+        cleared: blocked.length === 0,
+        blockedReasons: blocked.map(([k]) => {
+          const labels = { fees: 'Outstanding fee balance', library: 'Library fine or unreturned book', hostel: 'Unpaid hostel charges', academic: 'Academic irregularity hold' };
+          return labels[k] || k;
+        }),
+        details: cl,
+      });
 
       /* ── notifications ── */
       const notifCol = collection(db, 'students', uid, 'notifications');
@@ -192,7 +272,7 @@ const StudentDashboard = () => {
         navigate('/login', { state: { error: "Access Denied: You do not have permission to view this dashboard." } });
         return;
       }
-      
+
       if (!navigator.onLine || err.code === 'unavailable') {
         setDbError('You are offline. Showing cached data if available.');
       } else {
@@ -309,6 +389,7 @@ const StudentDashboard = () => {
 
           setPayStep(4);
           setPaySuccessMsg(`Receipt #TX-${Math.random().toString(36).substr(2, 9).toUpperCase()}`);
+          await loadData();
         } catch (err) {
           console.error('Pay error:', err);
           setPayStep(1);
@@ -364,10 +445,9 @@ const StudentDashboard = () => {
           }
         }
       }
-      // Refresh courses
-      const snap = await getDocs(coursesCol);
-      setCourses(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      setRegSuccessMsg('Courses registered successfully! Your timetable has been updated.');
+      // Refresh all dashboard data
+      await loadData();
+      setRegSuccessMsg('Courses registered successfully! Your timetable and docket have been updated.');
       setRegSelected([]);
       setTimeout(() => { setRegSuccessMsg(''); setShowRegModal(false); }, 3000);
     } catch (err) {
@@ -437,9 +517,31 @@ const StudentDashboard = () => {
     { id: 'courses', icon: 'fa-book-open', label: 'Register Courses', group: 'Academics' },
     { id: 'results', icon: 'fa-chart-bar', label: 'Results', group: 'Academics' },
     { id: 'timetable', icon: 'fa-calendar-alt', label: 'Timetable', group: 'Academics' },
+    { id: 'docket', icon: 'fa-id-card', label: 'Exam Docket', group: 'Academics' },
     { id: 'finance', icon: 'fa-wallet', label: 'Payments', group: 'Finance' },
+    { id: 'hostel', icon: 'fa-hotel', label: 'Hostel & Housing', group: 'Services' },
   ];
   const groups = [...new Set(navItems.map(i => i.group))];
+
+  /* ══ PDF Download ══ */
+  const downloadDocketPdf = async () => {
+    if (!docketRef.current) return;
+    setGeneratingPdf(true);
+    try {
+      const canvas = await html2canvas(docketRef.current, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pdfW = pdf.internal.pageSize.getWidth();
+      const pdfH = (canvas.height * pdfW) / canvas.width;
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfW, pdfH);
+      pdf.save(`ExamDocket_${student.id}_${examDocket?.semester?.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
+    } catch (err) {
+      console.error('PDF error:', err);
+      alert('Could not generate PDF. Please try print instead.');
+    } finally {
+      setGeneratingPdf(false);
+    }
+  };
 
   /* ══════════════════════════════════════════════
      SIDEBAR
@@ -558,7 +660,7 @@ const StudentDashboard = () => {
                         Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}, {student.name.split(' ')[0]} 👋
                       </h1>
                       <p className="sd-welcome-p">
-                      {new Date().toLocaleDateString('en-ZM', { weekday: 'long', day: 'numeric', month: 'long' })}
+                        {new Date().toLocaleDateString('en-ZM', { weekday: 'long', day: 'numeric', month: 'long' })}
                       </p>
                     </div>
                     <div className="sd-welcome-actions">
@@ -679,7 +781,7 @@ const StudentDashboard = () => {
                   <div className="sd-page-header">
                     <div>
                       <h2 className="sd-page-title">Course Registration</h2>
-                      <p className="sd-page-sub">Spring 2026 · Registration closes April 20</p>
+                      <p className="sd-page-sub">Registration closes April 20</p>
                     </div>
                     <button className="sd-btn sd-btn-primary" onClick={() => setShowRegModal(true)}>
                       <i className="fas fa-plus"></i> Add Course
@@ -810,7 +912,7 @@ const StudentDashboard = () => {
                   <div className="sd-page-header">
                     <div>
                       <h2 className="sd-page-title">Weekly Timetable</h2>
-                      <p className="sd-page-sub">Spring 2026 semester schedule</p>
+                      <p className="sd-page-sub"> semester schedule</p>
                     </div>
                     <button className="sd-btn sd-btn-primary" onClick={() => window.print()}>
                       <i className="fas fa-print"></i> Print
@@ -865,7 +967,7 @@ const StudentDashboard = () => {
                   <div className="sd-page-header">
                     <div>
                       <h2 className="sd-page-title">Fee Portal</h2>
-                      <p className="sd-page-sub">Zambian Kwacha (ZMW) · Spring 2026</p>
+                      <p className="sd-page-sub">Zambian Kwacha (ZMW)</p>
                     </div>
                     <button className="sd-btn sd-btn-primary" onClick={() => setShowPayModal(true)}>
                       <i className="fas fa-credit-card"></i> Pay Fees
@@ -943,6 +1045,343 @@ const StudentDashboard = () => {
                   </div>
                 </div>
               )}
+              {/* ═══════════ EXAM DOCKET ═══════════ */}
+              {activeTab === 'docket' && (
+                <div className="sd-tab-fade">
+                  <div className="sd-page-header">
+                    <div>
+                      <h2 className="sd-page-title">Exam Docket</h2>
+                      <p className="sd-page-sub">{examDocket?.academicYear} · {examDocket?.semester}</p>
+                    </div>
+                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                      <div className="sd-docket-view-toggle">
+                        <button
+                          className={`sd-toggle-btn ${docketView === 'docket' ? 'active' : ''}`}
+                          onClick={() => setDocketView('docket')}
+                        >
+                          <i className="fas fa-id-card"></i> Docket
+                        </button>
+                        <button
+                          className={`sd-toggle-btn ${docketView === 'timetable' ? 'active' : ''}`}
+                          onClick={() => setDocketView('timetable')}
+                        >
+                          <i className="fas fa-calendar-week"></i> Timetable
+                        </button>
+                      </div>
+                      {clearanceStatus?.cleared && (
+                        <>
+                          <button className="sd-btn sd-btn-primary" onClick={downloadDocketPdf} disabled={generatingPdf}>
+                            {generatingPdf
+                              ? <><i className="fas fa-circle-notch fa-spin"></i> Generating…</>
+                              : <><i className="fas fa-download"></i> Download PDF</>}
+                          </button>
+                          <button className="sd-btn sd-btn-ghost" onClick={() => window.print()}>
+                            <i className="fas fa-print"></i> Print
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* ── Clearance Status Banner ── */}
+                  {clearanceStatus && (
+                    <div className={`sd-clearance-banner ${clearanceStatus.cleared ? 'cleared' : 'blocked'}`}>
+                      <div className="sd-clearance-icon">
+                        <i className={`fas ${clearanceStatus.cleared ? 'fa-shield-alt' : 'fa-ban'}`}></i>
+                      </div>
+                      <div className="sd-clearance-body">
+                        <div className="sd-clearance-title">
+                          {clearanceStatus.cleared ? 'You are Cleared for Examinations' : 'Docket Access Blocked'}
+                        </div>
+                        {clearanceStatus.cleared
+                          ? <div className="sd-clearance-sub">All clearance checks passed. Your exam docket is valid and ready to download.</div>
+                          : (
+                            <ul className="sd-clearance-reasons">
+                              {clearanceStatus.blockedReasons.map((r, i) => (
+                                <li key={i}><i className="fas fa-exclamation-circle"></i> {r}</li>
+                              ))}
+                            </ul>
+                          )
+                        }
+                      </div>
+                      <div className="sd-clearance-badge-wrap">
+                        <span className={`sd-clearance-badge ${clearanceStatus.cleared ? 'badge-cleared' : 'badge-blocked'}`}>
+                          <i className={`fas ${clearanceStatus.cleared ? 'fa-check' : 'fa-times'}`}></i>
+                          {clearanceStatus.cleared ? 'Cleared' : 'Blocked'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Clearance Checklist ── */}
+                  {clearanceStatus && (
+                    <div className="sd-clearance-checklist">
+                      {Object.entries(clearanceStatus.details).map(([key, passed]) => {
+                        const labels = {
+                          fees: { icon: 'fa-money-bill-wave', label: 'Tuition Fees' },
+                          library: { icon: 'fa-book', label: 'Library' },
+                          hostel: { icon: 'fa-home', label: 'Hostel' },
+                          academic: { icon: 'fa-graduation-cap', label: 'Academic Standing' },
+                        };
+                        const info = labels[key] || { icon: 'fa-circle', label: key };
+                        return (
+                          <div key={key} className={`sd-clearance-check-item ${passed ? 'passed' : 'failed'}`}>
+                            <div className="sd-cc-icon">
+                              <i className={`fas ${info.icon}`}></i>
+                            </div>
+                            <div className="sd-cc-info">
+                              <div className="sd-cc-label">{info.label}</div>
+                              <div className="sd-cc-status">{passed ? 'Cleared' : 'Not Cleared'}</div>
+                            </div>
+                            <i className={`fas ${passed ? 'fa-check-circle' : 'fa-times-circle'} sd-cc-result`}></i>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* ── DOCKET VIEW ── */}
+                  {docketView === 'docket' && (
+                    <>
+                      {!clearanceStatus?.cleared && (
+                        <div className="sd-docket-blocked">
+                          <i className="fas fa-lock"></i>
+                          <h3>Docket Unavailable</h3>
+                          <p>Your exam docket cannot be viewed or downloaded until all clearance holds are resolved. Please visit the relevant offices to clear your account.</p>
+                        </div>
+                      )}
+
+                      {clearanceStatus?.cleared && (
+                        <div className="sd-docket-card" ref={docketRef}>
+                          {/* Docket Header */}
+                          <div className="sd-docket-header">
+                            <div className="sd-docket-logo">
+                              <div className="sd-docket-logo-icon"><i className="fas fa-graduation-cap"></i></div>
+                              <div>
+                                <div className="sd-docket-university">Fairview University College</div>
+                                <div className="sd-docket-type">OFFICIAL EXAMINATION DOCKET</div>
+                              </div>
+                            </div>
+                            <div className="sd-docket-header-right">
+                              <div className="sd-docket-qr-wrapper">
+                                <QRCodeCanvas
+                                  value={JSON.stringify({
+                                    id: student.id,
+                                    name: student.name,
+                                    sem: examDocket?.semester,
+                                    year: examDocket?.academicYear,
+                                    v: 'Fairview-verified'
+                                  })}
+                                  size={90}
+                                  level="H"
+                                  includeMargin={false}
+                                  className="sd-docket-qr-img"
+                                />
+                                <span className="sd-qr-caption">Scan to Verify</span>
+                              </div>
+                              <div className="sd-docket-header-meta">
+                                <span className="sd-clearance-badge badge-cleared">
+                                  <i className="fas fa-check"></i> Cleared
+                                </span>
+                                <div className="sd-docket-period">
+                                  <i className="fas fa-calendar"></i> {examDocket?.examPeriod}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Student Info */}
+                          <div className="sd-docket-info-grid">
+                            {[
+                              ['Full Name', student.name],
+                              ['Student ID', student.id],
+                              ['Programme', student.program || profile?.program || '—'],
+                              ['School', student.school || profile?.school || '—'],
+                              ['Academic Year', examDocket?.academicYear],
+                              ['Semester', examDocket?.semester],
+                            ].map(([k, v]) => (
+                              <div key={k} className="sd-docket-info-item">
+                                <span className="sd-docket-info-key">{k}</span>
+                                <span className="sd-docket-info-val">{v || '—'}</span>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Exam Table */}
+                          <div className="sd-docket-table-wrap">
+                            <div className="sd-docket-table-title">
+                              <i className="fas fa-clipboard-list"></i> Registered Examinations
+                            </div>
+                            {(!examDocket?.exams || examDocket.exams.length === 0) ? (
+                              <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}>
+                                No exams found. Please register your courses first.
+                              </div>
+                            ) : (
+                              <table className="sd-docket-table">
+                                <thead>
+                                  <tr>
+                                    <th>#</th>
+                                    <th>Course Code</th>
+                                    <th>Course Title</th>
+                                    <th>Date</th>
+                                    <th>Time</th>
+                                    <th>Venue</th>
+                                    <th>Seat No.</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {examDocket.exams.map((ex, i) => (
+                                    <tr key={ex.code + i}>
+                                      <td className="sd-docket-num">{i + 1}</td>
+                                      <td><span className="sd-code">{ex.code}</span></td>
+                                      <td className="sd-td-bold">{ex.name}</td>
+                                      <td>{ex.date ? new Date(ex.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</td>
+                                      <td><span className="sd-docket-time">{ex.time}</span></td>
+                                      <td>{ex.venue}</td>
+                                      <td><span className="sd-docket-seat">{ex.seat}</span></td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            )}
+                          </div>
+
+                          {/* Footer */}
+                          <div className="sd-docket-footer">
+                            <div>
+                              <i className="fas fa-info-circle"></i>
+                              This docket must be presented at the examination hall. Issued: {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}
+                            </div>
+                            <div>Fairview University College · Academic Registrar's Office</div>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* ── TIMETABLE VIEW ── */}
+                  {docketView === 'timetable' && (
+                    <div className="sd-card" style={{ marginTop: 0 }}>
+                      <div className="sd-card-header">
+                        <span>Exam Timetable</span>
+                        <span className="sd-badge badge-teal">{examDocket?.exams?.length || 0} exams</span>
+                      </div>
+                      {(!examDocket?.exams || examDocket.exams.length === 0) ? (
+                        <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
+                          <i className="fas fa-calendar-times" style={{ fontSize: 40, marginBottom: 12, display: 'block' }}></i>
+                          No exams scheduled. Register your courses first.
+                        </div>
+                      ) : (
+                        <div className="sd-exam-timeline">
+                          {[...examDocket.exams]
+                            .sort((a, b) => new Date(a.date) - new Date(b.date))
+                            .map((ex, i) => {
+                              const d = new Date(ex.date);
+                              const isUpcoming = d >= new Date();
+                              const colors = ['#0d9488', '#7c3aed', '#2563eb', '#f59e0b', '#dc2626', '#10b981', '#ec4899', '#6366f1'];
+                              return (
+                                <div key={ex.code + i} className={`sd-exam-event ${isUpcoming ? 'upcoming' : 'past'}`}>
+                                  <div className="sd-exam-event-date" style={{ background: colors[i % colors.length] }}>
+                                    <div className="sd-eed-day">{d.toLocaleDateString('en-GB', { day: '2-digit' })}</div>
+                                    <div className="sd-eed-mon">{d.toLocaleDateString('en-GB', { month: 'short' })}</div>
+                                  </div>
+                                  <div className="sd-exam-event-body">
+                                    <div className="sd-eeb-course">
+                                      <span className="sd-code" style={{ fontSize: 11 }}>{ex.code}</span>
+                                      <span className="sd-eeb-name">{ex.name}</span>
+                                    </div>
+                                    <div className="sd-eeb-meta">
+                                      <span><i className="fas fa-clock"></i> {ex.time}</span>
+                                      <span><i className="fas fa-map-marker-alt"></i> {ex.venue}</span>
+                                      <span><i className="fas fa-chair"></i> Seat {ex.seat}</span>
+                                    </div>
+                                  </div>
+                                  <div className="sd-exam-event-status">
+                                    <span className={`sd-badge ${isUpcoming ? 'badge-teal' : 'badge-gold'}`}>
+                                      {isUpcoming ? 'Upcoming' : 'Completed'}
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ═══════════ HOSTEL & ACCOMMODATION ═══════════ */}
+              {activeTab === 'hostel' && (
+                <div className="sd-tab-fade">
+                  <div className="sd-page-header">
+                    <div>
+                      <h2 className="sd-page-title">Hostel & Accommodation</h2>
+                      <p className="sd-page-sub">Book your on-campus or off-campus housing</p>
+                    </div>
+                  </div>
+
+                  <div className="sd-stats-row">
+                    {[
+                      { icon: 'fa-bed', val: profile?.hostelRoom || 'Not Assigned', lbl: 'Current Room', color: '#0d9488', bg: 'rgba(13,148,136,0.12)' },
+                      { icon: 'fa-building', val: profile?.hostelName || 'None', lbl: 'Hostel Block', color: '#7c3aed', bg: 'rgba(124,58,237,0.12)' },
+                      { icon: 'fa-user-friends', val: '2/4', lbl: 'Roommates', color: '#2563eb', bg: 'rgba(37,99,235,0.12)' },
+                      { icon: 'fa-receipt', val: profile?.hostelCleared ? 'Paid' : 'Pending', lbl: 'Housing Status', color: profile?.hostelCleared ? '#10b981' : '#dc2626', bg: profile?.hostelCleared ? 'rgba(16,185,129,0.12)' : 'rgba(220,38,38,0.12)' },
+                    ].map((s) => (
+                      <div key={s.lbl} className="sd-stat-card">
+                        <div className="sd-stat-icon" style={{ background: s.bg, color: s.color }}>
+                          <i className={`fas ${s.icon}`}></i>
+                        </div>
+                        <div className="sd-stat-val">{s.val}</div>
+                        <div className="sd-stat-lbl">{s.lbl}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="sd-card" style={{ marginTop: 24 }}>
+                    <div className="sd-card-header">
+                      <span>Available Hostels</span>
+                    </div>
+                    <div className="sd-card-body">
+                      <div className="sd-hostel-grid">
+                        {[
+                          { id: 'h1', name: 'Kafue Block', type: 'Male', capacity: '4 per room', price: 4500, status: 'Available', features: ['WiFi', 'Common Room', 'Laundry'] },
+                          { id: 'h2', name: 'Zambezi Block', type: 'Female', capacity: '2 per room', price: 6500, status: 'Limited', features: ['WiFi', 'En-suite', 'Kitchenette'] },
+                          { id: 'h3', name: 'Luangwa Block', type: 'Male', capacity: '2 per room', price: 6000, status: 'Full', features: ['WiFi', 'Study Area', 'Gym Access'] },
+                          { id: 'h4', name: 'Victoria Falls Wing', type: 'Female', capacity: '1 per room', price: 9500, status: 'Available', features: ['WiFi', 'Premium Lounge', 'Air-con'] },
+                        ].map((h) => (
+                          <div key={h.id} className="sd-hostel-card">
+                            <div className="sd-hostel-img-placeholder">
+                              <i className="fas fa-building"></i>
+                              {h.status === 'Limited' && <span className="sd-hostel-tag-limited">Limited</span>}
+                              {h.status === 'Full' && <span className="sd-hostel-tag-full">Full</span>}
+                            </div>
+                            <div className="sd-hostel-content">
+                              <div className="sd-hostel-row-top">
+                                <span className={`sd-hostel-type-badge ${h.type.toLowerCase()}`}>{h.type}</span>
+                                <span className="sd-hostel-price-tag">{ZMW(h.price)}</span>
+                              </div>
+                              <h3 className="sd-hostel-name">{h.name}</h3>
+                              <p className="sd-hostel-capacity"><i className="fas fa-users"></i> {h.capacity}</p>
+                              <div className="sd-hostel-features">
+                                {h.features.map(f => <span key={f} className="sd-hostel-feat-tag">{f}</span>)}
+                              </div>
+                              <button
+                                className={`sd-btn ${h.status === 'Full' ? 'sd-btn-ghost' : 'sd-btn-primary'} sd-hostel-btn`}
+                                disabled={h.status === 'Full'}
+                                onClick={() => { setSelectedHostel(h); setShowHostelModal(true); }}
+                              >
+                                {h.status === 'Full' ? 'Hostel Full' : 'Book Accomodation'}
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
             </>
           )}
         </main>
@@ -1169,6 +1608,86 @@ const StudentDashboard = () => {
                   </button>
                 </div>
               </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ════════════ HOSTEL BOOKING MODAL ════════════ */}
+      {showHostelModal && (
+        <div className="sd-modal-overlay" onClick={() => setShowHostelModal(false)}>
+          <div className="sd-modal" onClick={e => e.stopPropagation()}>
+            <div className="sd-modal-head">
+              <h3><i className="fas fa-hotel"></i> Confirm Booking</h3>
+              <button className="sd-close-btn" onClick={() => setShowHostelModal(false)}>&times;</button>
+            </div>
+
+            {bookingSuccessMsg ? (
+              <div className="sd-success-msg">
+                <i className="fas fa-check-circle"></i><br />
+                Application Submitted!<br />
+                <small>{bookingSuccessMsg}</small>
+              </div>
+            ) : (
+              <div className="sd-modal-form">
+                <div className="sd-booking-summary">
+                  <div className="sd-bs-item"><span>Selected Hostel:</span><strong>{selectedHostel?.name}</strong></div>
+                  <div className="sd-bs-item"><span>Room Type:</span><strong>{selectedHostel?.capacity}</strong></div>
+                  <div className="sd-bs-item"><span>Semester Fee:</span><strong className="text-credit">{ZMW(selectedHostel?.price || 0)}</strong></div>
+                </div>
+
+                <div className="sd-notice-box">
+                  <i className="fas fa-info-circle"></i>
+                  <p>By clicking confirm, you agree to the university housing terms and conditions. The fee will be added to your outstanding balance.</p>
+                </div>
+
+                <div className="sd-modal-actions">
+                  <button type="button" className="sd-btn sd-btn-ghost" onClick={() => setShowHostelModal(false)}>Cancel</button>
+                  <button
+                    type="button" className="sd-btn sd-btn-primary"
+                    onClick={async () => {
+                      setBookingHostel(true);
+                      // Simulate booking process
+                      setTimeout(async () => {
+                        try {
+                          // Update student record with hostel info
+                          await updateDoc(doc(db, 'students', uid), {
+                            hostelName: selectedHostel.name,
+                            hostelRoom: `Room ${Math.floor(Math.random() * 100) + 101}`,
+                            hostelCleared: false,
+                            updatedAt: serverTimestamp()
+                          });
+
+                          // Add a transaction for the hostel fee
+                          const txCol = collection(db, 'students', uid, 'transactions');
+                          await addDoc(txCol, {
+                            date: new Date().toISOString().split('T')[0],
+                            desc: `Hostel Fee – ${selectedHostel.name}`,
+                            type: 'debit',
+                            amount: selectedHostel.price,
+                            createdAt: serverTimestamp(),
+                          });
+
+                          await loadData();
+                          setBookingSuccessMsg(`Your application for ${selectedHostel.name} has been processed. Access details updated.`);
+                          setTimeout(() => {
+                            setBookingSuccessMsg('');
+                            setShowHostelModal(false);
+                            setActiveTab('home');
+                          }, 3000);
+                        } catch (err) {
+                          alert("Error booking hostel: " + err.message);
+                        } finally {
+                          setBookingHostel(false);
+                        }
+                      }, 1500);
+                    }}
+                    disabled={bookingHostel}
+                  >
+                    {bookingHostel ? <><i className="fas fa-circle-notch fa-spin"></i> Processing…</> : 'Confirm Booking'}
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         </div>

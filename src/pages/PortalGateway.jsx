@@ -36,6 +36,17 @@ const portals = [
     badge: 'Admin Portal',
     features: ['System Management', 'User Control', 'Analytics', 'Settings'],
   },
+  {
+    role: 'Registrar',
+    icon: 'fa-id-badge',
+    route: '/registrar-login',
+    description: 'Academic administration — handle registrations, enrollments, and dockets.',
+    color: '#1e40af',
+    accent: '#3b82f6',
+    gradient: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%)',
+    badge: 'Registrar Portal',
+    features: ['Student Registration', 'Course Enrollment', 'Exam Dockets', 'Academic Records'],
+  },
 ];
 
 const PortalGateway = () => (

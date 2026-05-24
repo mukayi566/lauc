@@ -18,7 +18,7 @@
   --clr-surface: #f8faff;
   --clr-border: #e2e8f4;
   --clr-muted: #64748b;
-  --clr-body: #f2e7e7;
+  --clr-body: #334155;
   --clr-heading: #0f172a;
 
   /* Typography */
@@ -200,8 +200,9 @@ main:has(.hero) {
 }
 
 .navbar-scrolled .nav-links a {
-  color: var(--clr-body) !important;
+  color: var(--clr-blue) !important;
   transition: color 0.4s ease, background 0.4s ease;
+
 }
 
 .navbar-scrolled .nav-links a:hover {
@@ -266,7 +267,7 @@ main:has(.hero) {
 }
 
 .nav-links a {
-  color: var(--clr-body);
+  color: var(--clr-blue);
   text-decoration: none;
   font-weight: 600;
   font-size: 14.5px;
@@ -329,7 +330,8 @@ main:has(.hero) {
 }
 
 .nav-portal-link::after {
-  display: none !important; /* hide the underline pseudo-element */
+  display: none !important;
+  /* hide the underline pseudo-element */
 }
 
 /* Transparent navbar — portal link glassy */
@@ -479,7 +481,7 @@ main:has(.hero) {
   content: '';
   position: absolute;
   inset: 0;
-  background: 
+  background:
     radial-gradient(ellipse 80% 50% at 20% 30%, rgba(13, 43, 94, 0.45) 0%, transparent 60%),
     radial-gradient(ellipse 60% 40% at 80% 70%, rgba(245, 158, 11, 0.22) 0%, transparent 60%),
     linear-gradient(180deg, rgba(13, 43, 94, 0.75) 0%, rgba(13, 43, 94, 0.85) 100%);
@@ -519,7 +521,8 @@ main:has(.hero) {
   margin-bottom: 20px;
   text-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
   color: white;
-  opacity: 1; /* Default visible for standard pages */
+  opacity: 1;
+  /* Default visible for standard pages */
 }
 
 /* Home slider slide-specific initial states */
@@ -541,7 +544,8 @@ main:has(.hero) {
   line-height: 1.75;
   color: rgba(255, 255, 255, 0.92);
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
-  opacity: 1; /* Default visible for standard pages */
+  opacity: 1;
+  /* Default visible for standard pages */
 }
 
 .hero-slide-content .hero-content p {
@@ -557,7 +561,8 @@ main:has(.hero) {
   gap: 16px;
   justify-content: center;
   flex-wrap: wrap;
-  opacity: 1; /* Default visible for standard pages */
+  opacity: 1;
+  /* Default visible for standard pages */
 }
 
 .hero-slide-content .hero-buttons {
@@ -657,6 +662,7 @@ main:has(.hero) {
     opacity: 0;
     transform: translateY(30px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -667,6 +673,7 @@ main:has(.hero) {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -675,7 +682,8 @@ main:has(.hero) {
 /* Curved Wave Divider */
 .hero-divider {
   position: absolute;
-  bottom: -1px; /* slight overlap to prevent subpixel hairline gap */
+  bottom: -1px;
+  /* slight overlap to prevent subpixel hairline gap */
   left: 0;
   right: 0;
   width: 100%;
@@ -964,7 +972,7 @@ main:has(.hero) {
 
 .scholarship-item {
   background: white;
-  color: var(--clr-body);
+  color: var(--clr-heading);
   padding: 24px 20px;
   border-radius: var(--radius-md);
   font-weight: 600;
@@ -1133,7 +1141,7 @@ main:has(.hero) {
 .blog-image {
   width: 100%;
   height: 185px;
-  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  background: var(--grad-brand);
 }
 
 .blog-content {
@@ -1142,7 +1150,7 @@ main:has(.hero) {
 
 .blog-date {
   font-size: 12px;
-  color: #2a5298;
+  color: var(--clr-blue-mid);
   font-weight: 600;
   margin-bottom: 10px;
 }
@@ -1150,20 +1158,20 @@ main:has(.hero) {
 .blog-title {
   font-size: 16px;
   font-weight: 700;
-  color: #1e3c72;
+  color: var(--clr-blue);
   margin-bottom: 10px;
   line-height: 1.4;
 }
 
 .blog-excerpt {
-  color: #666;
+  color: var(--clr-muted);
   font-size: 14px;
   line-height: 1.7;
   margin-bottom: 15px;
 }
 
 .read-more {
-  color: #2a5298;
+  color: var(--clr-blue-mid);
   text-decoration: none;
   font-weight: 600;
   transition: color 0.3s;
@@ -1171,7 +1179,7 @@ main:has(.hero) {
 }
 
 .read-more:hover {
-  color: #1e3c72;
+  color: var(--clr-blue);
 }
 
 /* ============ ABOUT GRID ============ */
@@ -1184,13 +1192,13 @@ main:has(.hero) {
 
 .about-text h2 {
   font-size: 30px;
-  color: #1e3c72;
+  color: var(--clr-blue);
   margin-bottom: 18px;
   font-weight: 700;
 }
 
 .about-text p {
-  color: #666;
+  color: var(--clr-muted);
   margin-bottom: 15px;
   line-height: 1.9;
   font-size: 15px;
@@ -1809,7 +1817,8 @@ main:has(.hero) {
     display: none;
     flex-direction: column;
     position: absolute;
-    top: 64px; /* match nav-container height */
+    top: 64px;
+    /* match nav-container height */
     left: 0;
     right: 0;
     background: linear-gradient(135deg, #0d2b5e 0%, #1e3c72 100%);
@@ -1850,7 +1859,8 @@ main:has(.hero) {
   }
 
   .nav-links a::after {
-    display: none; /* hide underline indicator on mobile */
+    display: none;
+    /* hide underline indicator on mobile */
   }
 
   /* Hide desktop-only CTA buttons, keep hamburger visible */

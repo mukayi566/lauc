@@ -14,17 +14,28 @@ import { useAuth } from '../contexts/AuthContext';
  *  - Logged in but wrong role → redirect to their correct dashboard
  *  - Correct role → render children
  */
+import { getSubdomain } from '../utils/subdomain';
+
 const roleRouteMap = {
-  admin:   '/admin-dashboard',
-  staff:   '/staff-dashboard',
+  admin: '/admin-dashboard',
+  staff: '/staff-dashboard',
   student: '/student-dashboard',
+  registrar: '/registrar-dashboard',
 };
 
 const ProtectedRoute = ({ allowedRoles, children }) => {
   const { currentUser, userRole } = useAuth();
+  const subdomain = getSubdomain();
 
   if (!currentUser) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Subdomain enforcement:
+  // If we are on a portal subdomain (e.g. staff.lauc.edu), 
+  // ensure the user has that specific role.
+  if (subdomain && subdomain !== userRole) {
+    return <Navigate to="/login" state={{ error: `Access Denied: This subdomain is for ${subdomain}s only.` }} replace />;
   }
 
   if (allowedRoles && !allowedRoles.includes(userRole)) {

@@ -8,13 +8,17 @@ import Layout from '../components/Layout';
 import toast from 'react-hot-toast';
 
 const Login = () => {
+  const [view, setView] = useState('login'); // 'login' or 'forgot'
   const [form, setForm] = useState({ email: '', password: '', role: 'student' });
+  const [resetEmail, setResetEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
+
   const navigate = useNavigate();
   const location = useLocation();
-  const { currentUser, userRole, signOut } = useAuth();
+  const { currentUser, userRole, signOut, resetPassword } = useAuth();
 
   // Handle errors or tab selection passed from other pages
   useEffect(() => {
@@ -24,7 +28,7 @@ const Login = () => {
       signOut();
       navigate(location.pathname, { replace: true, state: {} });
     }
-    
+
     // Set active tab if passed in state
     if (location.state?.role) {
       setForm(prev => ({ ...prev, role: location.state.role }));
@@ -34,12 +38,12 @@ const Login = () => {
   // If already logged in, redirect to the correct dashboard
   useEffect(() => {
     // Only redirect if we are NOT currently in the middle of a login attempt
-    if (currentUser && userRole && !loading) {
-      if (userRole === 'admin')        navigate('/admin-dashboard', { replace: true });
-      else if (userRole === 'staff')   navigate('/staff-dashboard', { replace: true });
-      else                             navigate('/student-dashboard', { replace: true });
+    if (currentUser && userRole && !loading && view === 'login') {
+      if (userRole === 'admin') navigate('/admin-dashboard', { replace: true });
+      else if (userRole === 'staff') navigate('/staff-dashboard', { replace: true });
+      else navigate('/student-dashboard', { replace: true });
     }
-  }, [currentUser, userRole, navigate, loading]);
+  }, [currentUser, userRole, navigate, loading, view]);
 
   const roleConfig = {
     student: {
@@ -89,7 +93,24 @@ const Login = () => {
       case 'auth/network-request-failed':
         return 'Network error. Please check your internet connection.';
       default:
-        return 'Login failed. Please check your credentials.';
+        return 'Operation failed. Please try again.';
+    }
+  };
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    if (!resetEmail) return;
+    setLoading(true);
+    setError('');
+    setSuccessMsg('');
+    try {
+      await resetPassword(resetEmail);
+      setSuccessMsg('Password reset link sent! Please check your inbox.');
+      toast.success('Reset email sent!');
+    } catch (err) {
+      setError(getFirebaseErrorMessage(err.code));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -105,16 +126,16 @@ const Login = () => {
       if (!emailToAuth.includes('@')) {
         // Assume it's an ID
         let foundEmail = null;
-        
+
         // Search in students
         const studentQuery = query(collection(db, 'students'), where('id', '==', emailToAuth));
-        const studentSnap  = await getDocs(studentQuery);
+        const studentSnap = await getDocs(studentQuery);
         if (!studentSnap.empty) {
           foundEmail = studentSnap.docs[0].data().email;
         } else {
           // Search in lecturers
           const lecturerQuery = query(collection(db, 'lecturers'), where('id', '==', emailToAuth));
-          const lecturerSnap  = await getDocs(lecturerQuery);
+          const lecturerSnap = await getDocs(lecturerQuery);
           if (!lecturerSnap.empty) {
             foundEmail = lecturerSnap.docs[0].data().email;
           }
@@ -136,9 +157,9 @@ const Login = () => {
       const user = userCredential.user;
 
       // 3. Fetch role from Firestore (with fallbacks)
-      let role = 'student'; 
+      let role = 'student';
       let userDoc = await getDoc(doc(db, 'users', user.uid));
-      
+
       if (userDoc.exists()) {
         role = userDoc.data().role || 'student';
       } else {
@@ -169,10 +190,10 @@ const Login = () => {
 
       // 5. Redirect to correct dashboard
       toast.success(`Welcome back! Logged in as ${role}`);
-      
-      if (role === 'admin')       navigate('/admin-dashboard');
-      else if (role === 'staff')  navigate('/staff-dashboard');
-      else                        navigate('/student-dashboard');
+
+      if (role === 'admin') navigate('/admin-dashboard');
+      else if (role === 'staff') navigate('/staff-dashboard');
+      else navigate('/student-dashboard');
 
     } catch (err) {
       const msg = getFirebaseErrorMessage(err.code);
@@ -196,135 +217,218 @@ const Login = () => {
             boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
             position: 'relative',
             zIndex: 2,
+            transition: 'all 0.3s ease'
           }}>
-            {/* Logo */}
-            <div style={{ textAlign: 'center', marginBottom: 28 }}>
-              <div style={{ fontSize: 48, color: '#1e3c72', marginBottom: 10 }}>
-                <i className={`fas ${roleConfig[form.role].icon}`}></i>
-              </div>
-              <h2 style={{ fontSize: 24, fontWeight: 800, color: '#1e3c72', margin: 0 }}>Fairview {form.role.charAt(0).toUpperCase() + form.role.slice(1)} Portal</h2>
-              <p style={{ color: '#666', fontSize: 14, marginTop: 6 }}>Sign in to your {form.role} account</p>
-            </div>
-
-            {/* Role Tabs */}
-            <div style={{ display: 'flex', background: '#f8f9fa', borderRadius: 10, padding: 4, marginBottom: 24 }}>
-              {['student', 'staff', 'admin'].map(r => (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => handleRoleChange(r)}
-                  style={{
-                    flex: 1,
-                    padding: '8px 0',
-                    border: 'none',
-                    borderRadius: 8,
-                    fontWeight: 600,
-                    fontSize: 13,
-                    cursor: 'pointer',
-                    background: form.role === r ? 'linear-gradient(135deg, #1e3c72, #2a5298)' : 'transparent',
-                    color: form.role === r ? 'white' : '#666',
-                    transition: 'all 0.2s',
-                    textTransform: 'capitalize',
-                  }}>
-                  {r === 'student' ? 'Student' : r === 'staff' ? 'Staff' : 'Admin'}
-                </button>
-              ))}
-            </div>
-
-            {error && (
-              <div className="alert alert-error" style={{ marginBottom: 18 }}>
-                <i className="fas fa-exclamation-circle"></i> {error}
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit}>
-              <div className="form-group" style={{ marginBottom: 16 }}>
-                <label htmlFor="login-email">{roleConfig[form.role].label}</label>
-                <div style={{ position: 'relative' }}>
-                  <i className={`fas ${roleConfig[form.role].inputIcon}`} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#2a5298', fontSize: 14 }}></i>
-                  <input
-                    type="text"
-                    id="login-email"
-                    name="email"
-                    value={form.email}
-                    onChange={handleChange}
-                    required
-                    placeholder={roleConfig[form.role].placeholder}
-                    style={{ paddingLeft: 38 }}
-                    autoComplete="username"
-                  />
+            {view === 'login' ? (
+              <>
+                {/* Logo */}
+                <div style={{ textAlign: 'center', marginBottom: 28 }}>
+                  <div style={{ fontSize: 48, color: '#1e3c72', marginBottom: 10 }}>
+                    <i className={`fas ${roleConfig[form.role].icon}`}></i>
+                  </div>
+                  <h2 style={{ fontSize: 24, fontWeight: 800, color: '#1e3c72', margin: 0 }}>Fairview {form.role.charAt(0).toUpperCase() + form.role.slice(1)} Portal</h2>
+                  <p style={{ color: '#666', fontSize: 14, marginTop: 6 }}>Sign in to your {form.role} account</p>
                 </div>
-              </div>
 
-              <div className="form-group" style={{ marginBottom: 22 }}>
-                <label htmlFor="login-password">Password</label>
-                <div style={{ position: 'relative' }}>
-                  <i className="fas fa-lock" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#2a5298', fontSize: 14 }}></i>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    id="login-password"
-                    name="password"
-                    value={form.password}
-                    onChange={handleChange}
-                    required
-                    placeholder="Enter your password"
-                    style={{ paddingLeft: 38, paddingRight: 40 }}
-                    autoComplete="current-password"
-                  />
+                {/* Role Tabs */}
+                <div style={{ display: 'flex', background: '#f8f9fa', borderRadius: 10, padding: 4, marginBottom: 24 }}>
+                  {['student', 'staff', 'admin'].map(r => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => handleRoleChange(r)}
+                      style={{
+                        flex: 1,
+                        padding: '8px 0',
+                        border: 'none',
+                        borderRadius: 8,
+                        fontWeight: 600,
+                        fontSize: 13,
+                        cursor: 'pointer',
+                        background: form.role === r ? 'linear-gradient(135deg, #1e3c72, #2a5298)' : 'transparent',
+                        color: form.role === r ? 'white' : '#666',
+                        transition: 'all 0.2s',
+                        textTransform: 'capitalize',
+                      }}>
+                      {r === 'student' ? 'Student' : r === 'staff' ? 'Staff' : 'Admin'}
+                    </button>
+                  ))}
+                </div>
+
+                {error && (
+                  <div className="alert alert-error" style={{ marginBottom: 18 }}>
+                    <i className="fas fa-exclamation-circle"></i> {error}
+                  </div>
+                )}
+
+                <form onSubmit={handleSubmit}>
+                  <div className="form-group" style={{ marginBottom: 16 }}>
+                    <label htmlFor="login-email">{roleConfig[form.role].label}</label>
+                    <div style={{ position: 'relative' }}>
+                      <i className={`fas ${roleConfig[form.role].inputIcon}`} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#2a5298', fontSize: 14 }}></i>
+                      <input
+                        type="text"
+                        id="login-email"
+                        name="email"
+                        value={form.email}
+                        onChange={handleChange}
+                        required
+                        placeholder={roleConfig[form.role].placeholder}
+                        style={{ paddingLeft: 38 }}
+                        autoComplete="username"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: 22 }}>
+                    <label htmlFor="login-password">Password</label>
+                    <div style={{ position: 'relative' }}>
+                      <i className="fas fa-lock" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#2a5298', fontSize: 14 }}></i>
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        id="login-password"
+                        name="password"
+                        value={form.password}
+                        onChange={handleChange}
+                        required
+                        placeholder="Enter your password"
+                        style={{ paddingLeft: 38, paddingRight: 40 }}
+                        autoComplete="current-password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        style={{
+                          position: 'absolute',
+                          right: 12,
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          background: 'none',
+                          border: 'none',
+                          color: '#666',
+                          cursor: 'pointer',
+                          padding: '4px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: 16,
+                          zIndex: 3
+                        }}
+                        title={showPassword ? "Hide password" : "Show password"}
+                      >
+                        <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                      </button>
+                    </div>
+                    <div style={{ textAlign: 'right', marginTop: 10 }}>
+                      <button
+                        type="button"
+                        onClick={() => { setView('forgot'); setError(''); setSuccessMsg(''); setResetEmail(form.email); }}
+                        style={{ background: 'none', border: 'none', padding: 0, fontSize: 12, color: '#2a5298', cursor: 'pointer', fontWeight: 600 }}>
+                        Forgot password?
+                      </button>
+                    </div>
+                  </div>
+
                   <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
+                    type="submit"
+                    disabled={loading}
                     style={{
-                      position: 'absolute',
-                      right: 12,
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      background: 'none',
+                      width: '100%',
+                      padding: '13px',
+                      background: 'linear-gradient(135deg, #1e3c72, #2a5298)',
+                      color: 'white',
                       border: 'none',
-                      color: '#666',
-                      cursor: 'pointer',
-                      padding: '4px',
+                      borderRadius: 8,
+                      fontWeight: 700,
+                      fontSize: 15,
+                      cursor: loading ? 'not-allowed' : 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontSize: 16,
-                      zIndex: 3
-                    }}
-                    title={showPassword ? "Hide password" : "Show password"}
-                  >
-                    <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                      gap: 10,
+                      transition: 'all 0.3s',
+                      opacity: loading ? 0.8 : 1,
+                    }}>
+                    {loading
+                      ? <><i className="fas fa-spinner fa-spin"></i> Signing in...</>
+                      : <><i className="fas fa-sign-in-alt"></i> Sign In</>}
                   </button>
+                </form>
+              </>
+            ) : (
+              <>
+                {/* Forgot Password View */}
+                <div style={{ textAlign: 'center', marginBottom: 28 }}>
+                  <div style={{ fontSize: 48, color: '#f59e0b', marginBottom: 10 }}>
+                    <i className="fas fa-key"></i>
+                  </div>
+                  <h2 style={{ fontSize: 24, fontWeight: 800, color: '#1e3c72', margin: 0 }}>Reset Password</h2>
+                  <p style={{ color: '#666', fontSize: 14, marginTop: 6 }}>Enter your email to receive a reset link</p>
                 </div>
-                <div style={{ textAlign: 'right', marginTop: 6 }}>
-                  <Link to="/forgot-password" style={{ fontSize: 12, color: '#2a5298', textDecoration: 'none', fontWeight: 600 }}>Forgot password?</Link>
-                </div>
-              </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                style={{
-                  width: '100%',
-                  padding: '13px',
-                  background: 'linear-gradient(135deg, #1e3c72, #2a5298)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 8,
-                  fontWeight: 700,
-                  fontSize: 15,
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 10,
-                  transition: 'all 0.3s',
-                  opacity: loading ? 0.8 : 1,
-                }}>
-                {loading
-                  ? <><i className="fas fa-spinner fa-spin"></i> Signing in...</>
-                  : <><i className="fas fa-sign-in-alt"></i> Sign In</>}
-              </button>
-            </form>
+                {error && (
+                  <div className="alert alert-error" style={{ marginBottom: 18 }}>
+                    <i className="fas fa-exclamation-circle"></i> {error}
+                  </div>
+                )}
+                {successMsg && (
+                  <div className="alert alert-success" style={{ marginBottom: 18, background: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0' }}>
+                    <i className="fas fa-check-circle"></i> {successMsg}
+                  </div>
+                )}
+
+                <form onSubmit={handleResetPassword}>
+                  <div className="form-group" style={{ marginBottom: 22 }}>
+                    <label>Registration Email</label>
+                    <div style={{ position: 'relative' }}>
+                      <i className="fas fa-envelope" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#2a5298', fontSize: 14 }}></i>
+                      <input
+                        type="email"
+                        value={resetEmail}
+                        onChange={(e) => setResetEmail(e.target.value)}
+                        required
+                        placeholder="e.g. name@example.com"
+                        style={{ paddingLeft: 38 }}
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    style={{
+                      width: '100%',
+                      padding: '13px',
+                      background: 'linear-gradient(135deg, #1e3c72, #2a5298)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 8,
+                      fontWeight: 700,
+                      fontSize: 15,
+                      cursor: loading ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 10,
+                      transition: 'all 0.3s',
+                      opacity: loading ? 0.8 : 1,
+                    }}>
+                    {loading
+                      ? <><i className="fas fa-spinner fa-spin"></i> Sending...</>
+                      : <><i className="fas fa-paper-plane"></i> Send Reset Link</>}
+                  </button>
+
+                  <div style={{ textAlign: 'center', marginTop: 20 }}>
+                    <button
+                      type="button"
+                      onClick={() => { setView('login'); setError(''); setSuccessMsg(''); }}
+                      style={{ background: 'none', border: 'none', color: '#666', fontSize: 14, cursor: 'pointer', fontWeight: 600 }}>
+                      <i className="fas fa-arrow-left" style={{ marginRight: 6 }}></i> Back to Login
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
 
             <div style={{ textAlign: 'center', marginTop: 24, paddingTop: 20, borderTop: '1px solid #f0f0f0' }}>
               <p style={{ fontSize: 14, color: '#666' }}>

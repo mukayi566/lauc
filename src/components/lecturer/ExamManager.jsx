@@ -116,46 +116,46 @@ const EditableQuestionCard = ({ question, index, onSave, onDelete }) => {
 
       <div style={{ ...sectionCardStyle, marginTop: 12 }}>
         <div style={responsiveFieldGrid}>
-        <div>
-          <label>Type</label>
-          <select
-            value={draft.type}
-            onChange={(e) => setDraft((prev) => ({ ...prev, type: e.target.value }))}
-          >
-            {QUESTION_TYPES.map((type) => (
-              <option key={type.value} value={type.value}>{type.label}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label>Correct Answer</label>
-          {usesTrueFalse ? (
+          <div>
+            <label>Type</label>
             <select
-              value={draft.correctAnswer}
-              onChange={(e) => setDraft((prev) => ({ ...prev, correctAnswer: e.target.value }))}
+              value={draft.type}
+              onChange={(e) => setDraft((prev) => ({ ...prev, type: e.target.value }))}
             >
-              <option value="True">True</option>
-              <option value="False">False</option>
+              {QUESTION_TYPES.map((type) => (
+                <option key={type.value} value={type.value}>{type.label}</option>
+              ))}
             </select>
-          ) : (
-            <textarea
-              value={draft.correctAnswer}
-              onChange={(e) => setDraft((prev) => ({ ...prev, correctAnswer: e.target.value }))}
-              style={{ width: '100%', padding: 10, borderRadius: 10, border: '2px solid #e2e8f0', minHeight: usesTextAnswer ? 80 : 48, resize: 'vertical' }}
-              placeholder={draft.type === 'checkbox' ? 'One correct option per line' : 'Correct answer'}
+          </div>
+          <div>
+            <label>Correct Answer</label>
+            {usesTrueFalse ? (
+              <select
+                value={draft.correctAnswer}
+                onChange={(e) => setDraft((prev) => ({ ...prev, correctAnswer: e.target.value }))}
+              >
+                <option value="True">True</option>
+                <option value="False">False</option>
+              </select>
+            ) : (
+              <textarea
+                value={draft.correctAnswer}
+                onChange={(e) => setDraft((prev) => ({ ...prev, correctAnswer: e.target.value }))}
+                style={{ width: '100%', padding: 10, borderRadius: 10, border: '2px solid #e2e8f0', minHeight: usesTextAnswer ? 80 : 48, resize: 'vertical' }}
+                placeholder={draft.type === 'checkbox' ? 'One correct option per line' : 'Correct answer'}
+              />
+            )}
+          </div>
+          <div>
+            <label>Marks</label>
+            <input
+              type="number"
+              min="1"
+              value={draft.marks}
+              onChange={(e) => setDraft((prev) => ({ ...prev, marks: e.target.value }))}
             />
-          )}
+          </div>
         </div>
-        <div>
-          <label>Marks</label>
-          <input
-            type="number"
-            min="1"
-            value={draft.marks}
-            onChange={(e) => setDraft((prev) => ({ ...prev, marks: e.target.value }))}
-          />
-        </div>
-      </div>
       </div>
 
       <div style={{ ...sectionCardStyle, marginTop: 12 }}>

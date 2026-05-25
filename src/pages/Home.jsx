@@ -3,10 +3,23 @@ import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { db } from '../firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
+import { useAuth } from '../contexts/AuthContext';
 
 const Home = () => {
+  const { currentUser, userRole } = useAuth();
   const [enrollment, setEnrollment] = useState({});
   const [currentSlide, setCurrentSlide] = useState(0);
+
+  const getDashboardLink = () => {
+    if (userRole === 'admin') return '/admin-dashboard';
+    if (userRole === 'staff') return '/staff-dashboard';
+    if (userRole === 'registrar') return '/registrar-dashboard';
+    return '/student-dashboard';
+  };
+
+  const loginLink = currentUser ? getDashboardLink() : '/login';
+  const loginText = currentUser ? 'My Dashboard' : 'Login';
+  const portalText = currentUser ? 'My Dashboard' : 'Student Portal';
 
   const slides = [
     {
@@ -16,9 +29,9 @@ const Home = () => {
       btn1Text: 'Apply Now',
       btn1Link: '/admissions#apply',
       btn1Icon: 'fa-file-alt',
-      btn2Text: 'Login',
-      btn2Link: '/login',
-      btn2Icon: 'fa-sign-in-alt',
+      btn2Text: loginText,
+      btn2Link: loginLink,
+      btn2Icon: currentUser ? 'fa-th-large' : 'fa-sign-in-alt',
       btn2Class: 'btn-secondary'
     },
     {
@@ -52,9 +65,9 @@ const Home = () => {
       btn1Text: 'Apply Now',
       btn1Link: '/admissions#apply',
       btn1Icon: 'fa-file-alt',
-      btn2Text: 'Student Portal',
-      btn2Link: '/login',
-      btn2Icon: 'fa-user-lock',
+      btn2Text: portalText,
+      btn2Link: loginLink,
+      btn2Icon: currentUser ? 'fa-th-large' : 'fa-user-lock',
       btn2Class: 'btn-outline'
     }
   ];
@@ -372,8 +385,8 @@ const Home = () => {
           <h2 className="scholarship-title">Ready to Transform Your Future?</h2>
           <p style={{ fontSize: 16, color: '#333', marginBottom: 28 }}>Join Fairview University College and become part of a vibrant academic community dedicated to your success.</p>
           <div style={{ display: 'flex', gap: 15, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link to="/login" className="btn" style={{ background: '#1e3c72', color: 'white' }}>
-              <i className="fas fa-sign-in-alt"></i> Login
+            <Link to={loginLink} className="btn" style={{ background: '#1e3c72', color: 'white' }}>
+              <i className={`fas ${currentUser ? 'fa-th-large' : 'fa-sign-in-alt'}`}></i> {loginText}
             </Link>
             <Link to="/admissions#apply" className="btn btn-secondary">
               <i className="fas fa-file-alt"></i> Apply Now

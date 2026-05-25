@@ -94,7 +94,7 @@ const Login = () => {
       case 'auth/network-request-failed':
         return 'Network error. Please check your internet connection.';
       default:
-        return 'Operation failed. Please try again.';
+        return 'No internet connection. Please try again.';
     }
   };
 

@@ -79,7 +79,7 @@ const RegistrarDashboard = () => {
     useEffect(() => {
         // Listen for all students
         const unsubStudents = onSnapshot(collection(db, 'students'), (snap) => {
-            setStudents(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+            setStudents(snap.docs.map(d => ({ docId: d.id, ...d.data() })));
             setLoading(false);
         }, (err) => {
             console.error('Students listener error:', err);
@@ -159,10 +159,10 @@ const RegistrarDashboard = () => {
         setEnrolling(true);
 
         try {
-            const studentId = selectedStudent.id;
+            const studentDocId = selectedStudent.docId;
             const batch = selectedCourses.map(courseCode => {
                 const course = courses.find(c => (c.code || c.id) === courseCode);
-                return addDoc(collection(db, 'students', studentId, 'courses'), {
+                return addDoc(collection(db, 'students', studentDocId, 'courses'), {
                     ...course,
                     enrolledAt: serverTimestamp(),
                     status: 'Ongoing'
@@ -174,7 +174,7 @@ const RegistrarDashboard = () => {
             // Also update the student's top-level enrolledIn array for easy filtering
             const currentEnrolled = selectedStudent.enrolledIn || [];
             const updatedEnrolled = [...new Set([...currentEnrolled, ...selectedCourses])];
-            await updateDoc(doc(db, 'students', studentId), {
+            await updateDoc(doc(db, 'students', selectedStudent.docId), {
                 enrolledIn: updatedEnrolled
             });
 

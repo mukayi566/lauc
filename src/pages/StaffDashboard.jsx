@@ -7,7 +7,7 @@ import ExamManager from '../components/lecturer/ExamManager';
 import {
   collection, query, where, onSnapshot,
   doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc,
-  serverTimestamp, orderBy
+  serverTimestamp, orderBy, collectionGroup
 } from 'firebase/firestore';
 import '../dashboards.css';
 
@@ -191,17 +191,17 @@ const StaffDashboard = () => {
         for (const batch of batches) {
           const q = query(collection(db, 'students'), where('enrolledIn', 'array-contains-any', batch));
           const snap = await getDocs(q);
-          enrolledStudents = [...enrolledStudents, ...snap.docs.map(d => ({ id: d.id, ...d.data() }))];
+          enrolledStudents = [...enrolledStudents, ...snap.docs.map(d => ({ docId: d.id, ...d.data() }))];
         }
 
         // Remove duplicates
         const studentMap = new Map();
-        enrolledStudents.forEach(s => studentMap.set(s.id, s));
+        enrolledStudents.forEach(s => studentMap.set(s.docId, s));
 
         // 2. Fallback: For students who don't have enrolledIn set (legacy or self-registered before fix)
         // We still fetch all students but we only check those not already found
         const allStudentsSnap = await getDocs(collection(db, 'students'));
-        const allStudents = allStudentsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const allStudents = allStudentsSnap.docs.map(d => ({ docId: d.id, ...d.data() }));
 
         const matched = Array.from(studentMap.values()).map(s => ({
           ...s,
@@ -209,29 +209,35 @@ const StaffDashboard = () => {
           course: (s.enrolledIn || []).find(code => courseKeySet.has(String(code).toUpperCase())) || codes[0]
         }));
 
-        const matchedIds = new Set(matched.map(s => s.id));
+        const matchedIds = new Set(matched.map(s => s.docId));
 
-        // Check remaining students via sub-collection
-        for (const student of allStudents) {
-          if (matchedIds.has(student.id)) continue;
+        // 3. Ultra-fallback: Use collectionGroup if supported (can find all students by lecturerId in one go)
+        // We do this to ensure we don't miss anyone even if enrolledIn or hierarchies are messy
+        try {
+          const groupQuery = query(collectionGroup(db, 'courses'), where('lecturerId', '==', uid));
+          const groupSnap = await getDocs(groupQuery);
 
-          const studentCoursesSnap = await getDocs(collection(db, 'students', student.id, 'courses'));
-          const studentCourseKeys = studentCoursesSnap.docs.flatMap(d => {
-            const data = d.data();
-            return [data.code, data.id, data.courseId, data.courseCode].filter(Boolean);
-          }).map(v => String(v).trim().toUpperCase());
-
-          const matchingKeys = studentCourseKeys.filter(key => courseKeySet.has(key));
-
-          if (matchingKeys.length > 0) {
-            matched.push({
-              ...student,
-              enrolledIn: matchingKeys,
-              course: matchingKeys[0],
-            });
+          for (const docSnap of groupSnap.docs) {
+            const studentRef = docSnap.ref.parent.parent;
+            if (studentRef && studentRef.id && !matchedIds.has(studentRef.id)) {
+              const sSnap = await getDoc(studentRef);
+              if (sSnap.exists()) {
+                const sData = sSnap.data();
+                matched.push({
+                  docId: sSnap.id,
+                  ...sData,
+                  enrolledIn: (sData.enrolledIn || []).concat([docSnap.data().code || docSnap.data().id]).filter(Boolean),
+                  course: docSnap.data().code || docSnap.data().id
+                });
+                matchedIds.add(sSnap.id);
+              }
+            }
           }
+        } catch (cgErr) {
+          console.warn('CollectionGroup query failed (likely needs index):', cgErr);
         }
-        
+
+        console.log(`Loaded ${matched.length} students for lecturer ${uid}`);
         setStudents(matched);
       } catch (err) {
         console.error('Error loading students:', err);
@@ -329,7 +335,7 @@ const StaffDashboard = () => {
 
       // 3. Push to each student's notifications sub-collection
       const notifyPromises = targetStudents.map(student => {
-        return addDoc(collection(db, 'students', student.id, 'notifications'), {
+        return addDoc(collection(db, 'students', student.docId, 'notifications'), {
           title: newAnn.title,
           text: newAnn.content,
           type: newAnn.status === 'Urgent' ? 'alert' : 'info',
@@ -389,7 +395,7 @@ const StaffDashboard = () => {
     name: lecturerData?.name || currentUser?.displayName || 'Loading...',
     role: lecturerData?.role || lecturerData?.department || 'Lecturer',
     email: lecturerData?.email || currentUser?.email || '—',
-    id: lecturerData?.staffId || lecturerData?.docId || '—',
+    id: lecturerData?.id || lecturerData?.staffId || lecturerData?.docId || '—',
   };
 
   const displayInitials = lecturer.name !== 'Loading...'
@@ -411,9 +417,9 @@ const StaffDashboard = () => {
     return (
       (s.name || '').toLowerCase().includes(q) ||
       (s.studentId || '').toLowerCase().includes(q) ||
-      (s.student_id || '').toLowerCase().includes(q) ||
+      (s.id || '').toLowerCase().includes(q) ||
       (s.email || '').toLowerCase().includes(q) ||
-      (s.id || '').toLowerCase().includes(q)
+      (s.docId || '').toLowerCase().includes(q)
     );
   });
 
@@ -616,7 +622,7 @@ const StaffDashboard = () => {
                       </div>
                       <div className="sd-card-body" style={{ padding: 0 }}>
                         {students.slice(0, 4).map(s => (
-                          <div key={s.id} className="sd-notif-row">
+                          <div key={s.docId || s.id} className="sd-notif-row">
                             <div className="sd-avatar-xl" style={{ width: 35, height: 35, fontSize: 12 }}>
                               {(s.name || 'S').charAt(0).toUpperCase()}
                             </div>
@@ -709,7 +715,7 @@ const StaffDashboard = () => {
                               <tr key={course.id}>
                                 <td><span className="sd-code">{course.code}</span></td>
                                 <td className="sd-td-bold">{course.name}</td>
-                                <td>{students.filter(s => s.enrolledIn?.includes(course.code)).length}</td>
+                                <td>{students.filter(s => (s.enrolledIn || []).some(c => String(c).toUpperCase() === String(course.code || course.id).toUpperCase())).length}</td>
                                 <td>{course.semester}</td>
                                 <td><Badge status={course.status} /></td>
                                 <td>
@@ -781,7 +787,7 @@ const StaffDashboard = () => {
                           </thead>
                           <tbody>
                             {filteredStudents.map(student => (
-                              <tr key={student.id}>
+                              <tr key={student.docId || student.id}>
                                 <td className="sd-td-bold">
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                     <div style={{ width: 30, height: 30, borderRadius: '50%', background: '#7c3aed22', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12 }}>
@@ -984,7 +990,7 @@ const StaffDashboard = () => {
                   <option value="Canceled">Canceled</option>
                 </select>
                 <label>Students Enrolled</label>
-                <input type="text" readOnly value={`${students.filter(s => s.enrolledIn?.includes(selectedCourse.code)).length} student(s)`} style={{ background: '#f8fafc' }} />
+                <input type="text" readOnly value={`${students.filter(s => (s.enrolledIn || []).some(c => String(c).toUpperCase() === String(selectedCourse.code || selectedCourse.id).toUpperCase())).length} student(s)`} style={{ background: '#f8fafc' }} />
                 <label>Semester</label>
                 <input type="text" readOnly value={selectedCourse.semester} style={{ background: '#f8fafc' }} />
               </div>

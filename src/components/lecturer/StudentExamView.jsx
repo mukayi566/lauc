@@ -57,7 +57,7 @@ const StudentExamView = ({
           : course;
       });
 
-      const loaded = await getStudentExams(resolvedCourses, student.id);
+      const loaded = await getStudentExams(resolvedCourses, student.uid || student.id);
       setExams(loaded);
     } catch (err) {
       console.error(err);

@@ -11,6 +11,7 @@ import { db } from '../firebase';
 import '../dashboards.css';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import toast from 'react-hot-toast';
 import StudentExamView from '../components/lecturer/StudentExamView';
 
 /* ─────────────────────────────────────────────────────────────────
@@ -293,7 +294,7 @@ const StudentDashboard = () => {
   const handleUpdatePassword = async (e) => {
     e.preventDefault();
     if (passForm.new !== passForm.confirm) {
-      alert("Passwords do not match");
+      toast.error("Passwords do not match");
       return;
     }
     try {
@@ -310,13 +311,13 @@ const StudentDashboard = () => {
       setProfile(prev => ({ ...prev, mustChangePassword: false }));
       setShowPasswordForce(false);
       setPassForm({ new: '', confirm: '' });
-      alert("Password updated successfully!");
+      toast.success("Password updated successfully!");
     } catch (err) {
       console.error(err);
       if (err.code === 'auth/requires-recent-login') {
-        alert('For security reasons, please log out and log back in before changing your password.');
+        toast.error('For security reasons, please log out and log back in before changing your password.');
       } else {
-        alert("Error updating password: " + err.message);
+        toast.error("Error updating password: " + err.message);
       }
     }
   };
@@ -395,7 +396,7 @@ const StudentDashboard = () => {
         } catch (err) {
           console.error('Pay error:', err);
           setPayStep(1);
-          alert("Error processing payment. Please try again.");
+          toast.error("Error processing payment. Please try again.");
         } finally {
           setPayingFee(false);
           clearInterval(interval);
@@ -508,6 +509,7 @@ const StudentDashboard = () => {
 
   /* ── derived values ── */
   const student = {
+    uid: uid,
     name: profile?.name || currentUser?.displayName || 'Student',
     email: profile?.email || currentUser?.email || '—',
     initials: (profile?.name || currentUser?.displayName || 'ST')
@@ -521,7 +523,7 @@ const StudentDashboard = () => {
     phone: profile?.phone || '—',
   };
 
-  const creditHours = courses.reduce((s, c) => s + (Number(c.units) || 0), 0);
+  const creditHours = courses.reduce((s, c) => s + (Number(c.credits || c.units) || 0), 0);
 
   /* ══ Nav items ══ */
   const navItems = [
@@ -560,7 +562,7 @@ const StudentDashboard = () => {
       pdf.save(`ExamDocket_${student.id}_${examDocket?.semester?.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
     } catch (err) {
       console.error('PDF error:', err);
-      alert('Could not generate PDF. Please try print instead.');
+      toast.error('Could not generate PDF. Please try again.');
     } finally {
       setGeneratingPdf(false);
     }
@@ -741,6 +743,7 @@ const StudentDashboard = () => {
                             ['School', student.school],
                             ['Level', student.level],
                             ['Status', student.status],
+                            ['Credit Hours', creditHours],
                             ['CGPA', cgpa],
                           ].map(([k, v]) => (
                             <div className="sd-kv" key={k}>
@@ -827,15 +830,15 @@ const StudentDashboard = () => {
                         : (
                           <table className="sd-table">
                             <thead>
-                              <tr><th>Code</th><th>Course Name</th><th>Units</th><th>Lecturer</th><th>Grade</th><th>Status</th></tr>
+                              <tr><th>Code</th><th>Course Name</th><th>Lecturer</th><th>Credits</th><th>Grade</th><th>Status</th></tr>
                             </thead>
                             <tbody>
                               {courses.map(c => (
                                 <tr key={c.id}>
                                   <td><span className="sd-code">{c.code}</span></td>
                                   <td className="sd-td-bold">{c.name}</td>
-                                  <td>{c.units}</td>
                                   <td>{c.lecturer}</td>
+                                  <td>{c.credits || c.units || '—'}</td>
                                   <td><span className="sd-grade">{c.grade}</span></td>
                                   <td><Badge status={c.status} /></td>
                                 </tr>
@@ -1231,42 +1234,44 @@ const StudentDashboard = () => {
                             </div>
                           </div>
 
-                          {/* Student Info */}
-                          <div className="sd-docket-info-grid">
-                            {[
-                              ['Full Name', student.name],
-                              ['Student ID', student.id],
-                              ['Programme', student.program || profile?.program || '—'],
-                              ['School', student.school || profile?.school || '—'],
-                              ['Academic Year', examDocket?.academicYear],
-                              ['Semester', examDocket?.semester],
-                            ].map(([k, v]) => (
-                              <div key={k} className="sd-docket-info-item">
-                                <span className="sd-docket-info-key">{k}</span>
-                                <span className="sd-docket-info-val">{v || '—'}</span>
-                              </div>
-                            ))}
-                          </div>
-
-                          {/* Identification Images */}
-                          <div className="sd-docket-ident-images">
-                            <div className="sd-docket-ident-item">
-                              <div className="sd-docket-ident-label">Registrar Capture</div>
-                              <div className="sd-docket-ident-box">
-                                {profile?.registrarPhotoUrl ? (
-                                  <img src={profile.registrarPhotoUrl} alt="Registrar Capture" className="sd-docket-ident-img" />
-                                ) : (
-                                  <div className="sd-docket-ident-placeholder"><i className="fas fa-camera"></i></div>
-                                )}
-                              </div>
+                          {/* Student Info & Photo Section */}
+                          <div style={{ display: 'flex', borderBottom: '1px solid #e8edf4' }}>
+                            <div className="sd-docket-info-grid" style={{ flex: 1, borderBottom: 'none' }}>
+                              {[
+                                ['Full Name', student.name],
+                                ['Student ID', student.id],
+                                ['Passport / NRC No.', profile?.nrcNumber || profile?.nrc || profile?.passportNumber || profile?.nrcPassportNumber || '—'],
+                                ['Programme', student.program || profile?.program || '—'],
+                                ['School', student.school || profile?.school || '—'],
+                                ['Academic Year', examDocket?.academicYear],
+                                ['Semester', examDocket?.semester],
+                                ['Total Credit Hours', creditHours],
+                              ].map(([k, v]) => (
+                                <div key={k} className="sd-docket-info-item">
+                                  <span className="sd-docket-info-key">{k}</span>
+                                  <span className="sd-docket-info-val">{v || '—'}</span>
+                                </div>
+                              ))}
                             </div>
-                            <div className="sd-docket-ident-item">
-                              <div className="sd-docket-ident-label">PassPort / NRC</div>
-                              <div className="sd-docket-ident-box">
-                                {profile?.nrcPassportUrl ? (
-                                  <img src={profile.nrcPassportUrl} alt="NRC / Passport" className="sd-docket-ident-img" crossOrigin="anonymous" />
+
+                            <div className="sd-docket-photo-column" style={{
+                              padding: '24px',
+                              borderLeft: '1px solid #e8edf4',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              background: '#fbfcfd'
+                            }}>
+                              <span className="sd-docket-info-key" style={{ marginBottom: '12px' }}>Registrar Capture</span>
+                              <div className="sd-docket-passport-box">
+                                {profile?.registrarPhotoUrl ? (
+                                  <img src={profile.registrarPhotoUrl} alt="Registrar Capture" className="sd-docket-passport-img" />
                                 ) : (
-                                  <div className="sd-docket-ident-placeholder"><i className="fas fa-id-card"></i></div>
+                                  <div className="sd-docket-passport-placeholder">
+                                    <i className="fas fa-user"></i>
+                                    <span>Photo</span>
+                                  </div>
                                 )}
                               </div>
                             </div>
@@ -1461,159 +1466,161 @@ const StudentDashboard = () => {
               <button className="sd-close-btn" onClick={closePayModal}>&times;</button>
             </div>
 
-            <div className="sd-pay-steps">
-              {[1, 2, 3, 4].map(s => (
-                <div key={s} className={`sd-pay-step-dot ${payStep >= s ? 'active' : ''}`}></div>
-              ))}
+            <div className="sd-modal-body">
+              <div className="sd-pay-steps">
+                {[1, 2, 3, 4].map(s => (
+                  <div key={s} className={`sd-pay-step-dot ${payStep >= s ? 'active' : ''}`}></div>
+                ))}
+              </div>
+
+              {/* Step 1: Amount & Desc */}
+              {payStep === 1 && (
+                <form onSubmit={handlePay} className="sd-modal-form">
+                  <label>Amount (ZMW – K)</label>
+                  <input
+                    type="number" placeholder="e.g. 5000"
+                    value={payAmount} onChange={e => setPayAmount(e.target.value)}
+                    required min="1" autoFocus
+                  />
+                  <label>Description (optional)</label>
+                  <input
+                    type="text" placeholder="e.g. Semester Tuition"
+                    value={payDesc} onChange={e => setPayDesc(e.target.value)}
+                  />
+                  <div className="sd-modal-info">
+                    <i className="fas fa-info-circle"></i> Outstanding: <strong>{ZMW(balanceDue)}</strong>
+                  </div>
+                  <div className="sd-modal-actions">
+                    <button type="button" className="sd-btn sd-btn-ghost" onClick={closePayModal}>Cancel</button>
+                    <button type="submit" className="sd-btn sd-btn-primary">Next Step <i className="fas fa-arrow-right"></i></button>
+                  </div>
+                </form>
+              )}
+
+              {/* Step 2: Method & Details */}
+              {payStep === 2 && (
+                <div className="sd-modal-form">
+                  <label>Select Payment Method</label>
+                  <div className="sd-payment-methods-grid">
+                    {[
+                      { id: 'mobile_money', icon: 'fa-mobile-alt', label: 'Mobile Money' },
+                      { id: 'card', icon: 'fa-credit-card', label: 'Card' },
+                      { id: 'bank_transfer', icon: 'fa-university', label: 'Bank Transfer' },
+                      { id: 'cash', icon: 'fa-money-bill-wave', label: 'Cash' },
+                    ].map(m => (
+                      <div
+                        key={m.id}
+                        className={`sd-method-card ${payMethod === m.id ? 'active' : ''}`}
+                        onClick={() => setPayMethod(m.id)}
+                      >
+                        <i className={`fas ${m.icon}`}></i>
+                        <span>{m.label}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {payMethod === 'card' && (
+                    <div className="sd-tab-fade">
+                      <div className="sd-card-preview">
+                        <div className="sd-card-chip"></div>
+                        <div className="sd-card-number-view">
+                          {cardData.number || '•••• •••• •••• ••••'}
+                        </div>
+                        <div className="sd-card-bottom">
+                          <div>
+                            <div className="sd-card-label">Card Holder</div>
+                            <div className="sd-card-holder-view">{cardData.name || student.name}</div>
+                          </div>
+                          <div>
+                            <div className="sd-card-label">Expires</div>
+                            <div className="sd-card-expiry-view">{cardData.expiry || 'MM/YY'}</div>
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                        <div style={{ gridColumn: 'span 2' }}>
+                          <label>Card Number</label>
+                          <input
+                            type="text" placeholder="0000 0000 0000 0000"
+                            maxLength="19"
+                            value={cardData.number}
+                            onChange={e => setCardData({ ...cardData, number: e.target.value.replace(/\W/gi, '').replace(/(.{4})/g, '$1 ').trim() })}
+                          />
+                        </div>
+                        <div>
+                          <label>Expiry Date</label>
+                          <input
+                            type="text" placeholder="MM/YY" maxLength="5"
+                            value={cardData.expiry}
+                            onChange={e => setCardData({ ...cardData, expiry: e.target.value })}
+                          />
+                        </div>
+                        <div>
+                          <label>CVC</label>
+                          <input type="password" placeholder="***" maxLength="3" />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {payMethod === 'mobile_money' && (
+                    <div className="sd-tab-fade">
+                      <label>Mobile Number</label>
+                      <input type="tel" placeholder="+260 97..." defaultValue={student.phone} />
+                      <p style={{ fontSize: '11px', color: '#64748b', marginTop: '8px' }}>
+                        <i className="fas fa-info-circle"></i> A push notification will be sent to your phone to authorize the payment.
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="sd-modal-actions">
+                    <button type="button" className="sd-btn sd-btn-ghost" onClick={() => setPayStep(1)}>Back</button>
+                    <button type="button" className="sd-btn sd-btn-primary" onClick={() => handlePay()}>
+                      Pay {ZMW(payAmount)}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3: Processing */}
+              {payStep === 3 && (
+                <div className="sd-processing-box">
+                  <div className="sd-processing-ring"><div></div><div></div><div></div><div></div></div>
+                  <h4>Processing Payment...</h4>
+                  <p className="sd-modal-hint">Please wait while we secure your transaction with {payMethod.replace('_', ' ')}.</p>
+                  <div className="sd-progress-bar-wrap">
+                    <div className="sd-progress-bar-fill" style={{ width: `${payProgress}%` }}></div>
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '10px' }}>{payProgress}% securely encrypted</div>
+                </div>
+              )}
+
+              {/* Step 4: Success */}
+              {payStep === 4 && (
+                <div className="sd-tab-fade" style={{ textAlign: 'center' }}>
+                  <div className="sd-success-check">
+                    <i className="fas fa-check"></i>
+                  </div>
+                  <h3 style={{ color: '#0d9488', fontSize: '22px', marginBottom: '10px' }}>Payment Successful!</h3>
+                  <p className="sd-modal-hint">Thank you for your payment. Your student account has been updated.</p>
+
+                  <div className="sd-receipt-card">
+                    <div className="sd-receipt-row"><span>Receipt No:</span><span className="sd-receipt-val">{paySuccessMsg}</span></div>
+                    <div className="sd-receipt-row"><span>Amount Paid:</span><span className="sd-receipt-val">{ZMW(payAmount)}</span></div>
+                    <div className="sd-receipt-row"><span>Date:</span><span className="sd-receipt-val">{new Date().toLocaleDateString()}</span></div>
+                    <div className="sd-receipt-row"><span>Method:</span><span className="sd-receipt-val" style={{ textTransform: 'capitalize' }}>{payMethod.replace('_', ' ')}</span></div>
+                    <div className="sd-receipt-row" style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #e2e8f0' }}>
+                      <span>New Balance:</span><span className="sd-receipt-val">{ZMW(balanceDue)}</span>
+                    </div>
+                  </div>
+
+                  <div className="sd-modal-actions" style={{ justifyContent: 'center' }}>
+                    <button className="sd-btn sd-btn-primary" onClick={closePayModal}>Done</button>
+                    <button className="sd-btn sd-btn-ghost" onClick={() => window.print()}><i className="fas fa-print"></i> Print Receipt</button>
+                  </div>
+                </div>
+              )}
             </div>
-
-            {/* Step 1: Amount & Desc */}
-            {payStep === 1 && (
-              <form onSubmit={handlePay} className="sd-modal-form">
-                <label>Amount (ZMW – K)</label>
-                <input
-                  type="number" placeholder="e.g. 5000"
-                  value={payAmount} onChange={e => setPayAmount(e.target.value)}
-                  required min="1" autoFocus
-                />
-                <label>Description (optional)</label>
-                <input
-                  type="text" placeholder="e.g. Semester Tuition"
-                  value={payDesc} onChange={e => setPayDesc(e.target.value)}
-                />
-                <div className="sd-modal-info">
-                  <i className="fas fa-info-circle"></i> Outstanding: <strong>{ZMW(balanceDue)}</strong>
-                </div>
-                <div className="sd-modal-actions">
-                  <button type="button" className="sd-btn sd-btn-ghost" onClick={closePayModal}>Cancel</button>
-                  <button type="submit" className="sd-btn sd-btn-primary">Next Step <i className="fas fa-arrow-right"></i></button>
-                </div>
-              </form>
-            )}
-
-            {/* Step 2: Method & Details */}
-            {payStep === 2 && (
-              <div className="sd-modal-form">
-                <label>Select Payment Method</label>
-                <div className="sd-payment-methods-grid">
-                  {[
-                    { id: 'mobile_money', icon: 'fa-mobile-alt', label: 'Mobile Money' },
-                    { id: 'card', icon: 'fa-credit-card', label: 'Card' },
-                    { id: 'bank_transfer', icon: 'fa-university', label: 'Bank Transfer' },
-                    { id: 'cash', icon: 'fa-money-bill-wave', label: 'Cash' },
-                  ].map(m => (
-                    <div
-                      key={m.id}
-                      className={`sd-method-card ${payMethod === m.id ? 'active' : ''}`}
-                      onClick={() => setPayMethod(m.id)}
-                    >
-                      <i className={`fas ${m.icon}`}></i>
-                      <span>{m.label}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {payMethod === 'card' && (
-                  <div className="sd-tab-fade">
-                    <div className="sd-card-preview">
-                      <div className="sd-card-chip"></div>
-                      <div className="sd-card-number-view">
-                        {cardData.number || '•••• •••• •••• ••••'}
-                      </div>
-                      <div className="sd-card-bottom">
-                        <div>
-                          <div className="sd-card-label">Card Holder</div>
-                          <div className="sd-card-holder-view">{cardData.name || student.name}</div>
-                        </div>
-                        <div>
-                          <div className="sd-card-label">Expires</div>
-                          <div className="sd-card-expiry-view">{cardData.expiry || 'MM/YY'}</div>
-                        </div>
-                      </div>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                      <div style={{ gridColumn: 'span 2' }}>
-                        <label>Card Number</label>
-                        <input
-                          type="text" placeholder="0000 0000 0000 0000"
-                          maxLength="19"
-                          value={cardData.number}
-                          onChange={e => setCardData({ ...cardData, number: e.target.value.replace(/\W/gi, '').replace(/(.{4})/g, '$1 ').trim() })}
-                        />
-                      </div>
-                      <div>
-                        <label>Expiry Date</label>
-                        <input
-                          type="text" placeholder="MM/YY" maxLength="5"
-                          value={cardData.expiry}
-                          onChange={e => setCardData({ ...cardData, expiry: e.target.value })}
-                        />
-                      </div>
-                      <div>
-                        <label>CVC</label>
-                        <input type="password" placeholder="***" maxLength="3" />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {payMethod === 'mobile_money' && (
-                  <div className="sd-tab-fade">
-                    <label>Mobile Number</label>
-                    <input type="tel" placeholder="+260 97..." defaultValue={student.phone} />
-                    <p style={{ fontSize: '11px', color: '#64748b', marginTop: '8px' }}>
-                      <i className="fas fa-info-circle"></i> A push notification will be sent to your phone to authorize the payment.
-                    </p>
-                  </div>
-                )}
-
-                <div className="sd-modal-actions">
-                  <button type="button" className="sd-btn sd-btn-ghost" onClick={() => setPayStep(1)}>Back</button>
-                  <button type="button" className="sd-btn sd-btn-primary" onClick={() => handlePay()}>
-                    Pay {ZMW(payAmount)}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Step 3: Processing */}
-            {payStep === 3 && (
-              <div className="sd-processing-box">
-                <div className="sd-processing-ring"><div></div><div></div><div></div><div></div></div>
-                <h4>Processing Payment...</h4>
-                <p className="sd-modal-hint">Please wait while we secure your transaction with {payMethod.replace('_', ' ')}.</p>
-                <div className="sd-progress-bar-wrap">
-                  <div className="sd-progress-bar-fill" style={{ width: `${payProgress}%` }}></div>
-                </div>
-                <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '10px' }}>{payProgress}% securely encrypted</div>
-              </div>
-            )}
-
-            {/* Step 4: Success */}
-            {payStep === 4 && (
-              <div className="sd-tab-fade" style={{ textAlign: 'center' }}>
-                <div className="sd-success-check">
-                  <i className="fas fa-check"></i>
-                </div>
-                <h3 style={{ color: '#0d9488', fontSize: '22px', marginBottom: '10px' }}>Payment Successful!</h3>
-                <p className="sd-modal-hint">Thank you for your payment. Your student account has been updated.</p>
-
-                <div className="sd-receipt-card">
-                  <div className="sd-receipt-row"><span>Receipt No:</span><span className="sd-receipt-val">{paySuccessMsg}</span></div>
-                  <div className="sd-receipt-row"><span>Amount Paid:</span><span className="sd-receipt-val">{ZMW(payAmount)}</span></div>
-                  <div className="sd-receipt-row"><span>Date:</span><span className="sd-receipt-val">{new Date().toLocaleDateString()}</span></div>
-                  <div className="sd-receipt-row"><span>Method:</span><span className="sd-receipt-val" style={{ textTransform: 'capitalize' }}>{payMethod.replace('_', ' ')}</span></div>
-                  <div className="sd-receipt-row" style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #e2e8f0' }}>
-                    <span>New Balance:</span><span className="sd-receipt-val">{ZMW(balanceDue)}</span>
-                  </div>
-                </div>
-
-                <div className="sd-modal-actions" style={{ justifyContent: 'center' }}>
-                  <button className="sd-btn sd-btn-primary" onClick={closePayModal}>Done</button>
-                  <button className="sd-btn sd-btn-ghost" onClick={() => window.print()}><i className="fas fa-print"></i> Print Receipt</button>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -1627,53 +1634,61 @@ const StudentDashboard = () => {
               <button className="sd-close-btn" onClick={() => setShowRegModal(false)}>&times;</button>
             </div>
 
-            {regSuccessMsg ? (
-              <div className={`sd-success-msg ${regSuccessMsg.startsWith('Error') ? 'sd-err-msg' : ''}`}>
-                <i className={`fas ${regSuccessMsg.startsWith('Error') ? 'fa-times-circle' : 'fa-check-circle'}`}></i><br />
-                {regSuccessMsg.startsWith('Error') ? 'Registration Failed' : 'Registered!'}<br />
-                <small>{regSuccessMsg}</small>
-              </div>
-            ) : (
-              <>
-                <p className="sd-modal-hint">Select courses to add to your registration:</p>
-                <div className="sd-course-list">
-                  {availableCourses
-                    .filter(ac => !courses.some(c => c.code === ac.code))
-                    .map(c => (
-                      <div
-                        key={c.id}
-                        className={`sd-course-option ${regSelected.includes(c.id) ? 'selected' : ''}`}
-                        onClick={() => toggleCourse(c.id)}
-                      >
-                        <div>
-                          <div className="sd-co-name">{c.name}</div>
-                          <div className="sd-co-meta">{c.code} · {c.units} units · {c.lecturer}</div>
+            <div className="sd-modal-body">
+              {regSuccessMsg ? (
+                <div className={`sd-success-msg ${regSuccessMsg.startsWith('Error') ? 'sd-err-msg' : ''}`}>
+                  <i className={`fas ${regSuccessMsg.startsWith('Error') ? 'fa-times-circle' : 'fa-check-circle'}`}></i><br />
+                  {regSuccessMsg.startsWith('Error') ? 'Registration Failed' : 'Registered!'}<br />
+                  <small>{regSuccessMsg}</small>
+                </div>
+              ) : (
+                <>
+                  <p className="sd-modal-hint">Select courses to add to your registration:</p>
+                  <div className="sd-course-list">
+                    {availableCourses
+                      .filter(ac => !courses.some(c => c.code === ac.code))
+                      .map(c => (
+                        <div
+                          key={c.id}
+                          className={`sd-course-option ${regSelected.includes(c.id) ? 'selected' : ''}`}
+                          onClick={() => toggleCourse(c.id)}
+                        >
+                          <div>
+                            <div className="sd-co-name">{c.name}</div>
+                            <div className="sd-co-meta">{c.code} · {c.credits || c.units} units · {c.lecturer}</div>
+                          </div>
+                          <div className="sd-co-check">
+                            <i className={`fas ${regSelected.includes(c.id) ? 'fa-check-circle' : 'fa-circle'}`}></i>
+                          </div>
                         </div>
-                        <div className="sd-co-check">
-                          <i className={`fas ${regSelected.includes(c.id) ? 'fa-check-circle' : 'fa-circle'}`}></i>
-                        </div>
+                      ))}
+                    {availableCourses.filter(ac => !courses.some(c => c.code === ac.code)).length === 0 && (
+                      <div style={{ textAlign: 'center', padding: '20px', color: '#94a3b8' }}>
+                        All available courses are already registered.
                       </div>
-                    ))}
-                  {availableCourses.filter(ac => !courses.some(c => c.code === ac.code)).length === 0 && (
-                    <div style={{ textAlign: 'center', padding: '20px', color: '#94a3b8' }}>
-                      All available courses are already registered.
-                    </div>
-                  )}
-                </div>
-                <div className="sd-modal-actions">
-                  <button type="button" className="sd-btn sd-btn-ghost" onClick={() => setShowRegModal(false)}>Cancel</button>
-                  <button
-                    type="button" className="sd-btn sd-btn-primary"
-                    onClick={handleRegister}
-                    disabled={regSelected.length === 0 || registeringCourse}
-                  >
-                    {registeringCourse
-                      ? <><i className="fas fa-circle-notch fa-spin"></i> Registering…</>
-                      : `Register ${regSelected.length > 0 ? `(${regSelected.length})` : ''}`}
-                  </button>
-                </div>
-              </>
-            )}
+                    )}
+                  </div>
+                  <div className="sd-modal-actions" style={{ marginTop: 'auto', paddingTop: '15px' }}>
+                    <button type="button" className="sd-btn sd-btn-ghost" style={{ flex: 1 }} onClick={() => setShowRegModal(false)}>Cancel</button>
+                    <button
+                      type="button" className="sd-btn sd-btn-primary"
+                      style={{ flex: 2, justifyContent: 'center', fontSize: '15px' }}
+                      onClick={handleRegister}
+                      disabled={regSelected.length === 0 || registeringCourse}
+                    >
+                      {registeringCourse
+                        ? <><i className="fas fa-circle-notch fa-spin"></i> Registering…</>
+                        : (
+                          <>
+                            <i className="fas fa-check-double"></i>
+                            Register {regSelected.length > 0 ? `Selected (${regSelected.length})` : 'Courses'}
+                          </>
+                        )}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -1687,73 +1702,75 @@ const StudentDashboard = () => {
               <button className="sd-close-btn" onClick={() => setShowHostelModal(false)}>&times;</button>
             </div>
 
-            {bookingSuccessMsg ? (
-              <div className="sd-success-msg">
-                <i className="fas fa-check-circle"></i><br />
-                Application Submitted!<br />
-                <small>{bookingSuccessMsg}</small>
-              </div>
-            ) : (
-              <div className="sd-modal-form">
-                <div className="sd-booking-summary">
-                  <div className="sd-bs-item"><span>Selected Hostel:</span><strong>{selectedHostel?.name}</strong></div>
-                  <div className="sd-bs-item"><span>Room Type:</span><strong>{selectedHostel?.capacity}</strong></div>
-                  <div className="sd-bs-item"><span>Semester Fee:</span><strong className="text-credit">{ZMW(selectedHostel?.price || 0)}</strong></div>
+            <div className="sd-modal-body">
+              {bookingSuccessMsg ? (
+                <div className="sd-success-msg">
+                  <i className="fas fa-check-circle"></i><br />
+                  Application Submitted!<br />
+                  <small>{bookingSuccessMsg}</small>
                 </div>
+              ) : (
+                <div className="sd-modal-form">
+                  <div className="sd-booking-summary">
+                    <div className="sd-bs-item"><span>Selected Hostel:</span><strong>{selectedHostel?.name}</strong></div>
+                    <div className="sd-bs-item"><span>Room Type:</span><strong>{selectedHostel?.capacity}</strong></div>
+                    <div className="sd-bs-item"><span>Semester Fee:</span><strong className="text-credit">{ZMW(selectedHostel?.price || 0)}</strong></div>
+                  </div>
 
-                <div className="sd-notice-box">
-                  <i className="fas fa-info-circle"></i>
-                  <p>By clicking confirm, you agree to the university housing terms and conditions. The fee will be added to your outstanding balance.</p>
+                  <div className="sd-notice-box">
+                    <i className="fas fa-info-circle"></i>
+                    <p>By clicking confirm, you agree to the university housing terms and conditions. The fee will be added to your outstanding balance.</p>
+                  </div>
+
+                  <div className="sd-modal-actions">
+                    <button type="button" className="sd-btn sd-btn-ghost" onClick={() => setShowHostelModal(false)}>Cancel</button>
+                    <button
+                      type="button" className="sd-btn sd-btn-primary"
+                      onClick={async () => {
+                        setBookingHostel(true);
+                        // Simulate booking process
+                        setTimeout(async () => {
+                          try {
+                            // Update student record with hostel info
+                            await updateDoc(doc(db, 'students', uid), {
+                              hostelName: selectedHostel.name,
+                              hostelRoom: `Room ${Math.floor(Math.random() * 100) + 101}`,
+                              hostelCleared: false,
+                              updatedAt: serverTimestamp()
+                            });
+
+                            // Add a transaction for the hostel fee
+                            const txCol = collection(db, 'students', uid, 'transactions');
+                            await addDoc(txCol, {
+                              date: new Date().toISOString().split('T')[0],
+                              desc: `Hostel Fee – ${selectedHostel.name}`,
+                              type: 'debit',
+                              amount: selectedHostel.price,
+                              createdAt: serverTimestamp(),
+                            });
+
+                            await loadData();
+                            setBookingSuccessMsg(`Your application for ${selectedHostel.name} has been processed. Access details updated.`);
+                            setTimeout(() => {
+                              setBookingSuccessMsg('');
+                              setShowHostelModal(false);
+                              setActiveTab('home');
+                            }, 3000);
+                          } catch (err) {
+                            toast.error("Error booking hostel: " + err.message);
+                          } finally {
+                            setBookingHostel(false);
+                          }
+                        }, 1500);
+                      }}
+                      disabled={bookingHostel}
+                    >
+                      {bookingHostel ? <><i className="fas fa-circle-notch fa-spin"></i> Processing…</> : 'Confirm Booking'}
+                    </button>
+                  </div>
                 </div>
-
-                <div className="sd-modal-actions">
-                  <button type="button" className="sd-btn sd-btn-ghost" onClick={() => setShowHostelModal(false)}>Cancel</button>
-                  <button
-                    type="button" className="sd-btn sd-btn-primary"
-                    onClick={async () => {
-                      setBookingHostel(true);
-                      // Simulate booking process
-                      setTimeout(async () => {
-                        try {
-                          // Update student record with hostel info
-                          await updateDoc(doc(db, 'students', uid), {
-                            hostelName: selectedHostel.name,
-                            hostelRoom: `Room ${Math.floor(Math.random() * 100) + 101}`,
-                            hostelCleared: false,
-                            updatedAt: serverTimestamp()
-                          });
-
-                          // Add a transaction for the hostel fee
-                          const txCol = collection(db, 'students', uid, 'transactions');
-                          await addDoc(txCol, {
-                            date: new Date().toISOString().split('T')[0],
-                            desc: `Hostel Fee – ${selectedHostel.name}`,
-                            type: 'debit',
-                            amount: selectedHostel.price,
-                            createdAt: serverTimestamp(),
-                          });
-
-                          await loadData();
-                          setBookingSuccessMsg(`Your application for ${selectedHostel.name} has been processed. Access details updated.`);
-                          setTimeout(() => {
-                            setBookingSuccessMsg('');
-                            setShowHostelModal(false);
-                            setActiveTab('home');
-                          }, 3000);
-                        } catch (err) {
-                          alert("Error booking hostel: " + err.message);
-                        } finally {
-                          setBookingHostel(false);
-                        }
-                      }, 1500);
-                    }}
-                    disabled={bookingHostel}
-                  >
-                    {bookingHostel ? <><i className="fas fa-circle-notch fa-spin"></i> Processing…</> : 'Confirm Booking'}
-                  </button>
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -1767,51 +1784,102 @@ const StudentDashboard = () => {
               <button className="sd-close-btn" onClick={() => setShowProfileModal(false)}>&times;</button>
             </div>
 
-            {profileSuccessMsg ? (
-              <div className={`sd-success-msg ${profileSuccessMsg.startsWith('Error') ? 'sd-err-msg' : ''}`}>
-                <i className={`fas ${profileSuccessMsg.startsWith('Error') ? 'fa-times-circle' : 'fa-check-circle'}`}></i><br />
-                <small>{profileSuccessMsg}</small>
-              </div>
-            ) : (
-              <>
-                <div className="sd-profile-modal-top">
-                  <div className="sd-avatar-xl">{student.initials}</div>
-                  <div>
-                    <div className="sd-pm-name">{student.name}</div>
-                    <div className="sd-pm-email">{student.email}</div>
-                    <div className="sd-pm-id">{student.id}</div>
-                  </div>
+            <div className="sd-modal-body">
+              {profileSuccessMsg ? (
+                <div className={`sd-success-msg ${profileSuccessMsg.startsWith('Error') ? 'sd-err-msg' : ''}`}>
+                  <i className={`fas ${profileSuccessMsg.startsWith('Error') ? 'fa-times-circle' : 'fa-check-circle'}`}></i><br />
+                  <small>{profileSuccessMsg}</small>
                 </div>
-                <form onSubmit={handleSaveProfile} className="sd-modal-form">
-                  <label>Full Name</label>
-                  <input
-                    type="text" value={profileForm.name || ''}
-                    onChange={e => setProfileForm(p => ({ ...p, name: e.target.value }))}
-                    required
-                  />
-                  <label>Email (read-only)</label>
-                  <input type="email" value={profileForm.email || ''} readOnly style={{ background: '#f8fafc', color: '#94a3b8' }} />
-                  <label>Phone Number</label>
-                  <input
-                    type="tel" placeholder="+260 97 000 0000"
-                    value={profileForm.phone || ''}
-                    onChange={e => setProfileForm(p => ({ ...p, phone: e.target.value }))}
-                  />
-                  <label>Program</label>
-                  <input
-                    type="text"
-                    value={profileForm.program || ''}
-                    onChange={e => setProfileForm(p => ({ ...p, program: e.target.value }))}
-                  />
-                  <div className="sd-modal-actions">
-                    <button type="button" className="sd-btn sd-btn-ghost" onClick={() => setShowProfileModal(false)}>Cancel</button>
-                    <button type="submit" className="sd-btn sd-btn-primary" disabled={savingProfile}>
-                      {savingProfile ? <><i className="fas fa-circle-notch fa-spin"></i> Saving…</> : 'Save Changes'}
-                    </button>
+              ) : (
+                <>
+                  <div className="sd-profile-modal-top">
+                    <div className="sd-avatar-xl">{student.initials}</div>
+                    <div>
+                      <div className="sd-pm-name">{student.name}</div>
+                      <div className="sd-pm-email">{student.email}</div>
+                      <div className="sd-pm-id">{student.id}</div>
+                    </div>
                   </div>
-                </form>
-              </>
-            )}
+                  <form onSubmit={handleSaveProfile} className="sd-modal-form">
+                    <label>Full Name</label>
+                    <input
+                      type="text" value={profileForm.name || ''}
+                      onChange={e => setProfileForm(p => ({ ...p, name: e.target.value }))}
+                      required
+                    />
+                    <label>Email (read-only)</label>
+                    <input type="email" value={profileForm.email || ''} readOnly style={{ background: '#f8fafc', color: '#94a3b8' }} />
+                    <label>Phone Number</label>
+                    <input
+                      type="tel" placeholder="+260 97 000 0000"
+                      value={profileForm.phone || ''}
+                      onChange={e => setProfileForm(p => ({ ...p, phone: e.target.value }))}
+                    />
+                    <label>Program</label>
+                    <input
+                      type="text"
+                      value={profileForm.program || ''}
+                      onChange={e => setProfileForm(p => ({ ...p, program: e.target.value }))}
+                    />
+                    <div className="sd-modal-actions">
+                      <button type="button" className="sd-btn sd-btn-ghost" onClick={() => setShowProfileModal(false)}>Cancel</button>
+                      <button type="submit" className="sd-btn sd-btn-primary" disabled={savingProfile}>
+                        {savingProfile ? <><i className="fas fa-circle-notch fa-spin"></i> Saving…</> : 'Save Changes'}
+                      </button>
+                    </div>
+                  </form>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ════════════ FORCE PASSWORD CHANGE MODAL ════════════ */}
+      {showPasswordForce && (
+        <div className="sd-modal-overlay">
+          <div className="sd-modal" onClick={e => e.stopPropagation()}>
+            <div className="sd-modal-head" style={{ borderBottom: 'none' }}>
+              <h3><i className="fas fa-shield-alt" style={{ color: '#dc2626' }}></i> Security Update Required</h3>
+            </div>
+            <div className="sd-modal-body">
+              <div style={{ background: '#fff1f2', border: '1px solid #fecaca', padding: '16px', borderRadius: '8px', marginBottom: '20px', color: '#991b1b', fontSize: '13px', lineHeight: '1.5' }}>
+                <i className="fas fa-info-circle"></i> For your security, you must change your password from the default one provided during registration before you can access your dashboard.
+              </div>
+              <form onSubmit={handleUpdatePassword} className="sd-modal-form">
+                <label>New Password</label>
+                <input
+                  type="password"
+                  placeholder="Enter new secure password"
+                  value={passForm.new}
+                  onChange={e => setPassForm({ ...passForm, new: e.target.value })}
+                  required
+                  autoFocus
+                />
+                <label>Confirm New Password</label>
+                <input
+                  type="password"
+                  placeholder="Confirm your new password"
+                  value={passForm.confirm}
+                  onChange={e => setPassForm({ ...passForm, confirm: e.target.value })}
+                  required
+                />
+                <div className="sd-modal-actions" style={{ marginTop: '24px' }}>
+                  <button type="submit" className="sd-btn sd-btn-primary" style={{ width: '100%', justifyContent: 'center', height: '45px', fontSize: '15px' }}>
+                    Update Password & Continue
+                  </button>
+                </div>
+              </form>
+              <div style={{ textAlign: 'center', marginTop: '20px' }}>
+                <button
+                  onClick={logout}
+                  className="sd-link-btn"
+                  style={{ color: '#64748b', fontSize: '13px' }}
+                >
+                  <i className="fas fa-sign-out-alt"></i> Cancel and Logout
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

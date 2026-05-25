@@ -80,11 +80,12 @@ const Modal = ({ type, editData, lecturers = [], onClose, onSave }) => {
               : {})
   );
 
+  const [submitting, setSubmitting] = useState(false);
   const title = editData ? `Edit ${type}` : `Add New ${type}`;
 
   const handle = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-  const submit = e => {
+  const submit = async e => {
     e.preventDefault();
     if (!form.name) return;
     if (type !== 'course' && !form.email) return;
@@ -92,8 +93,18 @@ const Modal = ({ type, editData, lecturers = [], onClose, onSave }) => {
       alert('Please select a lecturer to assign to this course.');
       return;
     }
-    onSave(form);
+
+    setSubmitting(true);
+    try {
+      await onSave(form);
+    } catch (err) {
+      console.error("Modal save error:", err);
+      // setSubmitting(false) is not needed if the modal is closed on success, 
+      // but if onSave throws and doesn't close the modal, we need it.
+      setSubmitting(false);
+    }
   };
+
 
   return (
     <div className="ad-overlay" onClick={onClose}>
@@ -264,12 +275,13 @@ const Modal = ({ type, editData, lecturers = [], onClose, onSave }) => {
           )}
 
           <div className="ad-modal__footer">
-            <button type="button" className="ad-btn ad-btn--ghost" onClick={onClose}>Cancel</button>
-            <button type="submit" className="ad-btn ad-btn--primary">
-              <i className={`fas ${editData ? 'fa-save' : 'fa-plus'}`} />
-              {editData ? 'Save Changes' : `Add ${type}`}
+            <button type="button" className="ad-btn ad-btn--ghost" onClick={onClose} disabled={submitting}>Cancel</button>
+            <button type="submit" className="ad-btn ad-btn--primary" disabled={submitting}>
+              <i className={`fas ${submitting ? 'fa-spinner fa-spin' : (editData ? 'fa-save' : 'fa-plus')}`} />
+              {submitting ? 'Processing...' : (editData ? 'Save Changes' : `Add ${type}`)}
             </button>
           </div>
+
         </form>
       </div>
     </div>
@@ -589,12 +601,13 @@ const AdminDashboard = () => {
         });
         toast(`${data.name} has been added with a default password.`);
       }
+      setModal(null);
     } catch (err) {
       console.error(err);
       toast('Error saving student.', 'error');
     }
-    setModal(null);
   };
+
 
   const deleteStudent = (docId) => {
     setConfirm({
@@ -656,11 +669,12 @@ const AdminDashboard = () => {
         });
         toast(`${data.name} has been added with a default password.`);
       }
+      setModal(null);
     } catch (err) {
       toast('Error saving lecturer.', 'error');
     }
-    setModal(null);
   };
+
 
   const deleteLecturer = (docId) => {
     setConfirm({
@@ -718,6 +732,9 @@ const AdminDashboard = () => {
           role: 'admin',
           createdAt: serverTimestamp()
         });
+
+        setModal(null); // Close modal early for better UX
+
         try {
           await resetPassword(data.email);
           toast(`${data.name} added! A password setup email has been sent to ${data.email}.`);
@@ -728,8 +745,8 @@ const AdminDashboard = () => {
     } catch (err) {
       if (!err.code) toast('Error saving administrator.', 'error');
     }
-    setModal(null);
   };
+
 
   const deleteAdmin = (docId) => {
     if (docId === currentUser?.uid) {
@@ -784,6 +801,8 @@ const AdminDashboard = () => {
           createdAt: serverTimestamp()
         });
 
+        setModal(null); // Close modal early for better UX
+
         // Immediately send a password reset so the registrar sets their own password
         try {
           await resetPassword(data.email);
@@ -795,8 +814,8 @@ const AdminDashboard = () => {
     } catch (err) {
       if (!err.code) toast('Error saving registrar.', 'error');
     }
-    setModal(null);
   };
+
 
   const deleteRegistrar = (docId) => {
     setConfirm({
@@ -867,12 +886,15 @@ const AdminDashboard = () => {
         }
         toast('Course added and lecturer assigned successfully.');
       }
+      setModal(null);
     } catch (err) {
       console.error(err);
       toast('Error saving course.', 'error');
+      setModal(null);
     }
-    setModal(null);
   };
+
+
 
   const deleteCourse = (docId) => {
     const course = courses.find(c => c.docId === docId);

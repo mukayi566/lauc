@@ -72,7 +72,11 @@ const examDoc = (courseId, examId) => doc(db, 'courses', courseId, 'exams', exam
 const questionsCollection = (courseId, examId) => collection(db, 'courses', courseId, 'exams', examId, 'questions');
 const questionDoc = (courseId, examId, questionId) => doc(db, 'courses', courseId, 'exams', examId, 'questions', questionId);
 const submissionsCollection = (courseId, examId) => collection(db, 'courses', courseId, 'exams', examId, 'submissions');
-const submissionDoc = (courseId, examId, studentId) => doc(db, 'courses', courseId, 'exams', examId, 'submissions', studentId);
+const submissionDoc = (courseId, examId, studentId) => {
+  // Use UID if available for flat path, otherwise sanitize academic ID
+  const safeId = String(studentId).replace(/\//g, '_');
+  return doc(db, 'courses', courseId, 'exams', examId, 'submissions', safeId);
+};
 
 const mapSnapshotDocs = (snap, extra = {}) =>
   snap.docs.map((item) => ({ id: item.id, ...extra, ...item.data() }));
@@ -160,7 +164,7 @@ export const subscribeToExamSubmissions = (courseId, examId, onData, onError) =>
 export const subscribeToLecturerExams = (courses, onData, onError) => {
   if (!Array.isArray(courses) || courses.length === 0) {
     onData([]);
-    return () => {};
+    return () => { };
   }
 
   const byCourse = new Map();
@@ -215,7 +219,7 @@ export const getStudentExams = async (studentCourses, studentId) => {
 };
 
 export const startOrResumeSubmission = async ({ courseId, examId, student }) => {
-  const ref = submissionDoc(courseId, examId, student.id);
+  const ref = submissionDoc(courseId, examId, student.uid || student.id);
   const existing = await getDoc(ref);
 
   if (existing.exists()) {
@@ -223,9 +227,9 @@ export const startOrResumeSubmission = async ({ courseId, examId, student }) => 
   }
 
   await setDoc(ref, {
-    studentId: student.id,
+    studentId: student.uid || student.id,
     studentName: student.name || '',
-    studentNumber: student.studentId || student.student_id || student.id,
+    studentRegNo: student.studentId || student.id,
     startedAt: serverTimestamp(),
     submittedAt: null,
     score: 0,
@@ -336,11 +340,11 @@ export const submitExam = async ({
   const grade = calculateGrade(percentage);
 
   await setDoc(
-    submissionDoc(courseId, exam.id, student.id),
+    submissionDoc(courseId, exam.id, student.uid || student.id),
     {
-      studentId: student.id,
+      studentId: student.uid || student.id,
       studentName: student.name || '',
-      studentNumber: student.studentId || student.student_id || student.id,
+      studentNumber: student.id,
       submittedAt: serverTimestamp(),
       score,
       percentage,
@@ -357,11 +361,11 @@ export const submitExam = async ({
   );
 
   await setDoc(
-    doc(db, 'results', `exam_${exam.id}_${student.id}`),
+    doc(db, 'results', `exam_${exam.id}_${student.uid || String(student.id).replace(/\//g, '_')}`),
     {
-      studentId: student.id,
+      studentId: student.uid || student.id,
       studentName: student.name || '',
-      studentRegNo: student.studentId || student.student_id || student.id,
+      studentRegNo: student.id,
       courseId,
       courseCode: exam.courseCode || course.code || course.id || '',
       courseName: exam.courseName || course.name || '',

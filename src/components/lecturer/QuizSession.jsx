@@ -51,10 +51,10 @@ const QuizSession = ({
       : questions.map((item) => item.id);
 
     setQuestionOrder(orderedIds);
-    saveSubmissionProgress(course.docId || course.id, exam.id, student.id, {
+    saveSubmissionProgress(course.docId || course.id, exam.id, student.uid || student.id, {
       questionOrder: orderedIds,
-    }).catch(() => {});
-  }, [course, exam.id, exam.shuffleQuestions, questionOrder.length, questions, student.id]);
+    }).catch(() => { });
+  }, [course, exam.id, exam.shuffleQuestions, questionOrder.length, questions, student.uid, student.id]);
 
   const orderedQuestions = useMemo(() => {
     if (!questions.length) return [];
@@ -73,7 +73,7 @@ const QuizSession = ({
     const timeout = window.setTimeout(async () => {
       setSaving(true);
       try {
-        await saveSubmissionProgress(course.docId || course.id, exam.id, student.id, {
+        await saveSubmissionProgress(course.docId || course.id, exam.id, student.uid || student.id, {
           answers,
           currentQuestionIndex: currentIndex,
           questionOrder,
@@ -87,7 +87,7 @@ const QuizSession = ({
     }, 500);
 
     return () => window.clearTimeout(timeout);
-  }, [answers, course, currentIndex, exam.id, orderedQuestions.length, questionOrder, student.id, submission, violationCount]);
+  }, [answers, course, currentIndex, exam.id, orderedQuestions.length, questionOrder, student.uid, student.id, submission, violationCount]);
 
   const handleSubmit = async (autoSubmitted = false) => {
     if (submittingRef.current) return;
@@ -114,7 +114,7 @@ const QuizSession = ({
   };
 
   const handleViolation = async (reason) => {
-    const nextCount = await incrementViolation(course.docId || course.id, exam.id, student.id, violationCount, reason);
+    const nextCount = await incrementViolation(course.docId || course.id, exam.id, student.uid || student.id, violationCount, reason);
     setViolationCount(nextCount);
     return nextCount;
   };

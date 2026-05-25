@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  collection, query, where, getDocs, doc, setDoc, 
-  updateDoc, serverTimestamp, addDoc 
+import {
+  collection, query, where, getDocs, doc, setDoc,
+  updateDoc, serverTimestamp, addDoc
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { calculateGrade, getGradePoints } from '../utils/resultUtils';
@@ -19,7 +19,7 @@ const ResultEntry = ({ lecturerId, course, onBack, showSuccess }) => {
         // 1. Get all students enrolled in this course
         const studentsSnap = await getDocs(collection(db, 'students'));
         const enrolledStudents = [];
-        
+
         for (const sDoc of studentsSnap.docs) {
           const sCoursesSnap = await getDocs(collection(db, 'students', sDoc.id, 'courses'));
           const hasCourse = sCoursesSnap.docs.some(d => {
@@ -28,20 +28,21 @@ const ResultEntry = ({ lecturerId, course, onBack, showSuccess }) => {
             return (cd.code || cd.id || '').toUpperCase() === targetCode;
           });
           if (hasCourse) {
-            enrolledStudents.push({ id: sDoc.id, ...sDoc.data() });
+            enrolledStudents.push({ docId: sDoc.id, ...sDoc.data() });
           }
         }
         setStudents(enrolledStudents);
 
         // 2. Get existing results for this course
         const resultsQuery = query(
-          collection(db, 'results'), 
+          collection(db, 'results'),
           where('courseCode', '==', course.code)
         );
         const resultsSnap = await getDocs(resultsQuery);
         const resultsMap = {};
         resultsSnap.docs.forEach(d => {
-          resultsMap[d.data().studentId] = { id: d.id, ...d.data() };
+          const data = d.data();
+          resultsMap[data.studentId] = { id: d.id, ...data };
         });
         setResults(resultsMap);
       } catch (err) {
@@ -54,24 +55,24 @@ const ResultEntry = ({ lecturerId, course, onBack, showSuccess }) => {
     fetchData();
   }, [course.code]);
 
-  const handleScoreChange = (studentId, field, value) => {
+  const handleScoreChange = (studentDocId, field, value) => {
     const val = value === '' ? '' : Math.min(field === 'caScore' ? 40 : 60, Math.max(0, parseFloat(value) || 0));
-    
+
     setResults(prev => {
-      const current = prev[studentId] || { 
-        studentId, 
-        caScore: 0, 
-        examScore: 0, 
-        status: 'draft' 
+      const current = prev[studentDocId] || {
+        studentId: studentDocId,
+        caScore: 0,
+        examScore: 0,
+        status: 'draft'
       };
-      
+
       const updated = { ...current, [field]: val };
-      
+
       // Auto-calculate
       updated.total = (parseFloat(updated.caScore) || 0) + (parseFloat(updated.examScore) || 0);
       updated.grade = calculateGrade(updated.total);
-      
-      return { ...prev, [studentId]: updated };
+
+      return { ...prev, [studentDocId]: updated };
     });
   };
 
@@ -79,11 +80,11 @@ const ResultEntry = ({ lecturerId, course, onBack, showSuccess }) => {
     setSubmitting(true);
     try {
       for (const student of students) {
-        const res = results[student.id];
+        const res = results[student.docId];
         if (!res) continue;
 
         const resultData = {
-          studentId: student.id,
+          studentId: student.docId,
           studentName: student.name,
           studentRegNo: student.studentId || student.id,
           courseId: course.id,
@@ -130,12 +131,12 @@ const ResultEntry = ({ lecturerId, course, onBack, showSuccess }) => {
       lines.slice(1).forEach(line => {
         const parts = line.split(',').map(s => s.trim());
         if (parts.length < 3) return;
-        
+
         const [sid, ca, exam] = parts;
         const searchId = sid.toUpperCase();
 
-        const student = students.find(s => 
-          (s.studentId || '').toUpperCase() === searchId || 
+        const student = students.find(s =>
+          (s.studentId || '').toUpperCase() === searchId ||
           (s.id || '').toUpperCase() === searchId
         );
 
@@ -145,9 +146,9 @@ const ResultEntry = ({ lecturerId, course, onBack, showSuccess }) => {
           const total = caVal + exVal;
           const grade = calculateGrade(total);
 
-          newResults[student.id] = {
-            ...(newResults[student.id] || {}),
-            studentId: student.id,
+          newResults[student.docId] = {
+            ...(newResults[student.docId] || {}),
+            studentId: student.docId,
             caScore: caVal,
             examScore: exVal,
             total,
@@ -198,30 +199,30 @@ const ResultEntry = ({ lecturerId, course, onBack, showSuccess }) => {
             </thead>
             <tbody>
               {students.map(student => {
-                const res = results[student.id] || { caScore: '', examScore: '', total: 0, grade: '—', status: 'draft' };
-                const isLocked = res.status === 'approved' || res.status === 'published'; 
+                const res = results[student.docId] || { caScore: '', examScore: '', total: 0, grade: '—', status: 'draft' };
+                const isLocked = res.status === 'approved' || res.status === 'published';
                 // Note: 'submitted' remains editable by staff until approved, or as per institution policy. 
                 // If they want 'submitted' to be locked, we add it back. But they said 'ensure editable before'.
-                
+
                 return (
-                  <tr key={student.id}>
+                  <tr key={student.docId}>
                     <td><strong>{student.name}</strong></td>
                     <td><span className="sd-code">{student.studentId || '—'}</span></td>
                     <td>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         className="sd-input-small"
-                        value={res.caScore} 
-                        onChange={(e) => handleScoreChange(student.id, 'caScore', e.target.value)}
+                        value={res.caScore}
+                        onChange={(e) => handleScoreChange(student.docId, 'caScore', e.target.value)}
                         disabled={isLocked}
                       />
                     </td>
                     <td>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         className="sd-input-small"
-                        value={res.examScore} 
-                        onChange={(e) => handleScoreChange(student.id, 'examScore', e.target.value)}
+                        value={res.examScore}
+                        onChange={(e) => handleScoreChange(student.docId, 'examScore', e.target.value)}
                         disabled={isLocked}
                       />
                     </td>

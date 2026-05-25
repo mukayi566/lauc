@@ -3,6 +3,9 @@ import { Link, useLocation } from 'react-router-dom';
 import logo from '../assets/logo.png';
 import { useAuth } from '../contexts/AuthContext';
 import ApplicationChatbot from './ApplicationChatbot';
+import toast from 'react-hot-toast';
+import { db } from '../firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 const Navbar = () => {
   const { currentUser, userRole, signOut } = useAuth();
@@ -78,62 +81,104 @@ const Navbar = () => {
   );
 };
 
-const Footer = () => (
-  <footer className="footer" id="contact">
-    <div className="footer-content">
-      <div className="footer-section">
-        <h3><i className="fas fa-graduation-cap" style={{ marginRight: 8 }}></i>Fairview University College</h3>
-        <p style={{ color: '#ccc', lineHeight: 1.9, fontSize: 13 }}>
-          A registered and accredited institution providing quality higher education in healthcare, business, and humanities programs.
-        </p>
-        <div className="social-links">
-          <a href="#" aria-label="Facebook"><i className="fab fa-facebook-f"></i></a>
-          <a href="#" aria-label="Twitter"><i className="fab fa-twitter"></i></a>
-          <a href="#" aria-label="LinkedIn"><i className="fab fa-linkedin-in"></i></a>
-          <a href="#" aria-label="Instagram"><i className="fab fa-instagram"></i></a>
+const Footer = () => {
+  const [email, setEmail] = React.useState('');
+  const [loading, setLoading] = React.useState(false);
+
+  const handleSubscribe = async (e) => {
+    e.preventDefault();
+    if (!email) return;
+
+    setLoading(true);
+    try {
+      await addDoc(collection(db, 'newsletter_subscriptions'), {
+        email: email.trim(),
+        subscribedAt: serverTimestamp(),
+        source: 'footer'
+      });
+      toast.success('Thank you for subscribing to our newsletter!', {
+        duration: 4000,
+        position: 'bottom-center',
+        icon: '✉️',
+      });
+      setEmail('');
+    } catch (err) {
+      console.error('Newsletter error:', err);
+      toast.error('Subscription failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <footer className="footer" id="contact">
+      <div className="footer-content">
+        <div className="footer-section">
+          <h3><i className="fas fa-graduation-cap" style={{ marginRight: 8 }}></i>Fairview University College</h3>
+          <p style={{ color: '#ccc', lineHeight: 1.9, fontSize: 13 }}>
+            A registered and accredited institution providing quality higher education in healthcare, business, and humanities programs.
+          </p>
+          <div className="social-links">
+            <a href="#" aria-label="Facebook"><i className="fab fa-facebook-f"></i></a>
+            <a href="#" aria-label="Twitter"><i className="fab fa-twitter"></i></a>
+            <a href="#" aria-label="LinkedIn"><i className="fab fa-linkedin-in"></i></a>
+            <a href="#" aria-label="Instagram"><i className="fab fa-instagram"></i></a>
+          </div>
+        </div>
+
+        <div className="footer-section">
+          <h3>Quick Links</h3>
+          <Link to="/">Home</Link>
+          <Link to="/about">About Us</Link>
+          <Link to="/programs">Programs</Link>
+          <Link to="/admissions">Admissions</Link>
+          <Link to="/student-login" style={{ color: '#facc15', fontWeight: 600 }}>
+            <i className="fas fa-user-lock" style={{ marginRight: 6 }}></i>Student Portal
+          </Link>
+          <a href="#">FAQ's</a>
+        </div>
+
+        <div className="footer-section">
+          <h3>Contact Information</h3>
+          <div className="footer-contact">
+            <div><i className="fas fa-map-marker-alt"></i> 11 Lubambe Road, Plot 70A, Lusaka</div>
+            <div style={{ marginTop: 8 }}><i className="fas fa-envelope"></i> contact@fairviewuniversity.com</div>
+            <div style={{ marginTop: 8 }}><i className="fas fa-phone"></i> +260977787114</div>
+            <div style={{ marginTop: 8 }}><i className="fas fa-phone"></i> +260966787114</div>
+            <div style={{ marginTop: 8 }}><i className="fas fa-phone"></i> +260977210769</div>
+          </div>
+        </div>
+
+        <div className="footer-section">
+          <h3>Newsletter</h3>
+          <p style={{ color: '#ccc', marginBottom: 14, fontSize: 13 }}>Subscribe to get latest updates and news</p>
+          <form className="newsletter-form" onSubmit={handleSubscribe}>
+            <input
+              type="email"
+              placeholder="Your Email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={loading}
+            />
+            <button
+              type="submit"
+              className="btn btn-primary"
+              style={{ width: '100%', justifyContent: 'center' }}
+              disabled={loading}
+            >
+              {loading ? <i className="fas fa-spinner fa-spin"></i> : 'Subscribe Now'}
+            </button>
+          </form>
         </div>
       </div>
 
-      <div className="footer-section">
-        <h3>Quick Links</h3>
-        <Link to="/">Home</Link>
-        <Link to="/about">About Us</Link>
-        <Link to="/programs">Programs</Link>
-        <Link to="/admissions">Admissions</Link>
-        <Link to="/student-login" style={{ color: '#facc15', fontWeight: 600 }}>
-          <i className="fas fa-user-lock" style={{ marginRight: 6 }}></i>Student Portal
-        </Link>
-        <a href="#">FAQ's</a>
+      <div className="footer-bottom">
+        <p>© Copyright {new Date().getFullYear()} Fairview University. All Rights Reserved.</p>
       </div>
-
-      <div className="footer-section">
-        <h3>Contact Information</h3>
-        <div className="footer-contact">
-          <div><i className="fas fa-map-marker-alt"></i> 11 Lubambe Road, Plot 70A, Lusaka</div>
-          <div style={{ marginTop: 8 }}><i className="fas fa-envelope"></i> contact@fairviewuniversity.com</div>
-          <div style={{ marginTop: 8 }}><i className="fas fa-phone"></i> +260977787114</div>
-          <div style={{ marginTop: 8 }}><i className="fas fa-phone"></i> +260966787114</div>
-          <div style={{ marginTop: 8 }}><i className="fas fa-phone"></i> +260977210769</div>
-        </div>
-      </div>
-
-      <div className="footer-section">
-        <h3>Newsletter</h3>
-        <p style={{ color: '#ccc', marginBottom: 14, fontSize: 13 }}>Subscribe to get latest updates and news</p>
-        <form className="newsletter-form" onSubmit={(e) => { e.preventDefault(); alert('Thank you for subscribing!'); }}>
-          <input type="email" placeholder="Your Email" />
-          <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
-            Subscribe Now
-          </button>
-        </form>
-      </div>
-    </div>
-
-    <div className="footer-bottom">
-      <p>© Copyright {new Date().getFullYear()} Fairview University. All Rights Reserved.</p>
-    </div>
-  </footer>
-);
+    </footer>
+  );
+};
 
 const Layout = ({ children }) => (
   <>

@@ -430,6 +430,7 @@ const StaffDashboard = () => {
     { id: 'results', icon: 'fa-poll', label: 'Results' },
     { id: 'students', icon: 'fa-users', label: 'Students' },
     { id: 'announcements', icon: 'fa-bullhorn', label: 'Announcements' },
+    { id: 'elearning', icon: 'fa-graduation-cap', label: 'E-Learning platform' },
     { id: 'settings', icon: 'fa-cog', label: 'Settings' },
   ];
 
@@ -464,7 +465,15 @@ const StaffDashboard = () => {
           {navItems.map(item => (
             <a key={item.id} href="#"
               className={`sd-nav-link ${activeTab === item.id ? 'active' : ''}`}
-              onClick={(e) => { e.preventDefault(); setActiveTab(item.id); setSidebarOpen(false); }}>
+              onClick={(e) => {
+                e.preventDefault();
+                if (item.id === 'elearning') {
+                  navigate('/elearning');
+                } else {
+                  setActiveTab(item.id);
+                }
+                setSidebarOpen(false);
+              }}>
               <i className={`fas ${item.icon}`}></i>
               <span>{item.label}</span>
               {item.id === 'announcements' && announcements.length > 0 && (

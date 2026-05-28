@@ -405,6 +405,8 @@ const AdminDashboard = () => {
   const [lecturers, setLecturers] = useState([]);
   const [admins, setAdmins] = useState([]);
   const [registrars, setRegistrars] = useState([]);
+  const [itOfficers, setItOfficers] = useState([]);
+  const [financeOfficers, setFinanceOfficers] = useState([]);
   const [courses, setCourses] = useState([]);
   const [applications, setApplications] = useState([]);
   const [allResults, setAllResults] = useState([]);
@@ -483,6 +485,20 @@ const AdminDashboard = () => {
       handleError
     );
 
+    const unsubIT = onSnapshot(query(collection(db, 'users'), where('role', '==', 'it')),
+      (snapshot) => {
+        setItOfficers(snapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() })));
+      },
+      handleError
+    );
+
+    const unsubFinance = onSnapshot(query(collection(db, 'users'), where('role', '==', 'finance')),
+      (snapshot) => {
+        setFinanceOfficers(snapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() })));
+      },
+      handleError
+    );
+
     return () => {
       unsubStudents();
       unsubLecturers();
@@ -492,6 +508,8 @@ const AdminDashboard = () => {
       unsubResults();
       unsubAdmins();
       unsubRegistrars();
+      unsubIT();
+      unsubFinance();
     };
   }, []);
 
@@ -833,6 +851,104 @@ const AdminDashboard = () => {
     });
   };
 
+  /* ── IT OFFICERS ── */
+  const saveITOfficer = async (data) => {
+    try {
+      if (data.docId) {
+        const { docId, ...updateData } = data;
+        await updateDoc(doc(db, 'users', docId), updateData);
+        toast(`${data.name} updated successfully.`);
+      } else {
+        const defaultPassword = 'Fairview@IT2026';
+        let uid = null;
+        try {
+          const userCredential = await createUserWithEmailAndPassword(secondaryAuth, data.email, defaultPassword);
+          uid = userCredential.user.uid;
+          await secondaryAuth.signOut();
+        } catch (authErr) {
+          toast(`Auth error: ${authErr.message}`, 'error');
+          throw authErr;
+        }
+
+        await setDoc(doc(db, 'users', uid), {
+          name: data.name,
+          email: data.email,
+          role: 'it',
+          createdAt: serverTimestamp()
+        });
+
+        setModal(null);
+        await resetPassword(data.email).catch(() => { });
+        toast(`${data.name} added as IT Support Officer.`);
+      }
+    } catch (err) {
+      if (!err.code) toast('Error saving IT officer.', 'error');
+    }
+  };
+
+  const deleteITOfficer = (docId) => {
+    setConfirm({
+      title: 'Remove IT Officer',
+      message: 'Remove this IT staff? Access will be revoked.',
+      action: async () => {
+        try {
+          await deleteDoc(doc(db, 'users', docId));
+          toast('IT Officer removed.', 'error');
+        } catch (err) { toast('Error removing.', 'error'); }
+        setConfirm(null);
+      }
+    });
+  };
+
+  /* ── FINANCE OFFICERS ── */
+  const saveFinanceOfficer = async (data) => {
+    try {
+      if (data.docId) {
+        const { docId, ...updateData } = data;
+        await updateDoc(doc(db, 'users', docId), updateData);
+        toast(`${data.name} updated successfully.`);
+      } else {
+        const defaultPassword = 'Fairview@Finance2026';
+        let uid = null;
+        try {
+          const userCredential = await createUserWithEmailAndPassword(secondaryAuth, data.email, defaultPassword);
+          uid = userCredential.user.uid;
+          await secondaryAuth.signOut();
+        } catch (authErr) {
+          toast(`Auth error: ${authErr.message}`, 'error');
+          throw authErr;
+        }
+
+        await setDoc(doc(db, 'users', uid), {
+          name: data.name,
+          email: data.email,
+          role: 'finance',
+          createdAt: serverTimestamp()
+        });
+
+        setModal(null);
+        await resetPassword(data.email).catch(() => { });
+        toast(`${data.name} added as Finance Officer.`);
+      }
+    } catch (err) {
+      if (!err.code) toast('Error saving finance officer.', 'error');
+    }
+  };
+
+  const deleteFinanceOfficer = (docId) => {
+    setConfirm({
+      title: 'Remove Finance Officer',
+      message: 'Remove this finance staff? Access will be revoked.',
+      action: async () => {
+        try {
+          await deleteDoc(doc(db, 'users', docId));
+          toast('Finance Officer removed.', 'error');
+        } catch (err) { toast('Error removing.', 'error'); }
+        setConfirm(null);
+      }
+    });
+  };
+
   /* ── COURSES ── */
   const saveCourse = async (data) => {
     try {
@@ -983,6 +1099,9 @@ const AdminDashboard = () => {
     return name.includes(q) || program.includes(q) || status.includes(q);
   });
 
+  const filteredIT = itOfficers.filter(x => (x.name || '').toLowerCase().includes(search.toLowerCase()) || (x.email || '').toLowerCase().includes(search.toLowerCase()));
+  const filteredFinance = financeOfficers.filter(x => (x.name || '').toLowerCase().includes(search.toLowerCase()) || (x.email || '').toLowerCase().includes(search.toLowerCase()));
+
   const pendingApps = applications.filter(a => a.status === 'Pending').length;
   const pendingResults = allResults.filter(r => r.status === 'submitted').length;
 
@@ -1003,6 +1122,8 @@ const AdminDashboard = () => {
     { key: 'students', icon: 'fa-users', label: 'Students' },
     { key: 'lecturers', icon: 'fa-chalkboard-user', label: 'Lecturers' },
     { key: 'registrars', icon: 'fa-id-card-clip', label: 'Registrars' },
+    { key: 'it', icon: 'fa-microchip', label: 'IT Support' },
+    { key: 'finance', icon: 'fa-wallet', label: 'Finance Dept' },
     { key: 'admins', icon: 'fa-user-shield', label: 'Admins' },
     { key: 'courses', icon: 'fa-book-open', label: 'Courses' },
     { key: 'results', icon: 'fa-poll', label: 'Results', badge: pendingResults },
@@ -1025,7 +1146,9 @@ const AdminDashboard = () => {
               modal.type === 'lecturer' ? saveLecturer :
                 modal.type === 'admin' ? saveAdmin :
                   modal.type === 'registrar' ? saveRegistrar :
-                    saveCourse
+                    modal.type === 'it' ? saveITOfficer :
+                      modal.type === 'finance' ? saveFinanceOfficer :
+                        saveCourse
           }
         />
       )}
@@ -1433,6 +1556,92 @@ const AdminDashboard = () => {
                                   <button className="ad-icon-btn ad-icon-btn--delete" title="Delete" onClick={() => deleteRegistrar(reg.docId)}>
                                     <i className="fas fa-trash" />
                                   </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════
+              IT SUPPORT TAB
+          ══════════════════════════════════ */}
+          {activeTab === 'it' && (
+            <div className="ad-page">
+              <div className="ad-card">
+                <div className="ad-card__head">
+                  <h3><i className="fas fa-microchip" /> IT Support Officers <span className="ad-count">{filteredIT.length}</span></h3>
+                  <div className="ad-card__actions">
+                    <button className="ad-btn ad-btn--primary" onClick={() => setModal({ type: 'it' })}>
+                      <i className="fas fa-plus" /> Add IT Officer
+                    </button>
+                  </div>
+                </div>
+                <div className="ad-card__body ad-card__body--p0">
+                  {filteredIT.length === 0
+                    ? <div className="ad-empty"><i className="fas fa-search" /><p>No IT officers found.</p></div>
+                    : (
+                      <table className="ad-table ad-table--hover">
+                        <thead><tr><th>Name</th><th>Email</th><th>Created</th><th>Actions</th></tr></thead>
+                        <tbody>
+                          {filteredIT.map(officer => (
+                            <tr key={officer.docId}>
+                              <td><b>{officer.name}</b></td>
+                              <td className="ad-muted">{officer.email}</td>
+                              <td className="ad-muted">{officer.createdAt?.toDate ? officer.createdAt.toDate().toLocaleDateString() : '—'}</td>
+                              <td>
+                                <div className="ad-actions">
+                                  <button className="ad-icon-btn ad-icon-btn--edit" title="Reset Password" onClick={() => handlePasswordReset(officer.email)}><i className="fas fa-key" /></button>
+                                  <button className="ad-icon-btn ad-icon-btn--edit" title="Edit" onClick={() => setModal({ type: 'it', editData: officer })}><i className="fas fa-pen" /></button>
+                                  <button className="ad-icon-btn ad-icon-btn--delete" title="Delete" onClick={() => deleteITOfficer(officer.docId)}><i className="fas fa-trash" /></button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════
+              FINANCE TAB
+          ══════════════════════════════════ */}
+          {activeTab === 'finance' && (
+            <div className="ad-page">
+              <div className="ad-card">
+                <div className="ad-card__head">
+                  <h3><i className="fas fa-wallet" /> Finance Officers <span className="ad-count">{filteredFinance.length}</span></h3>
+                  <div className="ad-card__actions">
+                    <button className="ad-btn ad-btn--primary" onClick={() => setModal({ type: 'finance' })}>
+                      <i className="fas fa-plus" /> Add Finance Officer
+                    </button>
+                  </div>
+                </div>
+                <div className="ad-card__body ad-card__body--p0">
+                  {filteredFinance.length === 0
+                    ? <div className="ad-empty"><i className="fas fa-search" /><p>No finance officers found.</p></div>
+                    : (
+                      <table className="ad-table ad-table--hover">
+                        <thead><tr><th>Name</th><th>Email</th><th>Created</th><th>Actions</th></tr></thead>
+                        <tbody>
+                          {filteredFinance.map(officer => (
+                            <tr key={officer.docId}>
+                              <td><b>{officer.name}</b></td>
+                              <td className="ad-muted">{officer.email}</td>
+                              <td className="ad-muted">{officer.createdAt?.toDate ? officer.createdAt.toDate().toLocaleDateString() : '—'}</td>
+                              <td>
+                                <div className="ad-actions">
+                                  <button className="ad-icon-btn ad-icon-btn--edit" title="Reset Password" onClick={() => handlePasswordReset(officer.email)}><i className="fas fa-key" /></button>
+                                  <button className="ad-icon-btn ad-icon-btn--edit" title="Edit" onClick={() => setModal({ type: 'finance', editData: officer })}><i className="fas fa-pen" /></button>
+                                  <button className="ad-icon-btn ad-icon-btn--delete" title="Delete" onClick={() => deleteFinanceOfficer(officer.docId)}><i className="fas fa-trash" /></button>
                                 </div>
                               </td>
                             </tr>

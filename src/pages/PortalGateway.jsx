@@ -48,6 +48,28 @@ const portals = [
     badge: 'Registrar Portal',
     features: ['Student Registration', 'Course Enrollment', 'Exam Dockets', 'Academic Records'],
   },
+  {
+    role: 'IT Support',
+    icon: 'fa-microchip',
+    route: '/it-login',
+    description: 'System metrics, user management, and technical configuration hub.',
+    color: '#4c1d95',
+    accent: '#6d28d9',
+    gradient: 'linear-gradient(135deg, #4c1d95 0%, #6d28d9 100%)',
+    badge: 'IT Portal',
+    features: ['System Configuration', 'User Access', 'Technical Support', 'Logs'],
+  },
+  {
+    role: 'Finance',
+    icon: 'fa-wallet',
+    route: '/finance-login',
+    description: 'Manage student accounts, verify payments, and generate financial reports.',
+    color: '#064e3b',
+    accent: '#059669',
+    gradient: 'linear-gradient(135deg, #064e3b 0%, #059669 100%)',
+    badge: 'Finance Portal',
+    features: ['Fee Management', 'Transactions', 'Student Balances', 'Reports'],
+  },
 ];
 
 const PortalGateway = () => {
@@ -61,6 +83,8 @@ const PortalGateway = () => {
       else if (userRole === 'staff') navigate('/staff-dashboard', { replace: true });
       else if (userRole === 'registrar') navigate('/registrar-dashboard', { replace: true });
       else if (userRole === 'student') navigate('/student-dashboard', { replace: true });
+      else if (userRole === 'it') navigate('/it-dashboard', { replace: true });
+      else if (userRole === 'finance') navigate('/finance-dashboard', { replace: true });
     }
   }, [currentUser, userRole, navigate]);
 

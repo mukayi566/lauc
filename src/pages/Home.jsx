@@ -208,11 +208,11 @@ const Home = () => {
               <p>Fairview University College is a registered and accredited institution, focused on providing higher education in health, business, humanities, and TEVETA programs. The Institution is located in Barlastone, Lusaka, Zambia.</p>
               <div style={{ background: 'white', padding: '18px 22px', borderRadius: 10, marginBottom: 14, borderLeft: '4px solid #2a5298' }}>
                 <h4 style={{ color: '#2a5298', marginBottom: 6, fontWeight: 700 }}><i className="fas fa-bullseye" style={{ marginRight: 8 }}></i>Our Mission</h4>
-                <p style={{ color: '#666', fontSize: 14 }}>To provide sustained holistic tertiary education based on Christian principles for service to society.</p>
+                <p style={{ color: '#666', fontSize: 14 }}>TO EDUCATE, EMPOWER AND ESTABLISH THE YOUTHS</p>
               </div>
               <div style={{ background: 'white', padding: '18px 22px', borderRadius: 10, marginBottom: 22, borderLeft: '4px solid #2a5298' }}>
                 <h4 style={{ color: '#2a5298', marginBottom: 6, fontWeight: 700 }}><i className="fas fa-eye" style={{ marginRight: 8 }}></i>Our Vision</h4>
-                <p style={{ color: '#666', fontSize: 14 }}>Providing professional, academic and research opportunities based on Christian principles for service to society.</p>
+                <p style={{ color: '#666', fontSize: 14 }}>EDUCATING AND IMPARTING KNOWLEDGE WITH EXCELLENCE</p>
               </div>
               <a href="tel:+260770839120" className="btn btn-primary">
                 <i className="fas fa-phone"></i> Call Now

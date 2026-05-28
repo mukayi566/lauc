@@ -532,6 +532,7 @@ const StudentDashboard = () => {
     { id: 'results', icon: 'fa-chart-bar', label: 'Results', group: 'Academics' },
     { id: 'timetable', icon: 'fa-calendar-alt', label: 'Timetable', group: 'Academics' },
     { id: 'online-exams', icon: 'fa-laptop', label: 'Online Exams', group: 'Academics' },
+    { id: 'elearning', icon: 'fa-graduation-cap', label: 'E-Learning platform', group: 'Academics' },
     { id: 'docket', icon: 'fa-id-card', label: 'Exam Docket', group: 'Academics' },
     { id: 'finance', icon: 'fa-wallet', label: 'Payments', group: 'Finance' },
     { id: 'hostel', icon: 'fa-hotel', label: 'Hostel & Housing', group: 'Services' },
@@ -596,7 +597,15 @@ const StudentDashboard = () => {
             {navItems.filter(i => i.group === grp).map(item => (
               <a key={item.id} href="#"
                 className={`sd-nav-link ${activeTab === item.id ? 'active' : ''}`}
-                onClick={e => { e.preventDefault(); setActiveTab(item.id); setSidebarOpen(false); }}>
+                onClick={e => {
+                  e.preventDefault();
+                  if (item.id === 'elearning') {
+                    navigate('/elearning');
+                  } else {
+                    setActiveTab(item.id);
+                  }
+                  setSidebarOpen(false);
+                }}>
                 <i className={`fas ${item.icon}`}></i>
                 <span>{item.label}</span>
                 {activeTab === item.id && <div className="sd-nav-indicator"></div>}

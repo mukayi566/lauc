@@ -28,6 +28,8 @@ import ITLogin from './pages/ITLogin';
 import ITDashboard from './pages/ITDashboard';
 import FinanceLogin from './pages/FinanceLogin';
 import FinanceDashboard from './pages/FinanceDashboard';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsConditions from './pages/TermsConditions';
 
 import { getSubdomain } from './utils/subdomain';
 
@@ -61,6 +63,8 @@ function App() {
           <Route path="/admissions" element={<Admissions />} />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/research" element={<Research />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/terms-conditions" element={<TermsConditions />} />
 
           {/* Portal gateway + individual login pages */}
           <Route path="/login" element={<PortalGateway />} />

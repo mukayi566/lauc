@@ -143,6 +143,8 @@ const Footer = () => {
             <i className="fas fa-user-lock" style={{ marginRight: 6 }}></i>Student Portal
           </Link>
           <Link to="/faq">FAQ's</Link>
+          <Link to="/privacy-policy">Privacy Policy</Link>
+          <Link to="/terms-conditions">Terms & Conditions</Link>
         </div>
 
         <div className="footer-section">

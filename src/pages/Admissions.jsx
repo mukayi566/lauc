@@ -566,6 +566,13 @@ const Admissions = () => {
                       I declare not to have any claim against Fairview University College in case of loss of life, property and/or injury sustained.
                     </label>
                   </div>
+
+                  <div className="form-checkbox" style={{ marginTop: '10px' }}>
+                    <input type="checkbox" id="termsAgree" name="termsAgree" required />
+                    <label htmlFor="termsAgree">
+                      I have read and agree to the <Link to="/terms-conditions" target="_blank" style={{ color: '#2a5298', fontWeight: 600 }}>Terms & Conditions</Link> and <Link to="/privacy-policy" target="_blank" style={{ color: '#2a5298', fontWeight: 600 }}>Privacy Policy</Link>. *
+                    </label>
+                  </div>
                 </div>
               </div>
 

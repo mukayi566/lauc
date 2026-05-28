@@ -200,7 +200,7 @@ main:has(.hero) {
 }
 
 .navbar-scrolled .nav-links a {
-  color: var(--clr-white) !important;
+  color: var(--clr-blue) !important;
   transition: color 0.4s ease, background 0.4s ease;
 
 }
@@ -211,7 +211,7 @@ main:has(.hero) {
 }
 
 .navbar-scrolled .nav-links a.active {
-  color: var(--clr-white) !important;
+  color: var(--clr-blue) !important;
 }
 
 .navbar-scrolled .mobile-menu-btn {
@@ -336,7 +336,7 @@ main:has(.hero) {
 
 /* Transparent navbar — portal link glassy */
 .navbar-transparent .nav-portal-link {
-  background: rgba(255, 255, 255, 0.18) !important;
+  background: rgba(53, 55, 214, 0.18) !important;
   border-color: rgba(255, 255, 255, 0.45) !important;
   color: white !important;
   backdrop-filter: blur(8px) !important;

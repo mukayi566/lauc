@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
 import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore';
+import Layout from '../components/Layout';
 import '../dashboards.css';
 
 const ELearning = () => {
@@ -95,31 +96,34 @@ const ELearning = () => {
     };
 
     return (
-        <div className="elearning-page">
-            {/* Header */}
-            <header className="elearning-header">
-                <div className="container flex-between">
-                    <div className="elearning-brand" style={{ cursor: 'pointer' }} onClick={handleBack}>
-                        <i className="fas fa-graduation-cap"></i>
-                        <span>Fairview E-Learning</span>
-                    </div>
-                    <div className="elearning-nav">
-                        <button className={activeSection === 'courses' ? 'active' : ''} onClick={() => setActiveSection('courses')}>My Courses</button>
-                        <button className={activeSection === 'live' ? 'active' : ''} onClick={() => setActiveSection('live')}>Virtual Classes</button>
-                        <button className={activeSection === 'assignments' ? 'active' : ''} onClick={() => setActiveSection('assignments')}>Assignments</button>
-                        <button className={activeSection === 'library' ? 'active' : ''} onClick={() => setActiveSection('library')}>Digital Library</button>
-                    </div>
-                    <div className="user-access">
-                        <button className="btn btn-outline btn-sm" onClick={handleBack} style={{ color: 'white', borderColor: 'rgba(255,255,255,0.3)' }}>
-                            <i className="fas fa-arrow-left"></i> Dashboard
-                        </button>
-                        <i className="fas fa-bell"></i>
-                        <div className="avatar-circle">ST</div>
+        <Layout>
+            <div className="elearning-page">
+                {/* Secondary Header for LMS navigation */}
+                <div className="elearning-subheader">
+                    <div className="container flex-between">
+                        <div className="elearning-nav">
+                            <button className={activeSection === 'courses' ? 'active' : ''} onClick={() => setActiveSection('courses')}>
+                                <i className="fas fa-book"></i> My Courses
+                            </button>
+                            <button className={activeSection === 'live' ? 'active' : ''} onClick={() => setActiveSection('live')}>
+                                <i className="fas fa-video"></i> Virtual Classes
+                            </button>
+                            <button className={activeSection === 'assignments' ? 'active' : ''} onClick={() => setActiveSection('assignments')}>
+                                <i className="fas fa-tasks"></i> Assignments
+                            </button>
+                            <button className={activeSection === 'library' ? 'active' : ''} onClick={() => setActiveSection('library')}>
+                                <i className="fas fa-book-reader"></i> Digital Library
+                            </button>
+                        </div>
+                        <div className="user-context">
+                            <button className="btn-context" onClick={handleBack}>
+                                <i className="fas fa-arrow-left"></i> Exit to Dashboard
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </header>
 
-            <div className="container section">
+                <div className="container section">
                 {loading ? (
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '300px', color: '#1e3c72' }}>
                         <i className="fas fa-circle-notch fa-spin fa-3x" style={{ marginBottom: '15px' }}></i>
@@ -320,16 +324,45 @@ const ELearning = () => {
 
             <style>{`
                 .elearning-page { min-height: 100vh; background: #f4f7fa; }
-                .elearning-header { background: #1e3c72; color: white; padding: 15px 0; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+                .elearning-subheader { background: white; border-bottom: 1px solid #e2e8f0; padding: 12px 0; sticky: top; top: 72px; z-index: 90; }
                 .flex-between { display: flex; justify-content: space-between; align-items: center; }
-                .elearning-brand { display: flex; align-items: center; gap: 12px; font-weight: 800; font-size: 1.5rem; }
-                .elearning-nav { display: flex; gap: 20px; }
-                .elearning-nav button { background: none; border: none; color: rgba(255,255,255,0.7); font-weight: 600; padding: 8px 15px; border-radius: 8px; cursor: pointer; transition: 0.3s; }
-                .elearning-nav button:hover { background: rgba(255,255,255,0.1); color: white; }
-                .elearning-nav button.active { background: white; color: #1e3c72; }
+                
+                .elearning-nav { display: flex; gap: 10px; }
+                .elearning-nav button { 
+                    background: none; 
+                    border: 1px solid transparent; 
+                    color: #64748b; 
+                    font-weight: 600; 
+                    padding: 8px 16px; 
+                    border-radius: 10px; 
+                    cursor: pointer; 
+                    transition: all 0.2s ease;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    font-size: 0.9rem;
+                }
+                .elearning-nav button i { color: #2a5298; opacity: 0.7; }
+                .elearning-nav button:hover { background: #f8fafc; color: #1e3c72; }
+                .elearning-nav button.active { background: #f0f7ff; color: #1e3c72; border-color: #dbeafe; }
+                .elearning-nav button.active i { color: #1e3c72; opacity: 1; }
 
-                .user-access { display: flex; align-items: center; gap: 20px; }
-                .avatar-circle { width: 38px; height: 38px; border-radius: 50%; background: #2a5298; display: flex; align-items: center; justifyContent: center; font-weight: 700; border: 2px solid rgba(255,255,255,0.3); }
+                .user-context { display: flex; align-items: center; gap: 15px; }
+                .btn-context {
+                    background: #f1f5f9;
+                    border: none;
+                    color: #475569;
+                    padding: 8px 16px;
+                    border-radius: 8px;
+                    font-weight: 600;
+                    font-size: 0.85rem;
+                    cursor: pointer;
+                    transition: 0.2s;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+                .btn-context:hover { background: #e2e8f0; color: #1e293b; }
 
                 .section-title-area { margin-bottom: 40px; }
                 .section-title-area h2 { font-weight: 800; color: #1e293b; margin-bottom: 8px; }

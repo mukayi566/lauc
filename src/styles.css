@@ -98,7 +98,9 @@ main {
   padding-top: 72px;
 }
 
-main:has(.hero) {
+main:has(.hero),
+main:has(.research-hero),
+main:has(.elearning-header) {
   padding-top: 0;
 }
 
@@ -200,18 +202,18 @@ main:has(.hero) {
 }
 
 .navbar-scrolled .nav-links a {
-  color: var(--clr-white) !important;
+  color: var(--clr-blue) !important;
   transition: color 0.4s ease, background 0.4s ease;
-
 }
 
 .navbar-scrolled .nav-links a:hover {
-  color: var(--clr-blue) !important;
+  color: var(--clr-blue-light) !important;
   background: rgba(30, 60, 114, 0.05) !important;
 }
 
 .navbar-scrolled .nav-links a.active {
-  color: var(--clr-white) !important;
+  color: var(--clr-blue-mid) !important;
+  font-weight: 700;
 }
 
 .navbar-scrolled .mobile-menu-btn {

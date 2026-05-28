@@ -16,6 +16,9 @@ const Navbar = () => {
   const getDashboardLink = () => {
     if (userRole === 'admin') return '/admin-dashboard';
     if (userRole === 'staff') return '/staff-dashboard';
+    if (userRole === 'registrar') return '/registrar-dashboard';
+    if (userRole === 'it') return '/it-dashboard';
+    if (userRole === 'finance') return '/finance-dashboard';
     return '/student-dashboard';
   };
 
@@ -132,10 +135,11 @@ const Footer = () => {
           <Link to="/about">About Us</Link>
           <Link to="/programs">Programs</Link>
           <Link to="/admissions">Admissions</Link>
+          <Link to="/research">Research Repository</Link>
           <Link to="/student-login" style={{ color: '#facc15', fontWeight: 600 }}>
             <i className="fas fa-user-lock" style={{ marginRight: 6 }}></i>Student Portal
           </Link>
-          <a href="#">FAQ's</a>
+          <Link to="/faq">FAQ's</Link>
         </div>
 
         <div className="footer-section">

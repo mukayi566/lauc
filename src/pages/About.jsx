@@ -29,12 +29,12 @@ const About = () => (
           <div className="mission-vision-card">
             <i className="fas fa-bullseye"></i>
             <h3>Our Mission</h3>
-            <p>To be a partner with government in producing holistic education based on Christian principles for service to society.</p>
+            <p> TO EDUCATE, EMPOWER AND ESTABLISH THE YOUTHS</p>
           </div>
           <div className="mission-vision-card">
             <i className="fas fa-eye"></i>
             <h3>Our Vision</h3>
-            <p>To provide unmatched tertiary education to society producing practitioners with a community focus.</p>
+            <p>EDUCATING AND IMPARTING KNOWLEDGE WITH EXCELLENCE</p>
           </div>
         </div>
       </div>

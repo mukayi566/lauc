@@ -21,6 +21,14 @@ import StudentDashboard from './pages/StudentDashboard';
 import RegistrarDashboard from './pages/RegistrarDashboard';
 import RegistrarLogin from './pages/RegistrarLogin';
 
+import FAQ from './pages/FAQ';
+import Research from './pages/Research';
+import ELearning from './pages/ELearning';
+import ITLogin from './pages/ITLogin';
+import ITDashboard from './pages/ITDashboard';
+import FinanceLogin from './pages/FinanceLogin';
+import FinanceDashboard from './pages/FinanceDashboard';
+
 import { getSubdomain } from './utils/subdomain';
 
 function App() {
@@ -32,6 +40,8 @@ function App() {
     staff: <StaffLogin />,
     admin: <AdminLogin />,
     registrar: <RegistrarLogin />,
+    it: <ITLogin />,
+    finance: <FinanceLogin />,
   };
 
   const portalElement = subdomainConfig[subdomain];
@@ -49,6 +59,8 @@ function App() {
           <Route path="/about" element={<About />} />
           <Route path="/programs" element={<Programs />} />
           <Route path="/admissions" element={<Admissions />} />
+          <Route path="/faq" element={<FAQ />} />
+          <Route path="/research" element={<Research />} />
 
           {/* Portal gateway + individual login pages */}
           <Route path="/login" element={<PortalGateway />} />
@@ -56,6 +68,8 @@ function App() {
           <Route path="/staff-login" element={<StaffLogin />} />
           <Route path="/admin-login" element={<AdminLogin />} />
           <Route path="/registrar-login" element={<RegistrarLogin />} />
+          <Route path="/it-login" element={<ITLogin />} />
+          <Route path="/finance-login" element={<FinanceLogin />} />
 
           {/* Protected dashboard routes */}
           <Route
@@ -87,6 +101,30 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['registrar']}>
                 <RegistrarDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/it-dashboard"
+            element={
+              <ProtectedRoute allowedRoles={['it']}>
+                <ITDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/finance-dashboard"
+            element={
+              <ProtectedRoute allowedRoles={['finance']}>
+                <FinanceDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/elearning"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'staff']}>
+                <ELearning />
               </ProtectedRoute>
             }
           />

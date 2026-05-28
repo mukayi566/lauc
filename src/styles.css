@@ -200,7 +200,7 @@ main:has(.hero) {
 }
 
 .navbar-scrolled .nav-links a {
-  color: var(--clr-blue) !important;
+  color: var(--clr-white) !important;
   transition: color 0.4s ease, background 0.4s ease;
 
 }
@@ -211,7 +211,7 @@ main:has(.hero) {
 }
 
 .navbar-scrolled .nav-links a.active {
-  color: var(--clr-blue) !important;
+  color: var(--clr-white) !important;
 }
 
 .navbar-scrolled .mobile-menu-btn {

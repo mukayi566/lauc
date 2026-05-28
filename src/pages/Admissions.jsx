@@ -71,7 +71,7 @@ const Admissions = () => {
     try {
       const formData = new FormData(formRef.current);
       const data = Object.fromEntries(formData.entries());
-      
+
       // Handle file uploads (Cloudinary URLs already in state)
       if (!nrcUrl || !resultsUrl) {
         throw new Error('Please upload all required documents.');
@@ -122,9 +122,12 @@ const Admissions = () => {
           <p>Information about the admissions process at Fairview University College</p>
           <div className="hero-buttons">
             <a href="#apply" className="btn btn-primary">
-              <i className="fas fa-file-alt"></i> Apply Now
+              <i className="fas fa-file-alt"></i> Apply Online
             </a>
-            <a href="#requirements" className="btn btn-secondary">
+            <a href="/ApplicationForm.pdf" download className="btn btn-secondary">
+              <i className="fas fa-download"></i> Download Offline Form
+            </a>
+            <a href="#requirements" className="btn btn-ghost" style={{ color: 'white', border: '1px solid white' }}>
               <i className="fas fa-list-check"></i> View Requirements
             </a>
           </div>
@@ -254,7 +257,11 @@ const Admissions = () => {
       <section className="section section-alt" id="apply">
         <div className="container">
           <h2 className="section-title">Apply Now</h2>
-          <p className="section-subtitle">Complete this form to submit your application to Fairview University College</p>
+          <p className="section-subtitle">
+            Complete this form to submit your application to Fairview University College.
+            <br />
+            Prefer physical submission? <a href="/ApplicationForm.pdf" download style={{ color: '#2a5298', fontWeight: 600, textDecoration: 'underline' }}>Download the offline application form</a>.
+          </p>
 
           <div className="form-container">
             {alert && (
@@ -381,8 +388,8 @@ const Admissions = () => {
                   <div className="form-group">
                     <label htmlFor="nrcPassportFile">Upload NRC / Passport (PDF or Image) *</label>
                     <div className="cloudinary-upload-wrapper">
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         onClick={() => openWidget('nrc')}
                         className={`cloudinary-btn ${nrcUrl ? 'success' : ''}`}
                       >
@@ -390,13 +397,13 @@ const Admissions = () => {
                       </button>
                       {nrcFileName && <span className="file-name">{nrcFileName}</span>}
                     </div>
-                    <small style={{display: 'block', marginTop: 4, color: '#666'}}>Maximum size: 5MB</small>
+                    <small style={{ display: 'block', marginTop: 4, color: '#666' }}>Maximum size: 5MB</small>
                   </div>
                   <div className="form-group">
                     <label htmlFor="academicResultsFile">Upload Academic Results / Transcripts *</label>
                     <div className="cloudinary-upload-wrapper">
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         onClick={() => openWidget('results')}
                         className={`cloudinary-btn ${resultsUrl ? 'success' : ''}`}
                       >
@@ -404,7 +411,7 @@ const Admissions = () => {
                       </button>
                       {resultsFileName && <span className="file-name">{resultsFileName}</span>}
                     </div>
-                    <small style={{display: 'block', marginTop: 4, color: '#666'}}>Maximum size: 5MB</small>
+                    <small style={{ display: 'block', marginTop: 4, color: '#666' }}>Maximum size: 5MB</small>
                   </div>
                 </div>
                 <div className="form-row full">

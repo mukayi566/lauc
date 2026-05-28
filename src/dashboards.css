@@ -33,6 +33,37 @@
   --primary-shadow: rgba(124, 58, 237, 0.25);
 }
 
+.it-theme {
+  --primary-gradient: linear-gradient(165deg, #1e1b4b 0%, #3730a3 60%, #312e81 100%);
+  --secondary-gradient: linear-gradient(135deg, #4338ca 0%, #3730a3 100%);
+  --accent-color: #818cf8;
+  --primary-color: #3730a3;
+  --primary-hover: #312e81;
+  --primary-light: rgba(55, 48, 163, 0.15);
+  --primary-shadow: rgba(55, 48, 163, 0.25);
+}
+
+.card-glow-it {
+  position: relative;
+  overflow: hidden;
+  border-left: 4px solid var(--primary-color) !important;
+}
+
+.card-glow-it::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: radial-gradient(circle at top right, rgba(55, 48, 163, 0.05), transparent 70%);
+  pointer-events: none;
+}
+
+.card-glow-it:hover {
+  box-shadow: 0 10px 30px rgba(55, 48, 163, 0.15) !important;
+}
+
 /* ── Shell layout ──────────────────────────────── */
 .sd-shell {
   display: flex;
@@ -47,7 +78,7 @@
 ══════════════════════════════════════════════ */
 .sd-sidebar {
   width: 260px;
-  min-height: 100vh;
+  height: 100vh;
   position: fixed;
   left: 0;
   top: 0;
@@ -60,6 +91,25 @@
   overflow-x: hidden;
   transition: transform 0.3s cubic-bezier(.4, 0, .2, 1);
   box-shadow: 4px 0 24px var(--primary-shadow);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.sd-sidebar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sd-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sd-sidebar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+}
+
+.sd-sidebar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
 }
 
 /* logo */
@@ -104,11 +154,20 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  margin: 18px 14px 4px;
-  padding: 10px 14px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  margin: 18px 14px 10px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: all 0.3s ease;
+}
+
+.sd-profile-pill:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
 }
 
 .sd-avatar {
@@ -161,47 +220,65 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 11px 22px;
-  color: rgba(255, 255, 255, 0.78);
+  padding: 12px 22px;
+  color: rgba(255, 255, 255, 0.7);
   text-decoration: none;
   font-size: 14px;
   font-weight: 500;
   position: relative;
-  transition: all 0.2s;
-  border-left: 3px solid transparent;
-  margin: 1px 0;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  margin: 4px 12px;
+  border-radius: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: calc(100% - 24px);
+  text-align: left;
 }
 
 .sd-nav-link i {
-  width: 18px;
+  width: 20px;
   text-align: center;
-  font-size: 16px;
+  font-size: 17px;
   flex-shrink: 0;
+  opacity: 0.8;
+  transition: transform 0.3s ease;
 }
 
 .sd-nav-link:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
   color: white;
-  border-left-color: rgba(255, 255, 255, 0.4);
+}
+
+.sd-nav-link:hover i {
+  transform: translateX(2px);
+  opacity: 1;
 }
 
 .sd-nav-link.active {
   background: rgba(255, 255, 255, 0.15);
   color: white;
-  border-left-color: var(--accent-color);
-  font-weight: 700;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.sd-nav-link.active i {
+  opacity: 1;
+  color: var(--accent-color);
 }
 
 .sd-nav-indicator {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background: var(--accent-color);
   margin-left: auto;
+  box-shadow: 0 0 10px var(--accent-color);
 }
 
 .sd-logout {
   color: rgba(255, 160, 160, 0.8) !important;
+  margin-top: auto;
 }
 
 .sd-logout:hover {
@@ -210,7 +287,7 @@
 }
 
 .sd-sidebar-footer {
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
   padding: 10px 0 20px;
 }
 
@@ -226,8 +303,10 @@
 }
 
 .sd-topbar {
-  position: sticky;
+  position: fixed;
   top: 0;
+  right: 0;
+  left: 260px;
   height: 64px;
   background: white;
   border-bottom: 1px solid #e8edf4;
@@ -391,6 +470,7 @@
 ══════════════════════════════════════════════ */
 .sd-main {
   padding: 28px;
+  margin-top: 64px;
   flex: 1;
 }
 
@@ -1728,6 +1808,10 @@
 
   .sd-body {
     margin-left: 0;
+  }
+
+  .sd-topbar {
+    left: 0;
   }
 
   .sd-hamburger {

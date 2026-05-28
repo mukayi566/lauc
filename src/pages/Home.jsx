@@ -315,6 +315,7 @@ const Home = () => {
               { icon: 'fa-chalkboard', title: 'Modern Classrooms', desc: 'Innovative classrooms with smart boards, collaborative seating, and advanced learning technology.' },
               { icon: 'fa-laptop', title: 'Computer Labs', desc: 'Modern labs with high-speed internet, latest software, and hands-on technology access.' },
               { icon: 'fa-hospital', title: 'Hospital on Campus', desc: 'A fully equipped hospital facility for immediate healthcare access and clinical training.' },
+              { icon: 'fa-globe', title: 'E-Learning Portal', desc: 'Access your courses, assignments, and virtual classes from anywhere, anytime.' },
               { icon: 'fa-book-open', title: 'Book Library', desc: 'Well-stocked library with extensive resources for academic growth and research.' },
               { icon: 'fa-utensils', title: 'Dining Facilities', desc: 'Modern cafeteria with nutritious meals and comfortable dining spaces.' },
             ].map((f) => (

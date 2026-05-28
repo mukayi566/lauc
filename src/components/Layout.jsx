@@ -42,6 +42,8 @@ const Navbar = () => {
           <Link to="/about" className={isActive('/about') ? 'active' : ''} onClick={() => setMenuOpen(false)}>About Us</Link>
           <Link to="/programs" className={isActive('/programs') ? 'active' : ''} onClick={() => setMenuOpen(false)}>Programs</Link>
           <Link to="/admissions" className={isActive('/admissions') ? 'active' : ''} onClick={() => setMenuOpen(false)}>Admissions</Link>
+          <Link to="/elearning" className={isActive('/elearning') ? 'active' : ''} onClick={() => setMenuOpen(false)}>E-Learning</Link>
+          <Link to="/research" className={isActive('/research') ? 'active' : ''} onClick={() => setMenuOpen(false)}>Research Repository</Link>
 
           {/* Mobile only buttons */}
           <div className="mobile-only-nav">
@@ -135,6 +137,7 @@ const Footer = () => {
           <Link to="/about">About Us</Link>
           <Link to="/programs">Programs</Link>
           <Link to="/admissions">Admissions</Link>
+          <Link to="/elearning">E-Learning</Link>
           <Link to="/research">Research Repository</Link>
           <Link to="/student-login" style={{ color: '#facc15', fontWeight: 600 }}>
             <i className="fas fa-user-lock" style={{ marginRight: 6 }}></i>Student Portal

@@ -139,7 +139,7 @@ const ITLogin = () => {
                     {view === 'login' ? (
                         <>
                             <div style={{ marginBottom: 32 }}>
-                                <h2 style={{ fontSize: 26, fontWeight: 800, color: '#4c1d95', marginBottom: 6 }}>Admin Sign In</h2>
+                                <h2 style={{ fontSize: 26, fontWeight: 800, color: '#4c1d95', marginBottom: 6 }}>Officer Sign In</h2>
                                 <p style={{ color: '#64748b', fontSize: 14 }}>Enter your IT credentials to access the console</p>
                             </div>
 

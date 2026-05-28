@@ -14,6 +14,9 @@ const Admissions = () => {
   const [resultsUrl, setResultsUrl] = useState('');
   const [nrcFileName, setNrcFileName] = useState('');
   const [resultsFileName, setResultsFileName] = useState('');
+  const [photoUrl, setPhotoUrl] = useState('');
+  const [photoFileName, setPhotoFileName] = useState('');
+  const [age, setAge] = useState(25); // Default to adult
   const formRef = useRef(null);
 
   // Pre-fill email and name if user is logged in
@@ -45,10 +48,14 @@ const Admissions = () => {
             setNrcUrl(url);
             setNrcFileName(name);
             toast.success('NRC/Passport uploaded!');
-          } else {
+          } else if (type === 'results') {
             setResultsUrl(url);
             setResultsFileName(name);
             toast.success('Academic Results uploaded!');
+          } else {
+            setPhotoUrl(url);
+            setPhotoFileName(name);
+            toast.success('Passport Photos uploaded!');
           }
         }
       }
@@ -73,12 +80,13 @@ const Admissions = () => {
       const data = Object.fromEntries(formData.entries());
 
       // Handle file uploads (Cloudinary URLs already in state)
-      if (!nrcUrl || !resultsUrl) {
-        throw new Error('Please upload all required documents.');
+      if (!nrcUrl || !resultsUrl || !photoUrl) {
+        throw new Error('Please upload all required documents (NRC, Results, and Passport Photo).');
       }
 
       data.nrcPassportUrl = nrcUrl;
       data.academicResultsUrl = resultsUrl;
+      data.photoUrl = photoUrl;
 
       // Remove File objects before saving to Firestore
       delete data.nrcPassportFile;
@@ -97,8 +105,10 @@ const Admissions = () => {
       formRef.current.reset();
       setNrcUrl('');
       setResultsUrl('');
+      setPhotoUrl('');
       setNrcFileName('');
       setResultsFileName('');
+      setPhotoFileName('');
       const msg = '🎉 Application submitted successfully! We will contact you within 2–3 business days.';
       setAlert({ type: 'success', msg });
       toast.success(msg);
@@ -298,7 +308,20 @@ const Admissions = () => {
                 <div className="form-row">
                   <div className="form-group">
                     <label htmlFor="dob">Date of Birth *</label>
-                    <input type="date" id="dob" name="dob" required />
+                    <input
+                      type="date"
+                      id="dob"
+                      name="dob"
+                      required
+                      onChange={(e) => {
+                        const birthDate = new Date(e.target.value);
+                        const today = new Date();
+                        let a = today.getFullYear() - birthDate.getFullYear();
+                        const m = today.getMonth() - birthDate.getMonth();
+                        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) a--;
+                        setAge(a || 21);
+                      }}
+                    />
                   </div>
                   <div className="form-group">
                     <label htmlFor="gender">Gender *</label>
@@ -310,12 +333,28 @@ const Admissions = () => {
                     </select>
                   </div>
                 </div>
-                <div className="form-row full">
+                <div className="form-row">
                   <div className="form-group">
-                    <label htmlFor="address">Physical Address *</label>
-                    <input type="text" id="address" name="address" required placeholder="Enter your home address" />
+                    <label htmlFor="address">Physical Address * (Residential)</label>
+                    <input type="text" id="address" name="address" required placeholder="Foxdale - Chamba Valley, Plot 70A/77, etc." />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="postalAddress">Postal Address</label>
+                    <input type="text" id="postalAddress" name="postalAddress" placeholder="P.O. Box 30295" />
                   </div>
                 </div>
+                {age < 21 && (
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label htmlFor="parentName">Parent/Guardian Name * (For Minors)</label>
+                      <input type="text" id="parentName" name="parentName" required={age < 21} placeholder="Full Name of Guardian" />
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="parentPhone">Parent/Guardian Phone *</label>
+                      <input type="tel" id="parentPhone" name="parentPhone" required={age < 21} placeholder="Contact number" />
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Academic */}
@@ -323,7 +362,7 @@ const Admissions = () => {
                 <h3><i className="fas fa-graduation-cap"></i> Academic Information</h3>
                 <div className="form-row">
                   <div className="form-group">
-                    <label htmlFor="program">Program of Interest *</label>
+                    <label htmlFor="program">Course you wish to enroll *</label>
                     <select id="program" name="program" required>
                       <option value="">Select a Program</option>
                       <optgroup label="Degree Programs">
@@ -341,32 +380,37 @@ const Admissions = () => {
                     </select>
                   </div>
                   <div className="form-group">
-                    <label htmlFor="intake">Intake Year *</label>
-                    <select id="intake" name="intake" required>
-                      <option value="">Select Intake</option>
-                      <option>January 2026</option>
-                      <option>September 2026</option>
+                    <label htmlFor="studyMode">Study Mode *</label>
+                    <select id="studyMode" name="studyMode" required>
+                      <option value="">Select Mode</option>
+                      <option>Full-Time</option>
+                      <option>Part-Time</option>
+                      <option>Distance</option>
                     </select>
                   </div>
                 </div>
                 <div className="form-row">
                   <div className="form-group">
-                    <label htmlFor="school">Last School Attended *</label>
-                    <input type="text" id="school" name="school" required placeholder="Secondary school name" />
+                    <label htmlFor="intake">Academic Year Applied For *</label>
+                    <select id="intake" name="intake" required>
+                      <option value="">Select intake year</option>
+                      <option>2025/2026 Academic Year</option>
+                      <option>2026/2027 Academic Year</option>
+                    </select>
                   </div>
                   <div className="form-group">
-                    <label htmlFor="yearCompleted">Year Completed *</label>
-                    <input type="number" id="yearCompleted" name="yearCompleted" min="2000" max="2026" required placeholder="e.g. 2024" />
+                    <label htmlFor="school">Last School Attended *</label>
+                    <input type="text" id="school" name="school" required placeholder="Secondary school name" />
                   </div>
                 </div>
                 <div className="form-row">
                   <div className="form-group">
-                    <label htmlFor="grades">Examination Body &amp; Grades *</label>
-                    <input type="text" id="grades" name="grades" required placeholder="e.g. ECZ Grade 12 — English B, Maths C, Biology B" />
+                    <label htmlFor="yearCompleted">Year Obtained / Completed *</label>
+                    <input type="number" id="yearCompleted" name="yearCompleted" min="2000" max="2026" required placeholder="e.g. 2024" />
                   </div>
                   <div className="form-group">
                     <label htmlFor="nationality">Nationality *</label>
-                    <input type="text" id="nationality" name="nationality" required placeholder="e.g. Zambian" />
+                    <input type="text" id="nationality" name="nationality" required placeholder="Include residential area if foreign" />
                   </div>
                 </div>
               </div>
@@ -376,7 +420,7 @@ const Admissions = () => {
                 <h3><i className="fas fa-file-upload"></i> Supporting Documents</h3>
                 <div className="form-row">
                   <div className="form-group">
-                    <label htmlFor="nrcPassport">NRC / Passport Number *</label>
+                    <label htmlFor="nrcPassport">NRC / Birth Certificate / Passport No. *</label>
                     <input type="text" id="nrcPassport" name="nrcPassport" required placeholder="Enter ID or passport number" />
                   </div>
                   <div className="form-group">
@@ -386,7 +430,7 @@ const Admissions = () => {
                 </div>
                 <div className="form-row">
                   <div className="form-group">
-                    <label htmlFor="nrcPassportFile">Upload NRC / Passport (PDF or Image) *</label>
+                    <label htmlFor="nrcPassportFile">Upload Certified ID / Birth Certificate *</label>
                     <div className="cloudinary-upload-wrapper">
                       <button
                         type="button"
@@ -397,10 +441,9 @@ const Admissions = () => {
                       </button>
                       {nrcFileName && <span className="file-name">{nrcFileName}</span>}
                     </div>
-                    <small style={{ display: 'block', marginTop: 4, color: '#666' }}>Maximum size: 5MB</small>
                   </div>
                   <div className="form-group">
-                    <label htmlFor="academicResultsFile">Upload Academic Results / Transcripts *</label>
+                    <label htmlFor="academicResultsFile">Upload Certified School Results *</label>
                     <div className="cloudinary-upload-wrapper">
                       <button
                         type="button"
@@ -411,13 +454,28 @@ const Admissions = () => {
                       </button>
                       {resultsFileName && <span className="file-name">{resultsFileName}</span>}
                     </div>
-                    <small style={{ display: 'block', marginTop: 4, color: '#666' }}>Maximum size: 5MB</small>
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="passportPhoto">Upload 2 Passport Photos *</label>
+                    <div className="cloudinary-upload-wrapper">
+                      <button
+                        type="button"
+                        onClick={() => openWidget('photo')}
+                        className={`cloudinary-btn ${photoUrl ? 'success' : ''}`}
+                      >
+                        {photoUrl ? <><i className="fas fa-check-circle"></i> Change Image</> : <><i className="fas fa-camera"></i> Upload Photos</>}
+                      </button>
+                      {photoFileName && <span className="file-name">{photoFileName}</span>}
+                    </div>
+                    <small>Colored passport photos with white background</small>
                   </div>
                 </div>
                 <div className="form-row full">
                   <div className="form-group">
-                    <label htmlFor="personalStatement">Personal Statement</label>
-                    <textarea id="personalStatement" name="personalStatement" placeholder="Tell us about yourself, your goals, and why you want to study at Fairview University College..."></textarea>
+                    <label htmlFor="personalStatement">Personal Statement / Additional Information</label>
+                    <textarea id="personalStatement" name="personalStatement" placeholder="Tell us about your goals or any additional information from the physical form..."></textarea>
                   </div>
                 </div>
                 <div className="form-row full">
@@ -433,6 +491,44 @@ const Admissions = () => {
                       <option>School Visit</option>
                       <option>Other</option>
                     </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Declarations */}
+              <div className="form-section">
+                <h3><i className="fas fa-signature"></i> Section 7: Declarations</h3>
+
+                <div className="declaration-box" style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '20px' }}>
+                  <p style={{ fontSize: '13px', color: '#475569', marginBottom: '15px', lineHeight: '1.6' }}>
+                    <strong>Fees Agreement:</strong> All fees are payable in cash every end of the month (a month in advance).
+                    No refunds or discounts will be made for absence due to illness or holidays.
+                    I understand that registration fees are non-refundable and I will be fully liable for all financial obligations.
+                  </p>
+
+                  {age >= 21 ? (
+                    <div className="form-checkbox">
+                      <input type="checkbox" id="declStudent" name="declStudent" required />
+                      <label htmlFor="declStudent">
+                        <strong>Student Declaration (Age 21+):</strong> I hereby declare that I fully understand and accept the conditions
+                        set by Fairview University College. I undertake personally to fulfill all financial obligations.
+                      </label>
+                    </div>
+                  ) : (
+                    <div className="form-checkbox">
+                      <input type="checkbox" id="declParent" name="declParent" required />
+                      <label htmlFor="declParent">
+                        <strong>Parent/Guardian Declaration (Applicant under 21):</strong> I, as parent/legal guardian,
+                        accept all conditions and undertake financial responsibility for the applicant.
+                      </label>
+                    </div>
+                  )}
+
+                  <div className="form-checkbox" style={{ marginTop: '10px' }}>
+                    <input type="checkbox" id="noClaim" name="noClaim" required />
+                    <label htmlFor="noClaim">
+                      I declare not to have any claim against Fairview University College in case of loss of life, property and/or injury sustained.
+                    </label>
                   </div>
                 </div>
               </div>

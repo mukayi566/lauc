@@ -30,8 +30,11 @@ const Navbar = () => {
 
   const isActive = (path) => location.pathname === path;
 
+  // Pages that should have a solid navbar (dark text) by default
+  const isSolidPage = ['/elearning', '/login', '/student-login', '/staff-login', '/admin-login', '/registrar-login'].includes(location.pathname);
+
   return (
-    <nav className={`navbar ${scrolled ? 'navbar-scrolled' : 'navbar-transparent'}`}>
+    <nav className={`navbar ${scrolled || isSolidPage ? 'navbar-scrolled' : 'navbar-transparent'}`}>
       <div className="nav-container">
         <Link to="/" className="nav-brand">
           <img src={logo} alt="Fairview University Logo" className="nav-logo" />

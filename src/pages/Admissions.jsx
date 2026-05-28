@@ -212,12 +212,12 @@ const Admissions = () => {
           <p className="section-subtitle">Important dates for the admissions process</p>
           <div className="timeline">
             {[
-              { step: 'January Intake Applications', date: `Nov 1 - Dec 31, ${currentYear - 1}`, desc: 'Submissions for the January intake.' },
-              { step: 'July Intake Applications', date: `May 1 - June 30, ${currentYear}`, desc: 'Submissions for the July intake.' },
-              { step: 'Selection Interviews', date: 'Varies by Program', desc: 'Shortlisted candidates invited for interviews and assessments.' },
-              { step: 'Results Announcement', date: '2 Weeks after Deadline', desc: 'Admission results published online and by email.' },
-              { step: 'Registration', date: '1 Week before Semester', desc: 'Successful candidates register and pay initial fees.' },
-              { step: 'Classes Commence', date: 'Jan / July', desc: 'Academic year sessions officially begin.' },
+              { step: 'January Intake Applications', date: `Dec 1 - Dec 31, ${currentYear - 1}`, desc: 'Official application window for the January intake.' },
+              { step: 'July Intake Applications', date: `May 1 - June 30, ${currentYear}`, desc: 'Submissions for the upcoming July intake.' },
+              { step: 'Selection Interviews', date: `January 5–15, ${currentYear}`, desc: 'Shortlisted candidates invited for interviews and assessments.' },
+              { step: 'Results Announcement', date: `January 20, ${currentYear}`, desc: 'Admission results published online and by email.' },
+              { step: 'Registration', date: `January 25–31, ${currentYear}`, desc: 'Successful candidates register and pay initial fees.' },
+              { step: 'Classes Commence', date: `February 2, ${currentYear}`, desc: 'Academic year sessions officially begin.' },
             ].map((t) => (
               <div key={t.step} className="timeline-item">
                 <h4>{t.step}</h4>

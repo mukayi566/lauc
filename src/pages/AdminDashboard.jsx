@@ -882,12 +882,13 @@ const AdminDashboard = () => {
           name: data.name,
           email: data.email,
           role: 'it',
+          password: defaultPassword,
+          mustChangePassword: true,
           createdAt: serverTimestamp()
         });
 
         setModal(null);
-        await resetPassword(data.email).catch(() => { });
-        toast(`${data.name} added as IT Support Officer.`);
+        toast(`${data.name} added as IT Officer. Default Password: ${defaultPassword}`);
       }
     } catch (err) {
       if (!err.code) toast('Error saving IT officer.', 'error');
@@ -931,12 +932,13 @@ const AdminDashboard = () => {
           name: data.name,
           email: data.email,
           role: 'finance',
+          password: defaultPassword,
+          mustChangePassword: true,
           createdAt: serverTimestamp()
         });
 
         setModal(null);
-        await resetPassword(data.email).catch(() => { });
-        toast(`${data.name} added as Finance Officer.`);
+        toast(`${data.name} added as Finance Officer. Default Password: ${defaultPassword}`);
       }
     } catch (err) {
       if (!err.code) toast('Error saving finance officer.', 'error');

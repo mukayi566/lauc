@@ -4,14 +4,14 @@ import { Link } from 'react-router-dom';
 // ── Knowledge base ──────────────────────────────────────────────────────────
 const KB = {
   programs: [
-    { name: 'Bachelor of Science in Nursing',                level: 'Degree',  years: 4, fee: 15000 },
+    { name: 'Bachelor of Science in Nursing', level: 'Degree', years: 4, fee: 15000 },
     { name: 'Bachelor of Science in Clinical Medical Sciences', level: 'Degree', years: 4, fee: 16000 },
-    { name: 'Bachelor of Business Administration',           level: 'Degree',  years: 4, fee: 14000 },
-    { name: 'Bachelor of Science in Public Health',          level: 'Degree',  years: 4, fee: 15000 },
-    { name: 'Diploma in Registered Nursing',                 level: 'Diploma', years: 3, fee: 12000 },
-    { name: 'Diploma in Public Health',                      level: 'Diploma', years: 3, fee: 11000 },
-    { name: 'Diploma in Environmental Health',               level: 'Diploma', years: 3, fee: 11000 },
-    { name: 'Diploma in Social Work',                        level: 'Diploma', years: 3, fee: 10000 },
+    { name: 'Bachelor of Business Administration', level: 'Degree', years: 4, fee: 14000 },
+    { name: 'Bachelor of Science in Public Health', level: 'Degree', years: 4, fee: 15000 },
+    { name: 'Diploma in Registered Nursing', level: 'Diploma', years: 3, fee: 12000 },
+    { name: 'Diploma in Public Health', level: 'Diploma', years: 3, fee: 11000 },
+    { name: 'Diploma in Environmental Health', level: 'Diploma', years: 3, fee: 11000 },
+    { name: 'Diploma in Social Work', level: 'Diploma', years: 3, fee: 10000 },
   ],
   requirements: [
     'Grade 12 Certificate or equivalent (GCSE)',
@@ -24,12 +24,12 @@ const KB = {
     'Must be 18 years or older',
   ],
   timeline: [
-    { event: 'Applications Open',    date: 'December 1, 2025' },
+    { event: 'Applications Open', date: 'December 1, 2025' },
     { event: 'Application Deadline', date: 'December 31, 2025' },
     { event: 'Selection Interviews', date: 'January 5–15, 2026' },
-    { event: 'Results Announced',    date: 'January 20, 2026' },
-    { event: 'Registration',         date: 'January 25–31, 2026' },
-    { event: 'Classes Commence',     date: 'February 2, 2026' },
+    { event: 'Results Announced', date: 'January 20, 2026' },
+    { event: 'Registration', date: 'January 25–31, 2026' },
+    { event: 'Classes Commence', date: 'February 2, 2026' },
   ],
   contact: {
     phone: ['+260977787114', '+260966787114', '+260977210769'],
@@ -59,10 +59,10 @@ function getReply(input) {
 
   // Programs / courses
   if (/(program|course|degree|diploma|study|offer|availab|major|field)/.test(q)) {
-    const degrees  = KB.programs.filter(p => p.level === 'Degree');
+    const degrees = KB.programs.filter(p => p.level === 'Degree');
     const diplomas = KB.programs.filter(p => p.level === 'Diploma');
-    const degList  = degrees.map(p => `• ${p.name} (${p.years} yrs)`).join('\n');
-    const dipList  = diplomas.map(p => `• ${p.name} (${p.years} yrs)`).join('\n');
+    const degList = degrees.map(p => `• ${p.name} (${p.years} yrs)`).join('\n');
+    const dipList = diplomas.map(p => `• ${p.name} (${p.years} yrs)`).join('\n');
     return {
       text: `🎓 **Programs Offered at Fairview University College**\n\n**Degree Programs (4 years)**\n${degList}\n\n**Diploma Programs (3 years)**\n${dipList}\n\nWant details on fees for a specific program?`,
     };
@@ -88,9 +88,12 @@ function getReply(input) {
 
   // Dates / timeline / deadline / intake
   if (/(date|deadline|timeline|intake|when|open|start|close|semester|calendar|schedule)/.test(q)) {
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    const intake = now.getMonth() < 6 ? 'July 2026' : 'January 2027';
     const tl = KB.timeline.map(t => `• **${t.event}:** ${t.date}`).join('\n');
     return {
-      text: `📅 **Admissions Timeline 2026**\n\n${tl}\n\n⚠️ Applications close **December 31, 2025** — don't miss out!`,
+      text: `📅 **Current Date:** ${dateStr}\n🎯 **Active Intake:** ${intake}\n\n**Admissions Timeline 2026**\n\n${tl}\n\n⚠️ Applications close **December 31, 2025** — don't miss out!`,
     };
   }
 
@@ -202,7 +205,12 @@ const ApplicationChatbot = () => {
     {
       id: 1,
       from: 'bot',
-      text: "Hi! I'm **FairView Assistant** your personal admissions guide.\n\nI can help you with programs, fees, requirements, and how to apply. What would you like to know?",
+      text: `Hi! I'm **FairView Assistant** your personal admissions guide.
+
+Today is **${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}**.
+Current Intake: **${new Date().getMonth() < 6 ? 'July 2026' : 'January 2027'}**.
+
+I can help you with programs, fees, requirements, and how to apply. What would you like to know?`,
       time: new Date(),
     },
   ]);

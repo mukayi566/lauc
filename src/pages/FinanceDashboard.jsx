@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
-import { collection, onSnapshot, query, orderBy, limit, doc, getDocs, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, limit, doc, getDocs, where, getDoc, updateDoc } from 'firebase/firestore';
+import toast from 'react-hot-toast';
 import '../dashboards.css';
 
 const FinanceDashboard = () => {
@@ -22,8 +23,47 @@ const FinanceDashboard = () => {
         monthlyGrowth: '+8.4%'
     });
 
-    const { signOut } = useAuth();
+    const { currentUser, signOut, changePassword } = useAuth();
     const navigate = useNavigate();
+
+    const [profile, setProfile] = useState(null);
+    const [showPassModal, setShowPassModal] = useState(false);
+    const [passForm, setPassForm] = useState({ new: '', confirm: '' });
+    const [updatingPass, setUpdatingPass] = useState(false);
+
+    useEffect(() => {
+        if (!currentUser) return;
+        const fetchProfile = async () => {
+            const d = await getDoc(doc(db, 'users', currentUser.uid));
+            if (d.exists()) {
+                const data = d.data();
+                setProfile(data);
+                if (data.mustChangePassword) setShowPassModal(true);
+            }
+        };
+        fetchProfile();
+    }, [currentUser]);
+
+    const handleUpdatePassword = async (e) => {
+        e.preventDefault();
+        if (passForm.new !== passForm.confirm) { toast.error("Passwords do not match"); return; }
+        if (passForm.new.length < 6) { toast.error("Password too short"); return; }
+        setUpdatingPass(true);
+        try {
+            await changePassword(passForm.new);
+            await updateDoc(doc(db, 'users', currentUser.uid), {
+                mustChangePassword: false,
+                password: passForm.new,
+                updatedAt: new Date()
+            });
+            setShowPassModal(false);
+            toast.success("Security credentials updated!");
+        } catch (err) {
+            toast.error(err.message);
+        } finally {
+            setUpdatingPass(false);
+        }
+    };
 
     const handleLogout = async () => {
         await signOut();
@@ -32,6 +72,52 @@ const FinanceDashboard = () => {
 
     return (
         <div className="dashboard-container finance-theme">
+            {showPassModal && (
+                <div className="sd-modal-overlay" style={{ zIndex: 5000 }}>
+                    <div className="sd-modal" style={{ maxWidth: 400 }}>
+                        <div className="sd-modal-head">
+                            <h3 style={{ color: '#059669' }}><i className="fas fa-shield-alt"></i> Finance Security</h3>
+                        </div>
+                        <div className="sd-modal-body">
+                            <p style={{ fontSize: 13, color: '#64748b', marginBottom: 20 }}>
+                                Your account is currently using a temporary password. Please set a new secure password.
+                            </p>
+                            <form onSubmit={handleUpdatePassword}>
+                                <div style={{ marginBottom: 15 }}>
+                                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 5 }}>New Password</label>
+                                    <input
+                                        type="password"
+                                        className="sd-input"
+                                        style={{ width: '100%', padding: '10px', display: 'block', borderRadius: 8, border: '1px solid #e2e8f0' }}
+                                        value={passForm.new}
+                                        onChange={e => setPassForm({ ...passForm, new: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                                <div style={{ marginBottom: 20 }}>
+                                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 5 }}>Confirm Password</label>
+                                    <input
+                                        type="password"
+                                        className="sd-input"
+                                        style={{ width: '100%', padding: '10px', display: 'block', borderRadius: 8, border: '1px solid #e2e8f0' }}
+                                        value={passForm.confirm}
+                                        onChange={e => setPassForm({ ...passForm, confirm: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                                <button
+                                    type="submit"
+                                    className="btn btn-primary"
+                                    style={{ width: '100%', justifyContent: 'center', background: '#059669', borderColor: '#059669' }}
+                                    disabled={updatingPass}
+                                >
+                                    {updatingPass ? <i className="fas fa-spinner fa-spin"></i> : 'Update Security Settings'}
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            )}
             {/* Sidebar */}
             <aside className="dashboard-sidebar">
                 <div className="sidebar-header">
@@ -75,10 +161,10 @@ const FinanceDashboard = () => {
                         <button className="btn btn-primary btn-sm"><i className="fas fa-plus"></i> New Entry</button>
                         <div className="user-profile">
                             <div className="user-info">
-                                <span className="user-name">Finance Officer</span>
+                                <span className="user-name">{profile?.name || 'Finance Officer'}</span>
                                 <span className="user-role">Accounts Dept</span>
                             </div>
-                            <div className="user-avatar fin">FIN</div>
+                            <div className="user-avatar fin">{profile?.name?.charAt(0) || 'F'}</div>
                         </div>
                     </div>
                 </header>

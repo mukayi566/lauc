@@ -270,6 +270,7 @@ const RegistrarDashboard = () => {
         { id: 'dashboard', icon: 'fa-tachometer-alt', label: 'Overview' },
         { id: 'registration', icon: 'fa-user-plus', label: 'Registration' },
         { id: 'enrollment', icon: 'fa-calendar-check', label: 'Enrollment' },
+        { id: 'departments', icon: 'fa-building-columns', label: 'Departments' },
         { id: 'dockets', icon: 'fa-id-card-clip', label: 'Exam Dockets' },
         { id: 'students', icon: 'fa-users', label: 'Student Directory' },
         { id: 'settings', icon: 'fa-cog', label: 'Settings' },
@@ -642,6 +643,63 @@ const RegistrarDashboard = () => {
                                                 </button>
                                             </div>
                                         )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* ══════════ DEPARTMENTS TAB ══════════ */}
+                            {activeTab === 'departments' && (
+                                <div className="sd-card">
+                                    <div className="sd-card-header">Students by Department</div>
+                                    <div className="sd-card-body">
+                                        {['Computing', 'Business', 'Education', 'Engineering', 'Health Sciences'].map(dept => {
+                                            const deptStudents = students.filter(s => s.department === dept || s.department === `School of ${dept}`);
+                                            // Show even if empty for primary departments, otherwise only if has students
+                                            if (deptStudents.length === 0 && !['Computing', 'Business', 'Education', 'Engineering'].includes(dept)) return null;
+
+                                            return (
+                                                <div key={dept} className="sd-dept-section" style={{ marginBottom: 40 }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 15, borderBottom: '2px solid #f1f5f9', paddingBottom: 10 }}>
+                                                        <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(30,64,175,0.1)', color: '#1e40af', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
+                                                            <i className={`fas ${dept === 'Computing' ? 'fa-laptop-code' : dept === 'Business' ? 'fa-chart-line' : dept === 'Education' ? 'fa-apple-whole' : dept === 'Engineering' ? 'fa-gears' : 'fa-hand-holding-medical'}`}></i>
+                                                        </div>
+                                                        <div>
+                                                            <h3 style={{ margin: 0, fontSize: 18, color: '#1e293b' }}>{dept.startsWith('School of') ? dept : `School of ${dept}`}</h3>
+                                                            <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>{deptStudents.length} Students Enrolled</span>
+                                                        </div>
+                                                    </div>
+
+                                                    {deptStudents.length === 0 ? (
+                                                        <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', background: '#f8fafc', borderRadius: 12, border: '1px dashed #e2e8f0' }}>
+                                                            No students registered in this department yet.
+                                                        </div>
+                                                    ) : (
+                                                        <div className="sd-table-wrapper">
+                                                            <table className="sd-table">
+                                                                <thead>
+                                                                    <tr>
+                                                                        <th>Student Name</th>
+                                                                        <th>Student ID</th>
+                                                                        <th>Program</th>
+                                                                        <th>Status</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    {deptStudents.map(s => (
+                                                                        <tr key={s.docId}>
+                                                                            <td className="sd-td-bold">{s.name}</td>
+                                                                            <td><code className="sd-code" style={{ fontSize: 12 }}>{getStudentId(s)}</code></td>
+                                                                            <td>{s.program}</td>
+                                                                            <td><Badge status={s.status || 'Active'} /></td>
+                                                                        </tr>
+                                                                    ))}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             )}

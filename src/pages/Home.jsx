@@ -54,7 +54,7 @@ const Home = () => {
       btn1Link: '/programs',
       btn1Icon: 'fa-book-open',
       btn2Text: 'Contact Us',
-      btn2Link: 'tel:+260770839120',
+      btn2Link: 'tel:+260977787114',
       btn2Icon: 'fa-phone',
       btn2Class: 'btn-secondary'
     },
@@ -214,7 +214,7 @@ const Home = () => {
                 <h4 style={{ color: '#2a5298', marginBottom: 6, fontWeight: 700 }}><i className="fas fa-eye" style={{ marginRight: 8 }}></i>Our Vision</h4>
                 <p style={{ color: '#666', fontSize: 14 }}>EDUCATING AND IMPARTING KNOWLEDGE WITH EXCELLENCE</p>
               </div>
-              <a href="tel:+260770839120" className="btn btn-primary">
+              <a href="tel:+260977787114" className="btn btn-primary">
                 <i className="fas fa-phone"></i> Call Now
               </a>
             </div>
@@ -245,12 +245,12 @@ const Home = () => {
           <p className="section-subtitle">Our programs are designed to equip students with skills, knowledge, and values needed for success</p>
           <div className="programs-grid">
             {[
-              { type: 'Degree Programme', title: 'Bachelor of Science in Nursing', rating: '4.8', duration: '4 years', desc: 'Prepares students with scientific and practical knowledge in nursing and midwifery.' },
-              { type: 'Degree Programme', title: 'Bachelor of Science in Clinical Medical Sciences', rating: '4.7', duration: '4 years', desc: 'Equips learners with clinical and diagnostic medical skills.' },
-              { type: 'Degree Programme', title: 'Bachelor of Business Administration', rating: '4.7', duration: '4 years', desc: 'Prepares students for business leadership and entrepreneurship.' },
-              { type: 'Degree Programme', title: 'Bachelor of Science in Public Health', rating: '4.8', duration: '4 years', desc: 'Promotes population health and disease prevention strategies.' },
-              { type: 'Diploma Programme', title: 'Diploma in Registered Nursing', rating: '4.6', duration: '3 years', desc: 'Prepares nurses for professional practice in hospitals and communities.' },
-              { type: 'Diploma Programme', title: 'Diploma in Public Health', rating: '4.6', duration: '3 years', desc: 'Focuses on community health and disease prevention.' },
+              { type: 'Degree Programme', title: 'Secondary Teachers’ Degree', rating: '4.8', duration: '4 years', desc: 'Comprehensive teacher training for secondary education. Math and English required.' },
+              { type: 'Degree Programme', title: 'Primary Teachers’ Degree', rating: '4.7', duration: '4 years', desc: 'Specialized training for primary school educators with focus on foundations.' },
+              { type: 'Diploma Programme', title: 'Sales and Marketing Diploma', rating: '4.6', duration: '3 years', desc: 'Business-focused training in market analysis and sales strategy.' },
+              { type: 'Diploma Programme', title: 'Journalism Diploma', rating: '4.5', duration: '3 years', desc: 'Master the arts of reporting, broadcasting and digital media.' },
+              { type: 'Diploma Programme', title: 'Psycho-Social Counselling', rating: '4.7', duration: '2 years', desc: 'Focus on therapy and counseling skills for clinical environments.' },
+              { type: 'Diploma Programme', title: 'Computer Hardware & Mgmt', rating: '4.6', duration: '2 years', desc: 'Technical training in system maintenance and networking.' },
             ].map((p) => (
               <div key={p.title} className="program-card">
                 <div className="program-header">

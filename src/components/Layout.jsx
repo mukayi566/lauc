@@ -145,11 +145,11 @@ const Footer = () => {
         <div className="footer-section">
           <h3>Contact Information</h3>
           <div className="footer-contact">
-            <div><i className="fas fa-map-marker-alt"></i> 11 Lubambe Road, Plot 70A, Lusaka</div>
-            <div style={{ marginTop: 8 }}><i className="fas fa-envelope"></i> contact@fairviewuniversity.com</div>
-            <div style={{ marginTop: 8 }}><i className="fas fa-phone"></i> +260977787114</div>
-            <div style={{ marginTop: 8 }}><i className="fas fa-phone"></i> +260966787114</div>
-            <div style={{ marginTop: 8 }}><i className="fas fa-phone"></i> +260977210769</div>
+            <div><i className="fas fa-map-marker-alt"></i> Plot 70A/77, off Zambezi Rd, Foxdale, Lusaka</div>
+            <div style={{ marginTop: 8 }}><i className="fas fa-building"></i> Lottie House 5th Floor, Cairo Road</div>
+            <div style={{ marginTop: 8 }}><i className="fas fa-envelope"></i> fairviewuniversitycollege02@gmail.com</div>
+            <div style={{ marginTop: 8 }}><i className="fas fa-phone"></i> +260 977 787 114</div>
+            <div style={{ marginTop: 8 }}><i className="fas fa-phone"></i> +260 966 787 114</div>
           </div>
         </div>
 

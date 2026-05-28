@@ -5,61 +5,115 @@ import { db } from '../firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
 
 const programs = [
+  // DEGREES
+  {
+    type: 'Degree Programme', level: 'Degree', duration: '4 years', rating: '4.8',
+    title: 'Secondary Teachers’ Degree',
+    desc: 'Comprehensive teacher training for secondary education. Mathematics and English credits required.',
+    modules: ['Educational Psychology', 'Curriculum Design', 'Subject Specialization', 'Teaching Methodology', 'Classroom Management'],
+    careers: ['High School Teacher', 'Educational Consultant', 'Curriculum Developer', 'School Administrator'],
+  },
+  {
+    type: 'Degree Programme', level: 'Degree', duration: '4 years', rating: '4.7',
+    title: 'Primary Teachers’ Degree',
+    desc: 'Specialized training for primary school educators. Focus on foundational subjects including Math and Science.',
+    modules: ['Literacy Education', 'Primary Math Pedagogy', 'Child Development', 'Integrated Science', 'Social Studies'],
+    careers: ['Primary School Teacher', 'Educational Researcher', 'Child Welfare Officer'],
+  },
+  {
+    type: 'Degree Programme', level: 'Degree', duration: '4 years', rating: '4.7',
+    title: 'Early Childhood Teachers’ Degree',
+    desc: 'Preparing specialists for pre-school and early childhood education. English credits required.',
+    modules: ['Early Learning Systems', 'Child Play & Development', 'Nutrition & Health', 'Creative Arts', 'Inclusive Education'],
+    careers: ['Pre-school Teacher', 'Daycare Director', 'Child Development Specialist'],
+  },
   {
     type: 'Degree Programme', level: 'Degree', duration: '4 years', rating: '4.8',
     title: 'Bachelor of Science in Nursing',
-    desc: 'Prepares students with scientific and practical knowledge in nursing and midwifery. Graduates are equipped to work in hospitals, clinics, and community health centres.',
-    modules: ['Anatomy & Physiology', 'Nursing Fundamentals', 'Medical-Surgical Nursing', 'Maternal & Child Health', 'Community Health Nursing', 'Research Methods'],
-    careers: ['Registered Nurse', 'Community Health Nurse', 'Ward Manager', 'Healthcare Administrator'],
+    desc: 'Professional nursing and midwifery training. Accredited for clinical excellence.',
+    modules: ['Anatomy', 'Nursing Fundamentals', 'Medical-Surgical Nursing', 'Maternal Health', 'Community Nursing'],
+    careers: ['Registered Nurse', 'Clinical Instructor', 'Ward Manager'],
   },
-  {
-    type: 'Degree Programme', level: 'Degree', duration: '4 years', rating: '4.7',
-    title: 'Bachelor of Science in Clinical Medical Sciences',
-    desc: 'Equips learners with clinical and diagnostic medical skills covering diagnosis, treatment, and preventive care in diverse medical settings.',
-    modules: ['Clinical Assessment', 'Pathology', 'Pharmacology', 'Internal Medicine', 'Surgery', 'Paediatrics'],
-    careers: ['Clinical Officer', 'Medical Practitioner', 'Health Educator', 'Clinical Researcher'],
-  },
-  {
-    type: 'Degree Programme', level: 'Degree', duration: '4 years', rating: '4.7',
-    title: 'Bachelor of Business Administration',
-    desc: 'Prepares students for business leadership and entrepreneurship with a focus on management, finance, marketing, and strategy.',
-    modules: ['Business Management', 'Financial Accounting', 'Marketing Management', 'Human Resources', 'Entrepreneurship', 'Business Law'],
-    careers: ['Business Manager', 'Entrepreneur', 'Marketing Manager', 'Financial Analyst'],
-  },
-  {
-    type: 'Degree Programme', level: 'Degree', duration: '4 years', rating: '4.8',
-    title: 'Bachelor of Science in Public Health',
-    desc: 'Promotes population health and disease prevention strategies through evidence-based approaches in public health practice.',
-    modules: ['Epidemiology', 'Biostatistics', 'Environmental Health', 'Health Policy', 'Disease Prevention', 'Health Promotion'],
-    careers: ['Public Health Officer', 'Health Policy Analyst', 'Epidemiologist', 'NGO Health Worker'],
-  },
+
+  // DIPLOMAS
   {
     type: 'Diploma Programme', level: 'Diploma', duration: '3 years', rating: '4.6',
-    title: 'Diploma in Registered Nursing',
-    desc: 'Prepares nurses for professional practice in hospitals, clinics, and community health settings across Zambia and internationally.',
-    modules: ['Basic Nursing Care', 'Medical Nursing', 'Surgical Nursing', 'Mental Health Nursing', 'Obstetrics', 'Community Nursing'],
-    careers: ['Registered Nurse', 'Clinic Nurse', 'Community Health Worker', 'Hospital Staff Nurse'],
-  },
-  {
-    type: 'Diploma Programme', level: 'Diploma', duration: '3 years', rating: '4.6',
-    title: 'Diploma in Public Health',
-    desc: 'Focuses on community health and disease prevention with practical training in health promotion and environmental health.',
-    modules: ['Community Health', 'Disease Surveillance', 'Water & Sanitation', 'Nutrition', 'Maternal Health', 'Health Education'],
-    careers: ['Community Health Officer', 'Environmental Health Inspector', 'Health Educator', 'NGO Worker'],
+    title: 'Social Work Diploma',
+    desc: 'Training for community service and social welfare management. Mature entry accepted.',
+    modules: ['Social Policy', 'Community Development', 'Case Management', 'Psychology', 'Ethics in Social Work'],
+    careers: ['Social Worker', 'NGO Coordinator', 'Community Liaison Officer'],
   },
   {
     type: 'Diploma Programme', level: 'Diploma', duration: '3 years', rating: '4.5',
-    title: 'Diploma in Environmental Health',
-    desc: 'Trains students in environmental health inspection, sanitation, and management to protect public health.',
-    modules: ['Environmental Science', 'Sanitation Engineering', 'Food Safety', 'Occupational Health', 'Waste Management', 'Public Health Law'],
-    careers: ['Environmental Health Officer', 'Sanitation Inspector', 'Food Safety Officer', 'Public Health Worker'],
+    title: 'Journalism Diploma',
+    desc: 'Master the arts of reporting, broadcasting and digital media. Focus on ethical journalism.',
+    modules: ['Media Law', 'News Writing', 'Broadcasting', 'Digital Media', 'Photojournalism'],
+    careers: ['Reporter', 'News Editor', 'Media Producer', 'Content Creator'],
+  },
+  {
+    type: 'Diploma Programme', level: 'Diploma', duration: '3 years', rating: '4.6',
+    title: 'Public Relations Diploma',
+    desc: 'Strategic communication and image management for corporate and public sectors.',
+    modules: ['Corporate Communication', 'Crisis Management', 'Publicity', 'Media Relations', 'Strategic Writing'],
+    careers: ['PR Officer', 'Communications Specialist', 'Brand Manager'],
+  },
+  {
+    type: 'Diploma Programme', level: 'Diploma', duration: '3 years', rating: '4.6',
+    title: 'Sales and Marketing Diploma',
+    desc: 'Business-focused training in market analysis, sales strategy, and consumer behavior.',
+    modules: ['Marketing Research', 'Digital Marketing', 'Consumer Behavior', 'Sales Management', 'Business Stats'],
+    careers: ['Sales Manager', 'Marketing Coordinator', 'Business Developer'],
   },
   {
     type: 'Diploma Programme', level: 'Diploma', duration: '3 years', rating: '4.5',
-    title: 'Diploma in Social Work',
-    desc: 'Prepares students to support vulnerable individuals and communities through social welfare programs and counselling.',
-    modules: ['Social Work Practice', 'Psychology', 'Community Development', 'Child Protection', 'Counselling', 'Social Policy'],
-    careers: ['Social Worker', 'Community Development Officer', 'Child Protection Officer', 'Counsellor'],
+    title: 'Hospitality & Events Administration',
+    desc: 'Professional training in hotel management, tourism, and event coordination.',
+    modules: ['Front Office Ops', 'Event Planning', 'Tourism Management', 'Customer Service', 'Housekeeping'],
+    careers: ['Hotel Manager', 'Event Planner', 'Hospitality Consultant'],
+  },
+  {
+    type: 'Diploma Programme', level: 'Diploma', duration: '2 years', rating: '4.7',
+    title: 'Computer Hardware & Management',
+    desc: 'Technical training in system maintenance, networking, and IT infrastructure management.',
+    modules: ['Computer Maintenance', 'Networking', 'Operating Systems', 'IT Security', 'System Admin'],
+    careers: ['IT Technician', 'Network Administrator', 'System Support Specialist'],
+  },
+  {
+    type: 'Diploma Programme', level: 'Diploma', duration: '2 years', rating: '4.6',
+    title: 'Food & Beverage Management',
+    desc: 'Vocational training in culinary arts and catering service management.',
+    modules: ['Culinary Skills', 'Food Safety', 'Beverage Service', 'Catering Management', 'Cost Control'],
+    careers: ['Restaurant Manager', 'Catering Executive', 'Head Chef'],
+  },
+  {
+    type: 'Diploma Programme', level: 'Diploma', duration: '1 year', rating: '4.9',
+    title: 'Lecturing/Teaching Methodology',
+    desc: 'Post-graduate training for professionals looking to transition into education and lecturing.',
+    modules: ['Pedagogical Skills', 'Assessment Tools', 'Educational Technology', 'Lecture Management'],
+    careers: ['University Lecturer', 'Professional Trainer', 'Subject Specialist Instructor'],
+  },
+
+  // CERTIFICATES
+  {
+    type: 'Certificate Programme', level: 'Certificate', duration: '6-12 months', rating: '4.4',
+    title: 'Computer Software & Hardware',
+    desc: 'Fast-track technical certification in basic IT operations and system repairs.',
+    modules: ['Office Suites', 'PC Repair', 'Operating Systems', 'Basic Networking'],
+    careers: ['IT Support Assistant', 'Computer Lab Technician'],
+  },
+  {
+    type: 'Certificate Programme', level: 'Certificate', duration: '12 months', rating: '4.5',
+    title: 'Tailoring & Design',
+    desc: 'Hands-on training in fashion design, garment construction, and textile science.',
+    modules: ['Fashion Illustration', 'Pattern Making', 'Machine Ops', 'Textile Science'],
+    careers: ['Fashion Designer', 'Tailor', 'Textile Quality Controller'],
+  },
+  {
+    type: 'Certificate Programme', level: 'Certificate', duration: '12-18 months', rating: '4.3',
+    title: 'Bricklaying and Plastering',
+    desc: 'Practical construction training focusing on structural integrity and finishing.',
+    modules: ['Construction Safety', 'Blueprint Reading', 'Masonry Skills', 'Plastering Techniques'],
+    careers: ['Mason', 'Construction Supervisor', 'Contractor'],
   },
 ];
 
@@ -108,7 +162,7 @@ const Programs = () => {
 
           {/* FILTER TABS */}
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginBottom: 40, flexWrap: 'wrap' }}>
-            {['All', 'Degree', 'Diploma'].map(f => (
+            {['All', 'Degree', 'Diploma', 'Certificate'].map(f => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
@@ -225,7 +279,7 @@ const Programs = () => {
               <Link to="/admissions#apply" className="btn btn-primary">
                 <i className="fas fa-file-alt"></i> Apply Now
               </Link>
-              <a href="tel:+260770839120" className="btn btn-secondary">
+              <a href="tel:+260977787114" className="btn btn-secondary">
                 <i className="fas fa-phone"></i> Call Us
               </a>
             </div>

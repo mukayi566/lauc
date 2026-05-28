@@ -19,6 +19,16 @@ const Admissions = () => {
   const [age, setAge] = useState(25); // Default to adult
   const formRef = useRef(null);
 
+  // Generate dynamic intake options (Current year and next year, Jan/July)
+  const currentYear = new Date().getFullYear();
+  const nextYear = currentYear + 1;
+  const intakes = [
+    `January ${currentYear}`,
+    `July ${currentYear}`,
+    `January ${nextYear}`,
+    `July ${nextYear}`
+  ];
+
   // Pre-fill email and name if user is logged in
   useEffect(() => {
     if (currentUser && formRef.current) {
@@ -198,16 +208,16 @@ const Admissions = () => {
       {/* TIMELINE */}
       <section className="section section-alt">
         <div className="container">
-          <h2 className="section-title">Admission Timeline 2026</h2>
+          <h2 className="section-title">Admission Timeline {currentYear}</h2>
           <p className="section-subtitle">Important dates for the admissions process</p>
           <div className="timeline">
             {[
-              { step: 'Applications Open', date: 'December 1, 2025', desc: 'Start submitting your application online or in person.' },
-              { step: 'Application Deadline', date: 'December 31, 2025', desc: 'Last day to submit applications for the January 2026 intake.' },
-              { step: 'Selection Interviews', date: 'January 5–15, 2026', desc: 'Shortlisted candidates invited for interviews and assessments.' },
-              { step: 'Results Announcement', date: 'January 20, 2026', desc: 'Admission results published online and by email.' },
-              { step: 'Registration', date: 'January 25–31, 2026', desc: 'Successful candidates register and pay initial fees.' },
-              { step: 'Classes Commence', date: 'February 2, 2026', desc: 'Academic year officially begins.' },
+              { step: 'January Intake Applications', date: `Nov 1 - Dec 31, ${currentYear - 1}`, desc: 'Submissions for the January intake.' },
+              { step: 'July Intake Applications', date: `May 1 - June 30, ${currentYear}`, desc: 'Submissions for the July intake.' },
+              { step: 'Selection Interviews', date: 'Varies by Program', desc: 'Shortlisted candidates invited for interviews and assessments.' },
+              { step: 'Results Announcement', date: '2 Weeks after Deadline', desc: 'Admission results published online and by email.' },
+              { step: 'Registration', date: '1 Week before Semester', desc: 'Successful candidates register and pay initial fees.' },
+              { step: 'Classes Commence', date: 'Jan / July', desc: 'Academic year sessions officially begin.' },
             ].map((t) => (
               <div key={t.step} className="timeline-item">
                 <h4>{t.step}</h4>
@@ -221,44 +231,56 @@ const Admissions = () => {
       {/* FEES TABLE */}
       <section className="section">
         <div className="container">
-          <h2 className="section-title">Tuition Fees Structure</h2>
-          <p className="section-subtitle">Annual tuition fees for our programs (2026)</p>
-          <div style={{ overflowX: 'auto' }}>
-            <table className="fees-table">
-              <thead>
-                <tr>
-                  <th>Program</th>
-                  <th>Level</th>
-                  <th>Duration</th>
-                  <th>Annual Fee (ZMW)</th>
-                  <th>Total Cost (ZMW)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[
-                  ['Bachelor of Science in Nursing', 'Degree', '4 years', '15,000', '60,000'],
-                  ['Bachelor of Science in Clinical Medical Sciences', 'Degree', '4 years', '16,000', '64,000'],
-                  ['Bachelor of Business Administration', 'Degree', '4 years', '14,000', '56,000'],
-                  ['Bachelor of Science in Public Health', 'Degree', '4 years', '15,000', '60,000'],
-                  ['Diploma in Registered Nursing', 'Diploma', '3 years', '12,000', '36,000'],
-                  ['Diploma in Public Health', 'Diploma', '3 years', '11,000', '33,000'],
-                  ['Diploma in Environmental Health', 'Diploma', '3 years', '11,000', '33,000'],
-                  ['Diploma in Social Work', 'Diploma', '3 years', '10,000', '30,000'],
-                ].map((row) => (
-                  <tr key={row[0]}>
-                    <td><strong>{row[0]}</strong></td>
-                    <td><span style={{ background: 'rgba(42,82,152,0.1)', color: '#2a5298', padding: '2px 10px', borderRadius: 12, fontSize: 12, fontWeight: 700 }}>{row[1]}</span></td>
-                    <td>{row[2]}</td>
-                    <td>{row[3]}</td>
-                    <td><strong style={{ color: '#1e3c72' }}>{row[4]}</strong></td>
+          <h2 className="section-title">Tuition & General Fees</h2>
+          <p className="section-subtitle">Comprehensive fee structure for the {currentYear} Academic Year</p>
+
+          <div className="fees-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px', marginBottom: '40px' }}>
+            <div className="sd-card" style={{ padding: '20px' }}>
+              <h3 style={{ borderBottom: '2px solid #2a5298', paddingBottom: '10px', marginBottom: '15px' }}>Tuition (Per Term)</h3>
+              <table className="fees-table" style={{ fontSize: '13px' }}>
+                <thead>
+                  <tr>
+                    <th>Programme</th>
+                    <th>Full Time</th>
+                    <th>Distance</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  <tr><td>Teachers' Degree</td><td>K 4,000</td><td>K 4,500</td></tr>
+                  <tr><td>Teachers' Diploma</td><td>K 3,000</td><td>K 3,500</td></tr>
+                  <tr><td>Specialized Diplomas*</td><td>K 3,000</td><td>—</td></tr>
+                  <tr><td>Computer/Food Diplomas</td><td colSpan="2">K 5,500 - K 6,000 / Sem</td></tr>
+                </tbody>
+              </table>
+              <small>* Includes: Sales, Social Work, PR, Journalism, Counselling, Hospitality</small>
+            </div>
+
+            <div className="sd-card" style={{ padding: '20px' }}>
+              <h3 style={{ borderBottom: '2px solid #2a5298', paddingBottom: '10px', marginBottom: '15px' }}>General & Admin Fees</h3>
+              <ul style={{ listStyle: 'none', padding: 0, fontSize: '14px' }}>
+                <li style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eee' }}>
+                  <span>Registration (Diploma / Degree)</span><strong>K 200 / K 300</strong>
+                </li>
+                <li style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eee' }}>
+                  <span>Boarding Fee (Per Term)</span><strong>ZMW 1,500</strong>
+                </li>
+                <li style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eee' }}>
+                  <span>Transport (Per Term)</span><strong>ZMW 500</strong>
+                </li>
+                <li style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eee' }}>
+                  <span>Educational Tour Fee</span><strong>ZMW 1,000</strong>
+                </li>
+                <li style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0' }}>
+                  <span>Medical Fee / ID Card</span><strong>ZMW 200 / 150</strong>
+                </li>
+              </ul>
+            </div>
           </div>
+
           <p style={{ marginTop: 18, color: '#666', fontSize: 13, textAlign: 'center' }}>
-            <strong>Note:</strong> Fees include tuition, library, laboratory, and technology fees. Accommodation and meals are additional.
-            Scholarships and payment plans are available for qualified students.
+            <strong>Requirement:</strong> Students are required to provide three (3) reams of A4 paper per year or Kwacha equivalent.
+            <br />
+            <strong>Accommodation:</strong> Boarding facilities are available at ZMW 1,500 per term.
           </p>
         </div>
       </section>
@@ -365,17 +387,32 @@ const Admissions = () => {
                     <label htmlFor="program">Course you wish to enroll *</label>
                     <select id="program" name="program" required>
                       <option value="">Select a Program</option>
-                      <optgroup label="Degree Programs">
-                        <option>Bachelor of Science in Nursing</option>
-                        <option>Bachelor of Science in Clinical Medical Sciences</option>
-                        <option>Bachelor of Business Administration</option>
-                        <option>Bachelor of Science in Public Health</option>
+                      <optgroup label="Degree Programmes (4 Years)">
+                        <option>Secondary Teachers’ Degree</option>
+                        <option>Primary Teachers’ Degree</option>
+                        <option>Early Childhood Teachers’ Degree</option>
                       </optgroup>
-                      <optgroup label="Diploma Programs">
-                        <option>Diploma in Registered Nursing</option>
-                        <option>Diploma in Public Health</option>
-                        <option>Diploma in Environmental Health</option>
-                        <option>Diploma in Social Work</option>
+                      <optgroup label="Diploma Programmes (2-3 Years)">
+                        <option>Secondary Teachers’ Diploma</option>
+                        <option>Primary Teachers’ Diploma</option>
+                        <option>Early Childhood Diploma</option>
+                        <option>Sales and Marketing Diploma</option>
+                        <option>Social Work Diploma</option>
+                        <option>Public Relations Diploma</option>
+                        <option>Journalism Diploma</option>
+                        <option>Psycho-Social Counselling and Therapy Diploma</option>
+                        <option>Hospitality & Events Administration Diploma</option>
+                        <option>Computer Hardware & Management Diploma</option>
+                        <option>Food & Beverage Management Diploma</option>
+                        <option>Food Production Diploma</option>
+                        <option>Post Graduate Diploma in Lecturing/Methodology</option>
+                      </optgroup>
+                      <optgroup label="Short Courses / Certificates">
+                        <option>Food Production Certificate</option>
+                        <option>Computer Software & Hardware Certificate</option>
+                        <option>Tailoring & Design</option>
+                        <option>Bricklaying and Plastering</option>
+                        <option>Carpentry & Joinery</option>
                       </optgroup>
                     </select>
                   </div>
@@ -391,11 +428,10 @@ const Admissions = () => {
                 </div>
                 <div className="form-row">
                   <div className="form-group">
-                    <label htmlFor="intake">Academic Year Applied For *</label>
+                    <label htmlFor="intake">Intake Applied For *</label>
                     <select id="intake" name="intake" required>
-                      <option value="">Select intake year</option>
-                      <option>2025/2026 Academic Year</option>
-                      <option>2026/2027 Academic Year</option>
+                      <option value="">Select Intake</option>
+                      {intakes.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                     </select>
                   </div>
                   <div className="form-group">
@@ -552,10 +588,10 @@ const Admissions = () => {
             <h2>Need Help with Your Application?</h2>
             <p>Our admissions team is ready to guide you through every step of the application process.</p>
             <div className="cta-buttons">
-              <a href="tel:+260977476614" className="btn btn-primary">
-                <i className="fas fa-phone"></i> +260977476614
+              <a href="tel:+260977787114" className="btn btn-primary">
+                <i className="fas fa-phone"></i> +260 977 787 114
               </a>
-              <a href="mailto:contact@fairviewuniversity.com" className="btn btn-secondary">
+              <a href="mailto:fairviewuniversitycollege02@gmail.com" className="btn btn-secondary">
                 <i className="fas fa-envelope"></i> Email Us
               </a>
             </div>

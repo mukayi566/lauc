@@ -10,8 +10,8 @@ const ELearning = () => {
 
     const handleBack = () => {
         if (userRole === 'student') navigate('/student-dashboard');
-        else if (userRole === 'lecturer') navigate('/staff-dashboard');
-        else navigate('/portal-gateway');
+        else if (userRole === 'staff') navigate('/staff-dashboard');
+        else navigate('/login');
     };
 
     const courses = [

@@ -77,7 +77,11 @@ const Modal = ({ type, editData, lecturers = [], onClose, onSave }) => {
             ? { name: '', email: '', role: 'admin' }
             : type === 'registrar'
               ? { name: '', email: '', role: 'registrar' }
-              : {})
+              : type === 'it'
+                ? { name: '', email: '', role: 'it' }
+                : type === 'finance'
+                  ? { name: '', email: '', role: 'finance' }
+                  : {})
   );
 
   const [submitting, setSubmitting] = useState(false);
@@ -183,23 +187,27 @@ const Modal = ({ type, editData, lecturers = [], onClose, onSave }) => {
             </>
           )}
 
-          {(type === 'admin' || type === 'registrar') && (
+          {(type === 'admin' || type === 'registrar' || type === 'it' || type === 'finance') && (
             <>
               <div className="ad-form-row">
                 <div className="ad-field">
                   <label>Permissions Level</label>
                   <select value={form.role} onChange={e => handle('role', e.target.value)}>
-                    {type === 'admin' ? (
-                      <option value="admin">Full Administrator</option>
-                    ) : (
-                      <option value="registrar">Registrar Officer</option>
-                    )}
+                    {type === 'admin' && <option value="admin">Full Administrator</option>}
+                    {type === 'registrar' && <option value="registrar">Registrar Officer</option>}
+                    {type === 'it' && <option value="it">IT Support Officer</option>}
+                    {type === 'finance' && <option value="finance">Finance Officer</option>}
                   </select>
                 </div>
               </div>
               {!editData && (
                 <div className="ad-alert ad-alert--info" style={{ marginTop: '15px' }}>
-                  <i className="fas fa-key" /> Default Password: <code>{type === 'admin' ? 'Fairview@Admin2026' : 'Fairview@Registrar2026'}</code>
+                  <i className="fas fa-key" /> Default Password: <code>{
+                    type === 'admin' ? 'Fairview@Admin2026' :
+                      type === 'registrar' ? 'Fairview@Registrar2026' :
+                        type === 'it' ? 'Fairview@IT2026' :
+                          'Fairview@Finance2026'
+                  }</code>
                 </div>
               )}
             </>

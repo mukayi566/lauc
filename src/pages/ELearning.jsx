@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
 import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore';
+import Layout from '../components/Layout';
 import '../dashboards.css';
 
 const ELearning = () => {
@@ -95,241 +96,273 @@ const ELearning = () => {
     };
 
     return (
-        <div className="elearning-page">
-            {/* Header */}
-            <header className="elearning-header">
-                <div className="container flex-between">
-                    <div className="elearning-brand" style={{ cursor: 'pointer' }} onClick={handleBack}>
-                        <i className="fas fa-graduation-cap"></i>
-                        <span>Fairview E-Learning</span>
-                    </div>
-                    <div className="elearning-nav">
-                        <button className={activeSection === 'courses' ? 'active' : ''} onClick={() => setActiveSection('courses')}>My Courses</button>
-                        <button className={activeSection === 'live' ? 'active' : ''} onClick={() => setActiveSection('live')}>Virtual Classes</button>
-                        <button className={activeSection === 'assignments' ? 'active' : ''} onClick={() => setActiveSection('assignments')}>Assignments</button>
-                        <button className={activeSection === 'library' ? 'active' : ''} onClick={() => setActiveSection('library')}>Digital Library</button>
-                    </div>
-                    <div className="user-access">
-                        <button className="btn btn-outline btn-sm" onClick={handleBack} style={{ color: 'white', borderColor: 'rgba(255,255,255,0.3)' }}>
-                            <i className="fas fa-arrow-left"></i> Dashboard
-                        </button>
-                        <i className="fas fa-bell"></i>
-                        <div className="avatar-circle">ST</div>
+        <Layout>
+            <div className="elearning-page">
+                {/* Secondary Header for LMS navigation */}
+                <div className="elearning-subheader">
+                    <div className="container flex-between">
+                        <div className="elearning-nav">
+                            <button className={activeSection === 'courses' ? 'active' : ''} onClick={() => setActiveSection('courses')}>
+                                <i className="fas fa-book"></i> My Courses
+                            </button>
+                            <button className={activeSection === 'live' ? 'active' : ''} onClick={() => setActiveSection('live')}>
+                                <i className="fas fa-video"></i> Virtual Classes
+                            </button>
+                            <button className={activeSection === 'assignments' ? 'active' : ''} onClick={() => setActiveSection('assignments')}>
+                                <i className="fas fa-tasks"></i> Assignments
+                            </button>
+                            <button className={activeSection === 'library' ? 'active' : ''} onClick={() => setActiveSection('library')}>
+                                <i className="fas fa-book-reader"></i> Digital Library
+                            </button>
+                        </div>
+                        <div className="user-context">
+                            <button className="btn-context" onClick={handleBack}>
+                                <i className="fas fa-arrow-left"></i> Exit to Dashboard
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </header>
 
-            <div className="container section">
-                {loading ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '300px', color: '#1e3c72' }}>
-                        <i className="fas fa-circle-notch fa-spin fa-3x" style={{ marginBottom: '15px' }}></i>
-                        <p>Syncing your academic records...</p>
-                    </div>
-                ) : (
-                    <>
-                        {activeSection === 'courses' && (
-                            <div className="elearning-content">
-                                <div className="section-title-area">
-                                    <h2>My Active Courses</h2>
-                                    <p>Continue where you left off in your academic journey.</p>
-                                </div>
-
-                                {courses.length === 0 ? (
-                                    <div className="content-card" style={{ padding: '60px', textAlign: 'center', background: 'white', borderRadius: '16px' }}>
-                                        <i className="fas fa-book-open fa-3x" style={{ color: '#e2e8f0', marginBottom: '20px' }}></i>
-                                        <h3>No enrolled courses found</h3>
-                                        <p style={{ color: '#64748b' }}>Visit the main dashboard to register for your semester courses.</p>
-                                        <button className="btn btn-primary mt-20" onClick={handleBack}>Go to Dashboard</button>
+                <div className="container section">
+                    {loading ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '300px', color: '#1e3c72' }}>
+                            <i className="fas fa-circle-notch fa-spin fa-3x" style={{ marginBottom: '15px' }}></i>
+                            <p>Syncing your academic records...</p>
+                        </div>
+                    ) : (
+                        <>
+                            {activeSection === 'courses' && (
+                                <div className="elearning-content">
+                                    <div className="section-title-area">
+                                        <h2>My Active Courses</h2>
+                                        <p>Continue where you left off in your academic journey.</p>
                                     </div>
-                                ) : (
-                                    <div className="courses-grid-lms">
-                                        {courses.map(course => (
-                                            <div key={course.id} className="lms-course-card">
-                                                <div className="card-top">
-                                                    <span className="course-code">{course.code || course.id}</span>
-                                                    <i className="fas fa-bookmark"></i>
-                                                </div>
-                                                <h3>{course.name}</h3>
-                                                <p className="lecturer-name">By {course.lecturer || 'Department Faculty'}</p>
 
-                                                <div className="progress-container">
-                                                    <div className="progress-info">
-                                                        <span>Progress</span>
-                                                        <span>{course.progress}%</span>
+                                    {courses.length === 0 ? (
+                                        <div className="content-card" style={{ padding: '60px', textAlign: 'center', background: 'white', borderRadius: '16px' }}>
+                                            <i className="fas fa-book-open fa-3x" style={{ color: '#e2e8f0', marginBottom: '20px' }}></i>
+                                            <h3>No enrolled courses found</h3>
+                                            <p style={{ color: '#64748b' }}>Visit the main dashboard to register for your semester courses.</p>
+                                            <button className="btn btn-primary mt-20" onClick={handleBack}>Go to Dashboard</button>
+                                        </div>
+                                    ) : (
+                                        <div className="courses-grid-lms">
+                                            {courses.map(course => (
+                                                <div key={course.id} className="lms-course-card">
+                                                    <div className="card-top">
+                                                        <span className="course-code">{course.code || course.id}</span>
+                                                        <i className="fas fa-bookmark"></i>
                                                     </div>
-                                                    <div className="progress-bar-bg">
-                                                        <div className="progress-bar-fill" style={{ width: `${course.progress}%` }}></div>
+                                                    <h3>{course.name}</h3>
+                                                    <p className="lecturer-name">By {course.lecturer || 'Department Faculty'}</p>
+
+                                                    <div className="progress-container">
+                                                        <div className="progress-info">
+                                                            <span>Progress</span>
+                                                            <span>{course.progress}%</span>
+                                                        </div>
+                                                        <div className="progress-bar-bg">
+                                                            <div className="progress-bar-fill" style={{ width: `${course.progress}%` }}></div>
+                                                        </div>
                                                     </div>
+
+                                                    <div className="card-stats">
+                                                        <span><i className="fas fa-file-pdf"></i> {course.materials} Resources</span>
+                                                        <span><i className="fas fa-video"></i> {course.nextLive}</span>
+                                                    </div>
+
+                                                    <button className="btn btn-primary w-full mt-10">Enter Classroom</button>
                                                 </div>
-
-                                                <div className="card-stats">
-                                                    <span><i className="fas fa-file-pdf"></i> {course.materials} Resources</span>
-                                                    <span><i className="fas fa-video"></i> {course.nextLive}</span>
-                                                </div>
-
-                                                <button className="btn btn-primary w-full mt-10">Enter Classroom</button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {activeSection === 'live' && (
-                            <div className="live-classes-view">
-                                <div className="section-title-area">
-                                    <h2>Virtual Classrooms</h2>
-                                    <p>Join scheduled live sessions and interact with your lecturers in real-time.</p>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
+                            )}
 
-                                <div className="live-grid">
-                                    <div className="live-main">
-                                        <div className="now-live-card">
-                                            <div className="live-badge">LIVE NOW</div>
-                                            <h3>Advanced Programming with C++</h3>
-                                            <p>Module 4: Memory Management and Pointers</p>
-                                            <div className="live-meta">
-                                                <span><i className="fas fa-user"></i> 42 Students</span>
-                                                <span><i className="fas fa-clock"></i> Started 15m ago</span>
+                            {activeSection === 'live' && (
+                                <div className="live-classes-view">
+                                    <div className="section-title-area">
+                                        <h2>Virtual Classrooms</h2>
+                                        <p>Join scheduled live sessions and interact with your lecturers in real-time.</p>
+                                    </div>
+
+                                    <div className="live-grid">
+                                        <div className="live-main">
+                                            <div className="now-live-card">
+                                                <div className="live-badge">LIVE NOW</div>
+                                                <h3>Advanced Programming with C++</h3>
+                                                <p>Module 4: Memory Management and Pointers</p>
+                                                <div className="live-meta">
+                                                    <span><i className="fas fa-user"></i> 42 Students</span>
+                                                    <span><i className="fas fa-clock"></i> Started 15m ago</span>
+                                                </div>
+                                                <button className="btn btn-danger"><i className="fas fa-video"></i> Join Zoom Meeting</button>
                                             </div>
-                                            <button className="btn btn-danger"><i className="fas fa-video"></i> Join Zoom Meeting</button>
+
+                                            <div className="upcoming-live">
+                                                <h3>Upcoming Sessions</h3>
+                                                <div className="upcoming-list">
+                                                    {courses.length > 0 ? courses.slice(0, 3).map((course, i) => (
+                                                        <div key={i} className="upcoming-item">
+                                                            <div className="time-col">
+                                                                <span className="time">{10 + i}:00</span>
+                                                                <span className="ampm">AM</span>
+                                                            </div>
+                                                            <div className="info-col">
+                                                                <h4>{course.name}</h4>
+                                                                <p>Weekly Virtual Lecture - Zoom Session</p>
+                                                            </div>
+                                                            <button className="btn btn-outline btn-sm">Set Reminder</button>
+                                                        </div>
+                                                    )) : (
+                                                        <div className="upcoming-item" style={{ justifyContent: 'center', color: '#64748b' }}>
+                                                            No sessions scheduled for today.
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
 
-                                        <div className="upcoming-live">
-                                            <h3>Upcoming Sessions</h3>
-                                            <div className="upcoming-list">
-                                                {courses.length > 0 ? courses.slice(0, 3).map((course, i) => (
-                                                    <div key={i} className="upcoming-item">
-                                                        <div className="time-col">
-                                                            <span className="time">{10 + i}:00</span>
-                                                            <span className="ampm">AM</span>
-                                                        </div>
-                                                        <div className="info-col">
-                                                            <h4>{course.name}</h4>
-                                                            <p>Weekly Virtual Lecture - Zoom Session</p>
-                                                        </div>
-                                                        <button className="btn btn-outline btn-sm">Set Reminder</button>
+                                        <aside className="live-sidebar">
+                                            <div className="calendar-card">
+                                                <h3>Class Calendar</h3>
+                                                <div className="placeholder-calendar">
+                                                    <div className="cal-day selected">{new Date().getDate()} <small>{new Date().toLocaleDateString('en-US', { weekday: 'short' })}</small></div>
+                                                    <div className="cal-day">{new Date().getDate() + 1} <small>{new Date(Date.now() + 86400000).toLocaleDateString('en-US', { weekday: 'short' })}</small></div>
+                                                    <div className="cal-day">{new Date().getDate() + 2} <small>{new Date(Date.now() + 172800000).toLocaleDateString('en-US', { weekday: 'short' })}</small></div>
+                                                    <div className="cal-day">{new Date().getDate() + 3} <small>{new Date(Date.now() + 259200000).toLocaleDateString('en-US', { weekday: 'short' })}</small></div>
+                                                </div>
+                                            </div>
+                                            <div className="announcements-mini">
+                                                <h3>Recent Alerts</h3>
+                                                {courses.length > 0 ? (
+                                                    <div className="ann-item">
+                                                        <span className="date">Today</span>
+                                                        <p>New handouts uploaded for {courses[0].code || 'your courses'}.</p>
                                                     </div>
-                                                )) : (
-                                                    <div className="upcoming-item" style={{ justifyContent: 'center', color: '#64748b' }}>
-                                                        No sessions scheduled for today.
+                                                ) : (
+                                                    <div className="ann-item">
+                                                        <p>Check back later for updates.</p>
                                                     </div>
                                                 )}
                                             </div>
-                                        </div>
+                                        </aside>
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeSection === 'assignments' && (
+                                <div className="assignments-view">
+                                    <div className="section-title-area">
+                                        <h2>My Assignments</h2>
+                                        <p>Track your deadlines and submit your coursework.</p>
                                     </div>
 
-                                    <aside className="live-sidebar">
-                                        <div className="calendar-card">
-                                            <h3>Class Calendar</h3>
-                                            <div className="placeholder-calendar">
-                                                <div className="cal-day selected">{new Date().getDate()} <small>{new Date().toLocaleDateString('en-US', { weekday: 'short' })}</small></div>
-                                                <div className="cal-day">{new Date().getDate() + 1} <small>{new Date(Date.now() + 86400000).toLocaleDateString('en-US', { weekday: 'short' })}</small></div>
-                                                <div className="cal-day">{new Date().getDate() + 2} <small>{new Date(Date.now() + 172800000).toLocaleDateString('en-US', { weekday: 'short' })}</small></div>
-                                                <div className="cal-day">{new Date().getDate() + 3} <small>{new Date(Date.now() + 259200000).toLocaleDateString('en-US', { weekday: 'short' })}</small></div>
+                                    <div className="content-card">
+                                        {assignments.length === 0 ? (
+                                            <div style={{ padding: '40px', textAlign: 'center' }}>
+                                                <i className="fas fa-tasks fa-2x" style={{ color: '#cbd5e1', marginBottom: '15px' }}></i>
+                                                <p style={{ color: '#64748b' }}>Great job! You have no pending assignments or quizzes.</p>
                                             </div>
-                                        </div>
-                                        <div className="announcements-mini">
-                                            <h3>Recent Alerts</h3>
-                                            {courses.length > 0 ? (
-                                                <div className="ann-item">
-                                                    <span className="date">Today</span>
-                                                    <p>New handouts uploaded for {courses[0].code || 'your courses'}.</p>
-                                                </div>
-                                            ) : (
-                                                <div className="ann-item">
-                                                    <p>Check back later for updates.</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </aside>
-                                </div>
-                            </div>
-                        )}
-
-                        {activeSection === 'assignments' && (
-                            <div className="assignments-view">
-                                <div className="section-title-area">
-                                    <h2>My Assignments</h2>
-                                    <p>Track your deadlines and submit your coursework.</p>
-                                </div>
-
-                                <div className="content-card">
-                                    {assignments.length === 0 ? (
-                                        <div style={{ padding: '40px', textAlign: 'center' }}>
-                                            <i className="fas fa-tasks fa-2x" style={{ color: '#cbd5e1', marginBottom: '15px' }}></i>
-                                            <p style={{ color: '#64748b' }}>Great job! You have no pending assignments or quizzes.</p>
-                                        </div>
-                                    ) : (
-                                        <table className="data-table">
-                                            <thead>
-                                                <tr>
-                                                    <th>Assessment Title</th>
-                                                    <th>Course</th>
-                                                    <th>Deadline</th>
-                                                    <th>Current Status</th>
-                                                    <th style={{ textAlign: 'right' }}>Action</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {assignments.map((ass, idx) => (
-                                                    <tr key={idx}>
-                                                        <td>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                                                <div className={`type-icon-wrapper ${ass.type?.toLowerCase() || 'quiz'}`}>
-                                                                    <i className={ass.type?.toLowerCase() === 'exam' ? 'fas fa-file-signature' : 'fas fa-stopwatch'}></i>
-                                                                </div>
-                                                                <div>
-                                                                    <div className="font-bold">{ass.title}</div>
-                                                                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{ass.type || 'Quiz'} Assessment</div>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                        <td>
-                                                            <span className="course-tag">{ass.course}</span>
-                                                        </td>
-                                                        <td>
-                                                            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                                <span style={{ fontWeight: 600 }}>{ass.dueDate}</span>
-                                                                <span style={{ fontSize: '0.7rem', color: '#ef4444' }}>Due at 23:59</span>
-                                                            </div>
-                                                        </td>
-                                                        <td>
-                                                            <span className={`status-badge-new ${ass.status.toLowerCase()}`}>
-                                                                <i className={ass.status === 'Submitted' ? 'fas fa-check-circle' : 'fas fa-clock'}></i>
-                                                                {ass.status}
-                                                            </span>
-                                                        </td>
-                                                        <td style={{ textAlign: 'right' }}>
-                                                            <button className={`lms-action-btn ${ass.status === 'Submitted' ? 'view' : 'take'}`}>
-                                                                <i className={ass.status === 'Submitted' ? 'fas fa-eye' : 'fas fa-edit'}></i>
-                                                                {ass.status === 'Submitted' ? 'Review Result' : 'Take ' + (ass.type || 'Quiz')}
-                                                            </button>
-                                                        </td>
+                                        ) : (
+                                            <table className="data-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Assessment Title</th>
+                                                        <th>Course</th>
+                                                        <th>Deadline</th>
+                                                        <th>Current Status</th>
+                                                        <th style={{ textAlign: 'right' }}>Action</th>
                                                     </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    )}
+                                                </thead>
+                                                <tbody>
+                                                    {assignments.map((ass, idx) => (
+                                                        <tr key={idx}>
+                                                            <td>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                                    <div className={`type-icon-wrapper ${ass.type?.toLowerCase() || 'quiz'}`}>
+                                                                        <i className={ass.type?.toLowerCase() === 'exam' ? 'fas fa-file-signature' : 'fas fa-stopwatch'}></i>
+                                                                    </div>
+                                                                    <div>
+                                                                        <div className="font-bold">{ass.title}</div>
+                                                                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{ass.type || 'Quiz'} Assessment</div>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <span className="course-tag">{ass.course}</span>
+                                                            </td>
+                                                            <td>
+                                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                                    <span style={{ fontWeight: 600 }}>{ass.dueDate}</span>
+                                                                    <span style={{ fontSize: '0.7rem', color: '#ef4444' }}>Due at 23:59</span>
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <span className={`status-badge-new ${ass.status.toLowerCase()}`}>
+                                                                    <i className={ass.status === 'Submitted' ? 'fas fa-check-circle' : 'fas fa-clock'}></i>
+                                                                    {ass.status}
+                                                                </span>
+                                                            </td>
+                                                            <td style={{ textAlign: 'right' }}>
+                                                                <button className={`lms-action-btn ${ass.status === 'Submitted' ? 'view' : 'take'}`}>
+                                                                    <i className={ass.status === 'Submitted' ? 'fas fa-eye' : 'fas fa-edit'}></i>
+                                                                    {ass.status === 'Submitted' ? 'Review Result' : 'Take ' + (ass.type || 'Quiz')}
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        )}
-                    </>
-                )}
-            </div>
+                            )}
+                        </>
+                    )}
+                </div>
 
-            <style>{`
+                <style>{`
                 .elearning-page { min-height: 100vh; background: #f4f7fa; }
-                .elearning-header { background: #1e3c72; color: white; padding: 15px 0; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+                .elearning-subheader { background: white; border-bottom: 1px solid #e2e8f0; padding: 12px 0; position: sticky; top: 0; z-index: 90; }
                 .flex-between { display: flex; justify-content: space-between; align-items: center; }
-                .elearning-brand { display: flex; align-items: center; gap: 12px; font-weight: 800; font-size: 1.5rem; }
-                .elearning-nav { display: flex; gap: 20px; }
-                .elearning-nav button { background: none; border: none; color: rgba(255,255,255,0.7); font-weight: 600; padding: 8px 15px; border-radius: 8px; cursor: pointer; transition: 0.3s; }
-                .elearning-nav button:hover { background: rgba(255,255,255,0.1); color: white; }
-                .elearning-nav button.active { background: white; color: #1e3c72; }
+                
+                .elearning-nav { display: flex; gap: 10px; }
+                .elearning-nav button { 
+                    background: none; 
+                    border: 1px solid transparent; 
+                    color: #64748b; 
+                    font-weight: 600; 
+                    padding: 8px 16px; 
+                    border-radius: 10px; 
+                    cursor: pointer; 
+                    transition: all 0.2s ease;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    font-size: 0.9rem;
+                }
+                .elearning-nav button i { color: #2a5298; opacity: 0.7; }
+                .elearning-nav button:hover { background: #f8fafc; color: #1e3c72; }
+                .elearning-nav button.active { background: #f0f7ff; color: #1e3c72; border-color: #dbeafe; }
+                .elearning-nav button.active i { color: #1e3c72; opacity: 1; }
 
-                .user-access { display: flex; align-items: center; gap: 20px; }
-                .avatar-circle { width: 38px; height: 38px; border-radius: 50%; background: #2a5298; display: flex; align-items: center; justifyContent: center; font-weight: 700; border: 2px solid rgba(255,255,255,0.3); }
+                .user-context { display: flex; align-items: center; gap: 15px; }
+                .btn-context {
+                    background: #f1f5f9;
+                    border: none;
+                    color: #475569;
+                    padding: 8px 16px;
+                    border-radius: 8px;
+                    font-weight: 600;
+                    font-size: 0.85rem;
+                    cursor: pointer;
+                    transition: 0.2s;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+                .btn-context:hover { background: #e2e8f0; color: #1e293b; }
 
                 .section-title-area { margin-bottom: 40px; }
                 .section-title-area h2 { font-weight: 800; color: #1e293b; margin-bottom: 8px; }
@@ -438,7 +471,8 @@ const ELearning = () => {
                     .btn-sm { padding: 5px 10px; font-size: 0.8rem; }
                 }
             `}</style>
-        </div>
+            </div>
+        </Layout>
     );
 };
 

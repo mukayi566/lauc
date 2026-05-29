@@ -25,7 +25,7 @@ const Home = () => {
     {
       image: '/hero-image1.png',
       title: 'Welcome to Fairview University College',
-      subtitle: 'Excellence in Healthcare Education | Christian Principles | Community Focus',
+      subtitle: 'We Aim At Excellence| Christian Principles | Community Focus',
       btn1Text: 'Apply Now',
       btn1Link: '/admissions#apply',
       btn1Icon: 'fa-file-alt',
@@ -47,7 +47,8 @@ const Home = () => {
       btn2Class: 'btn-outline'
     },
     {
-      image: '/hero-image3.png',
+      image: '/hero-image5.png',
+      position: 'center 15%',
       title: 'World Class Academic Resources',
       subtitle: 'A vibrant learning community supported by state-of-the-art library facilities and highly qualified lecturers.',
       btn1Text: 'Explore Programs',
@@ -59,7 +60,7 @@ const Home = () => {
       btn2Class: 'btn-secondary'
     },
     {
-      image: '/hero-image4.png',
+      image: '/hero-image6.png',
       title: 'Advanced Practical Simulation Labs',
       subtitle: 'Hands-on clinical training, high-tech patient simulators, and safe campus accommodation to elevate your studies.',
       btn1Text: 'Apply Now',
@@ -110,7 +111,10 @@ const Home = () => {
             <div
               key={index}
               className={`hero-slide-bg ${index === currentSlide ? 'active' : ''}`}
-              style={{ backgroundImage: `url(${slide.image})` }}
+              style={{ 
+                backgroundImage: `url(${slide.image})`,
+                backgroundPosition: slide.position || 'center'
+              }}
             />
           ))}
         </div>

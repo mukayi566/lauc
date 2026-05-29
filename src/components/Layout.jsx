@@ -30,8 +30,11 @@ const Navbar = () => {
 
   const isActive = (path) => location.pathname === path;
 
+  // Pages that should have a solid navbar (dark text) by default
+  const isSolidPage = ['/elearning', '/login', '/student-login', '/staff-login', '/admin-login', '/registrar-login'].includes(location.pathname);
+
   return (
-    <nav className={`navbar ${scrolled ? 'navbar-scrolled' : 'navbar-transparent'}`}>
+    <nav className={`navbar ${scrolled || isSolidPage ? 'navbar-scrolled' : 'navbar-transparent'}`}>
       <div className="nav-container">
         <Link to="/" className="nav-brand">
           <img src={logo} alt="Fairview University Logo" className="nav-logo" />
@@ -39,11 +42,44 @@ const Navbar = () => {
         </Link>
         <div className={`nav-links${menuOpen ? ' open' : ''}`}>
           <Link to="/" className={isActive('/') ? 'active' : ''} onClick={() => setMenuOpen(false)}>Home</Link>
-          <Link to="/about" className={isActive('/about') ? 'active' : ''} onClick={() => setMenuOpen(false)}>About Us</Link>
+          <div className="nav-item-dropdown">
+            <button className="nav-dropdown-toggle">
+              About Us <i className="fas fa-chevron-down"></i>
+            </button>
+            <div className="nav-dropdown-menu">
+              <Link to="/about" className="nav-dropdown-item" onClick={() => setMenuOpen(false)}>
+                <i className="fas fa-university"></i> About Fairview
+              </Link>
+              <Link to="/faq" className="nav-dropdown-item" onClick={() => setMenuOpen(false)}>
+                <i className="fas fa-question-circle"></i> FAQ's
+              </Link>
+            </div>
+          </div>
           <Link to="/programs" className={isActive('/programs') ? 'active' : ''} onClick={() => setMenuOpen(false)}>Programs</Link>
           <Link to="/admissions" className={isActive('/admissions') ? 'active' : ''} onClick={() => setMenuOpen(false)}>Admissions</Link>
-          <Link to="/elearning" className={isActive('/elearning') ? 'active' : ''} onClick={() => setMenuOpen(false)}>E-Learning</Link>
-          <Link to="/research" className={isActive('/research') ? 'active' : ''} onClick={() => setMenuOpen(false)}>Research Repository</Link>
+          <Link to="/fees-tuition" className={isActive('/fees-tuition') ? 'active' : ''} onClick={() => setMenuOpen(false)}>Fees & Tuition</Link>
+          <div className="nav-item-dropdown">
+            <button className="nav-dropdown-toggle">
+              eResources <i className="fas fa-chevron-down"></i>
+            </button>
+            <div className="nav-dropdown-menu">
+              <Link to="/elearning" className="nav-dropdown-item" onClick={() => setMenuOpen(false)}>
+                <i className="fas fa-laptop-code"></i> E-Learning
+              </Link>
+              <Link to="/research" className="nav-dropdown-item" onClick={() => setMenuOpen(false)}>
+                <i className="fas fa-book-reader"></i> Research Repository
+              </Link>
+              <Link to="/student-login" className="nav-dropdown-item" onClick={() => setMenuOpen(false)}>
+                <i className="fas fa-user-graduate"></i> Student Portal
+              </Link>
+              <Link to="/privacy-policy" className="nav-dropdown-item" onClick={() => setMenuOpen(false)}>
+                <i className="fas fa-shield-alt"></i> Privacy Policy
+              </Link>
+              <Link to="/terms-conditions" className="nav-dropdown-item" onClick={() => setMenuOpen(false)}>
+                <i className="fas fa-file-contract"></i> Terms & Conditions
+              </Link>
+            </div>
+          </div>
 
           {/* Mobile only buttons */}
           <div className="mobile-only-nav">
@@ -134,9 +170,14 @@ const Footer = () => {
         <div className="footer-section">
           <h3>Quick Links</h3>
           <Link to="/">Home</Link>
-          <Link to="/about">About Us</Link>
+          <Link to="/about">About</Link>
           <Link to="/programs">Programs</Link>
           <Link to="/admissions">Admissions</Link>
+          <Link to="/fees-tuition">Fees & Tuition</Link>
+        </div>
+
+        <div className="footer-section">
+          <h3>eResources</h3>
           <Link to="/elearning">E-Learning</Link>
           <Link to="/research">Research Repository</Link>
           <Link to="/student-login" style={{ color: '#facc15', fontWeight: 600 }}>
@@ -189,13 +230,18 @@ const Footer = () => {
   );
 };
 
-const Layout = ({ children }) => (
-  <>
-    <Navbar />
-    <main>{children}</main>
-    <Footer />
-    <ApplicationChatbot />
-  </>
-);
+const Layout = ({ children }) => {
+  const location = useLocation();
+  const isELearningPage = location.pathname === '/elearning';
+
+  return (
+    <>
+      {!isELearningPage && <Navbar />}
+      <main>{children}</main>
+      <Footer />
+      <ApplicationChatbot />
+    </>
+  );
+};
 
 export default Layout;

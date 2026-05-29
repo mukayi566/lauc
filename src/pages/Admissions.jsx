@@ -228,60 +228,21 @@ const Admissions = () => {
         </div>
       </section>
 
-      {/* FEES TABLE */}
+      {/* FEES SUMMARY */}
       <section className="section">
         <div className="container">
           <h2 className="section-title">Tuition & General Fees</h2>
-          <p className="section-subtitle">Comprehensive fee structure for the {currentYear} Academic Year</p>
+          <p className="section-subtitle">Affordable and transparent pricing for all academic programs</p>
 
-          <div className="fees-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px', marginBottom: '40px' }}>
-            <div className="sd-card" style={{ padding: '20px' }}>
-              <h3 style={{ borderBottom: '2px solid #2a5298', paddingBottom: '10px', marginBottom: '15px' }}>Tuition (Per Term)</h3>
-              <table className="fees-table" style={{ fontSize: '13px' }}>
-                <thead>
-                  <tr>
-                    <th>Programme</th>
-                    <th>Full Time</th>
-                    <th>Distance</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr><td>Teachers' Degree</td><td>K 4,000</td><td>K 4,500</td></tr>
-                  <tr><td>Teachers' Diploma</td><td>K 3,000</td><td>K 3,500</td></tr>
-                  <tr><td>Specialized Diplomas*</td><td>K 3,000</td><td>—</td></tr>
-                  <tr><td>Computer/Food Diplomas</td><td colSpan="2">K 5,500 - K 6,000 / Sem</td></tr>
-                </tbody>
-              </table>
-              <small>* Includes: Sales, Social Work, PR, Journalism, Counselling, Hospitality</small>
-            </div>
-
-            <div className="sd-card" style={{ padding: '20px' }}>
-              <h3 style={{ borderBottom: '2px solid #2a5298', paddingBottom: '10px', marginBottom: '15px' }}>General & Admin Fees</h3>
-              <ul style={{ listStyle: 'none', padding: 0, fontSize: '14px' }}>
-                <li style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eee' }}>
-                  <span>Registration (Diploma / Degree)</span><strong>K 200 / K 300</strong>
-                </li>
-                <li style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eee' }}>
-                  <span>Boarding Fee (Per Term)</span><strong>ZMW 1,500</strong>
-                </li>
-                <li style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eee' }}>
-                  <span>Transport (Per Term)</span><strong>ZMW 500</strong>
-                </li>
-                <li style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eee' }}>
-                  <span>Educational Tour Fee</span><strong>ZMW 1,000</strong>
-                </li>
-                <li style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0' }}>
-                  <span>Medical Fee / ID Card</span><strong>ZMW 200 / 150</strong>
-                </li>
-              </ul>
-            </div>
+          <div className="cta-box" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: 'var(--clr-body)', boxShadow: 'none' }}>
+            <h3 style={{ color: 'var(--clr-blue)', marginBottom: '15px' }}>Plan Your Education</h3>
+            <p style={{ color: '#64748b' }}>
+              We believe in making quality education accessible. View our detailed fee schedule, including tuition for full-time and distance learning, as well as administrative and boarding costs.
+            </p>
+            <Link to="/fees-tuition" className="btn btn-primary" style={{ marginTop: '10px' }}>
+              <i className="fas fa-list-check"></i> View Full Fees Schedule
+            </Link>
           </div>
-
-          <p style={{ marginTop: 18, color: '#666', fontSize: 13, textAlign: 'center' }}>
-            <strong>Requirement:</strong> Students are required to provide three (3) reams of A4 paper per year or Kwacha equivalent.
-            <br />
-            <strong>Accommodation:</strong> Boarding facilities are available at ZMW 1,500 per term.
-          </p>
         </div>
       </section>
 

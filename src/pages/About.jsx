@@ -9,7 +9,7 @@ const About = () => (
       <div className="hero-content">
         <div className="page-breadcrumb"><i className="fas fa-home"></i> Home / About Us</div>
         <h1>About Fairview University College</h1>
-        <p>Excellence in Healthcare Education | Christian Principles | Community Focus</p>
+        <p>We Aim At Excellence| Christian Principles | Community Focus</p>
       </div>
 
       {/* Seamless Curved Wave Divider */}

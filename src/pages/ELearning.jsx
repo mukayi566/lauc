@@ -472,6 +472,7 @@ const ELearning = () => {
                 }
             `}</style>
         </div>
+        </Layout>
     );
 };
 

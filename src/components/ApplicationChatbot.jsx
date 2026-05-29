@@ -4,14 +4,14 @@ import { Link } from 'react-router-dom';
 // ── Knowledge base ──────────────────────────────────────────────────────────
 const KB = {
   programs: [
-    { name: 'Bachelor of Science in Nursing', level: 'Degree', years: 4, fee: 15000 },
-    { name: 'Bachelor of Science in Clinical Medical Sciences', level: 'Degree', years: 4, fee: 16000 },
-    { name: 'Bachelor of Business Administration', level: 'Degree', years: 4, fee: 14000 },
-    { name: 'Bachelor of Science in Public Health', level: 'Degree', years: 4, fee: 15000 },
-    { name: 'Diploma in Registered Nursing', level: 'Diploma', years: 3, fee: 12000 },
-    { name: 'Diploma in Public Health', level: 'Diploma', years: 3, fee: 11000 },
-    { name: 'Diploma in Environmental Health', level: 'Diploma', years: 3, fee: 11000 },
+    { name: 'Bachelor of Education (Primary/Secondary)', level: 'Degree', years: 4, fee: 14000 },
+    { name: 'Bachelor of Arts in Journalism', level: 'Degree', years: 4, fee: 14000 },
+    { name: 'Bachelor of Public Relations', level: 'Degree', years: 4, fee: 14000 },
+    { name: 'Bachelor of Science in ICT', level: 'Degree', years: 4, fee: 15000 },
+    { name: 'Diploma in Early Childhood Education', level: 'Diploma', years: 3, fee: 10000 },
     { name: 'Diploma in Social Work', level: 'Diploma', years: 3, fee: 10000 },
+    { name: 'Diploma in Hospitality Management', level: 'Diploma', years: 3, fee: 11000 },
+    { name: 'Diploma in Information Technology', level: 'Diploma', years: 3, fee: 11000 },
   ],
   requirements: [
     'Grade 12 Certificate or equivalent (GCSE)',
@@ -64,7 +64,7 @@ function getReply(input) {
     const degList = degrees.map(p => `• ${p.name} (${p.years} yrs)`).join('\n');
     const dipList = diplomas.map(p => `• ${p.name} (${p.years} yrs)`).join('\n');
     return {
-      text: `🎓 **Programs Offered at Fairview University College**\n\n**Degree Programs (4 years)**\n${degList}\n\n**Diploma Programs (3 years)**\n${dipList}\n\nWant details on fees for a specific program?`,
+      text: `🎓 **Programs Offered at Fairview College of Education**\n\n**Degree Programs (4 years)**\n${degList}\n\n**Diploma Programs (3 years)**\n${dipList}\n\nWant details on fees for a specific program?`,
     };
   }
 
@@ -97,11 +97,11 @@ function getReply(input) {
     };
   }
 
-  // Nursing
-  if (/(nurs)/.test(q)) {
+  // Education
+  if (/(educat|teach|primary|secondary|early childhood)/.test(q)) {
     return {
-      text: `🏥 **Nursing Programs at Fairview**\n\n• **Bachelor of Science in Nursing** — 4 years · ZMW 15,000/yr\n• **Diploma in Registered Nursing** — 3 years · ZMW 12,000/yr\n\nBoth programs include clinical placements in accredited hospitals. Minimum Grade 12 with Biology & English at grade C or above is required.`,
-      action: { label: '📝 Apply for Nursing', to: '/admissions#apply' },
+      text: `🍎 **Education Programs at Fairview**\n\n• **Bachelor of Education** (Primary/Secondary) — 4 years · ZMW 14,000/yr\n• **Diploma in Early Childhood Education** — 3 years · ZMW 10,000/yr\n\nOur education programs combine academic theory with practical teaching experience to develop highly skilled educators.`,
+      action: { label: '📝 Apply for Education', to: '/admissions#apply' },
     };
   }
 
@@ -113,10 +113,11 @@ function getReply(input) {
     };
   }
 
-  // Public health
-  if (/(public health|environmental health|community health)/.test(q)) {
+  // Journalism & PR
+  if (/(journalism|public relations|pr|media|broadcast|news)/.test(q)) {
     return {
-      text: `🌍 **Public & Environmental Health Programs**\n\n• **BSc Public Health** (Degree, 4 yrs) — ZMW 15,000/yr\n• **Diploma in Public Health** (3 yrs) — ZMW 11,000/yr\n• **Diploma in Environmental Health** (3 yrs) — ZMW 11,000/yr\n\nThese programs prepare graduates for careers in community health, policy, and environmental management.`,
+      text: `📰 **Journalism & Public Relations**\n\n• **BA Journalism** — 4 years · ZMW 14,000/yr\n• **BA Public Relations** — 4 years · ZMW 14,000/yr\n\nMaster the arts of reporting, broadcasting, digital media, and strategic communication.`,
+      action: { label: '📝 Apply Now', to: '/admissions#apply' },
     };
   }
 
@@ -131,7 +132,7 @@ function getReply(input) {
   // Scholarship / financial aid
   if (/(scholarship|bursary|financial aid|loan|support|sponsor)/.test(q)) {
     return {
-      text: `🏆 **Scholarships & Financial Aid**\n\nFairview University College offers:\n• **Merit scholarships** for outstanding academic performance\n• **Payment plans** — installment options for tuition\n• **Bursaries** for financially disadvantaged students\n\nFor more details, contact our admissions office directly.`,
+      text: `🏆 **Scholarships & Financial Aid**\n\nFairview College of Education offers:\n• **Merit scholarships** for outstanding academic performance\n• **Payment plans** — installment options for tuition\n• **Bursaries** for financially disadvantaged students\n\nFor more details, contact our admissions office directly.`,
       action: { label: '📞 Contact Admissions', to: '/#contact' },
     };
   }
@@ -163,22 +164,22 @@ function getReply(input) {
   // About / accreditation
   if (/(about|accredit|recogni|history|who are|mission|vision|overview)/.test(q)) {
     return {
-      text: `🎓 **About Fairview University College**\n\nFairview is a registered and accredited institution offering quality higher education in healthcare, business, and humanities.\n\nWe are committed to producing skilled, ethical, and community-centred graduates who make a difference in Zambia and beyond.`,
-      action: { label: '🔍 Learn More About Us', to: '/about' },
+      text: `🎓 **About Fairview University College**\n\nFairview is a dynamic private higher learning institution committed to academic excellence, professional training, and community transformation. We champion gender equality and the empowerment of youths, men, and women in all fields.\n\nWe offer programmes in Teacher Education, Journalism, PR, Social Work, ICT, and Hospitality.`,
+      action: { label: 'Learn More About Us', to: '/about' },
     };
   }
 
   // Thank you
   if (/(thank|thanks|thx|appreciate|helpful|great|awesome|perfect)/.test(q)) {
     return {
-      text: "😊 You're welcome! Is there anything else I can help you with? I'm here anytime you have questions about applying to Fairview University College.",
+      text: "You're welcome! Is there anything else I can help you with? I'm here anytime you have questions about applying to Fairview College of Education.",
     };
   }
 
   // Goodbye
   if (/(bye|goodbye|see you|later|done|exit|quit|close)/.test(q)) {
     return {
-      text: "👋 Goodbye! Best of luck with your application to Fairview University College. Feel free to chat with me anytime. 🎓",
+      text: "👋 Goodbye! Best of luck with your application to Fairview College of Education. Feel free to chat with me anytime. 🎓",
     };
   }
 

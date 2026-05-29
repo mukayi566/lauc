@@ -25,7 +25,7 @@ const Home = () => {
     {
       image: '/hero-image1.png',
       title: 'Welcome to Fairview University College',
-      subtitle: 'We Aim At Excellence| Christian Principles | Community Focus',
+      subtitle: 'We Aim At Excellence | Professional Training | Community Transformation',
       btn1Text: 'Apply Now',
       btn1Link: '/admissions#apply',
       btn1Icon: 'fa-file-alt',
@@ -36,8 +36,8 @@ const Home = () => {
     },
     {
       image: '/hero-image2.jpg',
-      title: 'Shaping Future Healthcare Leaders',
-      subtitle: 'Accredited Nursing, Public Health and Clinical Sciences programmes designed for professional success.',
+      title: 'Shaping Future Educators & Professionals',
+      subtitle: 'Accredited Education, Journalism, ICT, and Social Work programmes designed for professional success.',
       btn1Text: 'Our Programs',
       btn1Link: '/programs',
       btn1Icon: 'fa-graduation-cap',
@@ -111,7 +111,7 @@ const Home = () => {
             <div
               key={index}
               className={`hero-slide-bg ${index === currentSlide ? 'active' : ''}`}
-              style={{ 
+              style={{
                 backgroundImage: `url(${slide.image})`,
                 backgroundPosition: slide.position || 'center'
               }}
@@ -209,14 +209,14 @@ const Home = () => {
           <div className="about-two-col">
             <div className="about-text">
               <h2>About Fairview University College</h2>
-              <p>Fairview University College is a registered and accredited institution, focused on providing higher education in health, business, humanities, and TEVETA programs. The Institution is located in Barlastone, Lusaka, Zambia.</p>
+              <p>Fairview University College  is a dynamic private higher learning institution committed to academic excellence, professional training, and community transformation through quality education. Located in Lusaka, Zambia, the institution provides diploma, degree, and certificate programmes.</p>
               <div style={{ background: 'white', padding: '18px 22px', borderRadius: 10, marginBottom: 14, borderLeft: '4px solid #2a5298' }}>
-                <h4 style={{ color: '#2a5298', marginBottom: 6, fontWeight: 700 }}><i className="fas fa-bullseye" style={{ marginRight: 8 }}></i>Our Mission</h4>
-                <p style={{ color: '#666', fontSize: 14 }}>TO EDUCATE, EMPOWER AND ESTABLISH THE YOUTHS</p>
+                <h4 style={{ color: '#2a5298', marginBottom: 6, fontWeight: 700 }}><i className="fas fa-bullseye" style={{ marginRight: 8 }}></i>Our Purpose</h4>
+                <p style={{ color: '#666', fontSize: 14 }}>To equip students with practical knowledge, leadership skills, and professional competence for community transformation.</p>
               </div>
               <div style={{ background: 'white', padding: '18px 22px', borderRadius: 10, marginBottom: 22, borderLeft: '4px solid #2a5298' }}>
-                <h4 style={{ color: '#2a5298', marginBottom: 6, fontWeight: 700 }}><i className="fas fa-eye" style={{ marginRight: 8 }}></i>Our Vision</h4>
-                <p style={{ color: '#666', fontSize: 14 }}>EDUCATING AND IMPARTING KNOWLEDGE WITH EXCELLENCE</p>
+                <h4 style={{ color: '#2a5298', marginBottom: 6, fontWeight: 700 }}><i className="fas fa-eye" style={{ marginRight: 8 }}></i>Our Motto</h4>
+                <p style={{ color: '#666', fontSize: 14 }}>“WE AIM AT EXCELLENCE”</p>
               </div>
               <a href="tel:+260977787114" className="btn btn-primary">
                 <i className="fas fa-phone"></i> Call Now
@@ -312,7 +312,7 @@ const Home = () => {
       <section className="section">
         <div className="container">
           <h2 className="section-title">Our Facilities</h2>
-          <p className="section-subtitle">Discover world-class facilities at Fairview University</p>
+          <p className="section-subtitle">Discover world-class facilities at Fairview College</p>
           <div className="facilities-grid">
             {[
               { icon: 'fa-bed', title: 'Modern Accommodation', desc: 'Safe, fully equipped hostels with 24/7 security and student lounges.' },
@@ -342,7 +342,7 @@ const Home = () => {
           <p className="section-subtitle">Meet the visionary leaders shaping the future of healthcare education</p>
           <div className="leadership-grid">
             {[
-              { name: 'Dr. Humphrey Monde', title: 'Executive Director', msg: '"Welcome to Fairview University, where excellence meets opportunity. We are committed to transforming lives through innovative healthcare education."' },
+              { name: 'Dr. Humphrey Monde', title: 'Executive Director', msg: '"Welcome to Fairview College, where excellence meets opportunity. We are committed to transforming lives through innovative healthcare education."' },
               { name: 'Dr. Geoffrey Sandala', title: 'Principal', msg: '"Join our vibrant community of future healthcare leaders. We are dedicated to your success through innovative teaching methodologies and hands-on experience."' },
               { name: 'Parson Monde', title: 'Director Finance & Administration', msg: '"Our commitment is to provide quality education at affordable prices, ensuring every deserving student can access world-class healthcare education."' },
             ].map((l) => (
@@ -363,12 +363,12 @@ const Home = () => {
       <section className="section">
         <div className="container">
           <h2 className="section-title">Latest News &amp; Blog</h2>
-          <p className="section-subtitle">Stay updated with the latest news and stories from Fairview University</p>
+          <p className="section-subtitle">Stay updated with the latest news and stories from Fairview College</p>
           <div className="blog-grid">
             {[
-              { date: 'January 06, 2026', title: 'Congratulations to Mary Sinvula, the new Principal of Fairview University!', excerpt: 'We are delighted to announce the appointment of Mary Sinvula as the new Principal...' },
+              { date: 'January 06, 2026', title: 'Congratulations to Mary Sinvula, the new Principal of Fairview College!', excerpt: 'We are delighted to announce the appointment of Mary Sinvula as the new Principal...' },
               { date: 'January 2026 Intake', title: 'We Are Still Enrolling for January 2026 Intake', excerpt: 'Excellent news! We have available spaces for the January 2026 intake across all programs...' },
-              { date: 'October 17, 2025', title: 'Fairview University Celebrates Its 10th Graduation Ceremony', excerpt: 'A momentous celebration as Fairview University held its 10th graduation ceremony...' },
+              { date: 'October 17, 2025', title: 'Fairview College Celebrates Its 10th Graduation Ceremony', excerpt: 'A momentous celebration as Fairview College held its 10th graduation ceremony...' },
             ].map((b) => (
               <div key={b.title} className="blog-card">
                 <div className="blog-image"></div>

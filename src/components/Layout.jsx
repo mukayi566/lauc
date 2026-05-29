@@ -38,7 +38,7 @@ const Navbar = () => {
       <div className="nav-container">
         <Link to="/" className="nav-brand">
           <img src={logo} alt="Fairview University Logo" className="nav-logo" />
-          <span className="nav-text">Fairview University College</span>
+          <span className="nav-text">Fairview College of Education</span>
         </Link>
         <div className={`nav-links${menuOpen ? ' open' : ''}`}>
           <Link to="/" className={isActive('/') ? 'active' : ''} onClick={() => setMenuOpen(false)}>Home</Link>
@@ -155,9 +155,9 @@ const Footer = () => {
     <footer className="footer" id="contact">
       <div className="footer-content">
         <div className="footer-section">
-          <h3><i className="fas fa-graduation-cap" style={{ marginRight: 8 }}></i>Fairview University College</h3>
+          <h3><i className="fas fa-graduation-cap" style={{ marginRight: 8 }}></i>Fairview College of Education</h3>
           <p style={{ color: '#ccc', lineHeight: 1.9, fontSize: 13 }}>
-            A registered and accredited institution providing quality higher education in healthcare, business, and humanities programs.
+            A registered and accredited institution providing quality higher education in education, journalism, ICT, and professional programs.
           </p>
           <div className="social-links">
             <a href="#" aria-label="Facebook"><i className="fab fa-facebook-f"></i></a>
@@ -224,7 +224,7 @@ const Footer = () => {
       </div>
 
       <div className="footer-bottom">
-        <p>© Copyright {new Date().getFullYear()} Fairview University. All Rights Reserved.</p>
+        <p>© Copyright {new Date().getFullYear()} Fairview College. All Rights Reserved.</p>
       </div>
     </footer>
   );

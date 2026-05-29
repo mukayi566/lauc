@@ -9,7 +9,7 @@ const About = () => (
       <div className="hero-content">
         <div className="page-breadcrumb"><i className="fas fa-home"></i> Home / About Us</div>
         <h1>About Fairview University College</h1>
-        <p>Excellence in Healthcare Education | Christian Principles | Community Focus</p>
+        <p>We Aim At Excellence | Professional Training | Community Transformation</p>
       </div>
 
       {/* Seamless Curved Wave Divider */}
@@ -28,13 +28,13 @@ const About = () => (
         <div className="mission-vision-grid">
           <div className="mission-vision-card">
             <i className="fas fa-bullseye"></i>
-            <h3>Our Mission</h3>
-            <p> TO EDUCATE, EMPOWER AND ESTABLISH THE YOUTHS</p>
+            <h3>Our Purpose</h3>
+            <p>To equip students with practical knowledge, leadership skills, and professional competence for community transformation.</p>
           </div>
           <div className="mission-vision-card">
             <i className="fas fa-eye"></i>
-            <h3>Our Vision</h3>
-            <p>EDUCATING AND IMPARTING KNOWLEDGE WITH EXCELLENCE</p>
+            <h3>Our Motto</h3>
+            <p>“WE AIM AT EXCELLENCE”</p>
           </div>
         </div>
       </div>
@@ -47,10 +47,9 @@ const About = () => (
         <div className="about-two-col" style={{ marginTop: 40 }}>
           <div className="about-text">
             <h2>Who We Are</h2>
-            <p>Fairview University College is an institution of higher learning in Lusaka, Zambia, with a mission to provide holistic, Christian-based education and a vision to produce practitioners with a community focus.</p>
-            <p>We are registered and accredited by the Higher Education Authority and the Health Professions Council of Zambia, offering programs in Health Sciences, Humanities, Social Sciences, Business Studies, and TEVETA courses.</p>
-            <p>Key areas of study include nursing, clinical medicine, environmental health, public health, social work, and various business and TEVETA programs.</p>
-            <p style={{ marginTop: 16 }}>We are delighted to have you join our community where excellence, integrity, and faith guide all we do. Together, we strive to shape not only successful professionals but also responsible leaders with strong values.</p>
+            <p>Fairview University College is a dynamic private higher learning institution committed to academic excellence, professional training, and community transformation through quality education. Located in Lusaka, Zambia, the institution provides diploma, degree, and certificate programmes designed to equip students with practical knowledge, leadership skills, and professional competence.</p>
+            <p>Guided by the motto “We Aim At Excellence,” Fairview College of Education focuses on developing highly skilled educators and professionals capable of contributing positively to society. The college offers programmes in Teacher Education, Early Childhood Education, Journalism, Public Relations, Social Work, Information and Communication Technology, Hospitality, and other professional disciplines.</p>
+            <p>The institution combines academic theory with practical learning experiences to prepare students for the demands of the modern workplace. Through dedicated lecturers, flexible learning options, and a supportive academic environment, Fairview College of Education continues to empower students with the knowledge, values, and confidence needed for lifelong success.</p>
             <div style={{ marginTop: 24 }}>
               <a href="tel:+260770839120" className="btn btn-primary">
                 <i className="fas fa-phone"></i> Call Now: +260770839120
@@ -58,7 +57,7 @@ const About = () => (
             </div>
           </div>
           <div className="about-visual">
-            <i className="fas fa-university"></i>
+            <img src="/About.jpg" alt="About Fairview University College" className="about-img" />
           </div>
         </div>
 

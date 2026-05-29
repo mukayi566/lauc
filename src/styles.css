@@ -100,7 +100,8 @@ main {
 
 main:has(.hero),
 main:has(.research-hero),
-main:has(.elearning-header) {
+main:has(.elearning-header),
+main:has(.elearning-page) {
   padding-top: 0;
 }
 
@@ -212,8 +213,7 @@ main:has(.elearning-header) {
 }
 
 .navbar-scrolled .nav-links a.active {
-  color: var(--clr-blue-mid) !important;
-  font-weight: 700;
+  color: var(--clr-white) !important;
 }
 
 .navbar-scrolled .mobile-menu-btn {
@@ -264,8 +264,9 @@ main:has(.elearning-header) {
 .nav-links {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 12px;
   list-style: none;
+  margin-left: 2.5rem;
 }
 
 .nav-links a {
@@ -273,7 +274,7 @@ main:has(.elearning-header) {
   text-decoration: none;
   font-weight: 600;
   font-size: 14.5px;
-  padding: 8px 14px;
+  padding: 8px 12px;
   border-radius: var(--radius-sm);
   transition: color var(--transition), background var(--transition);
   position: relative;
@@ -307,6 +308,121 @@ main:has(.elearning-header) {
   font-weight: 700;
 }
 
+/* ── Dropdown Styles ── */
+.nav-item-dropdown {
+  position: relative;
+}
+
+.nav-dropdown-toggle {
+  display: flex !important;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 14.5px;
+  padding: 8px 12px;
+  color: var(--clr-blue);
+}
+
+.nav-dropdown-toggle i {
+  font-size: 10px;
+  transition: transform var(--transition);
+}
+
+.nav-item-dropdown:hover .nav-dropdown-toggle i {
+  transform: rotate(180deg);
+}
+
+.nav-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  background: white;
+  min-width: 240px;
+  padding: 12px 0;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 1001;
+  border: 1px solid var(--clr-border);
+}
+
+.nav-item-dropdown:hover .nav-dropdown-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(4px);
+}
+
+.nav-dropdown-item {
+  display: flex !important;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px !important;
+  color: var(--clr-blue) !important;
+  text-decoration: none !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  transition: background 0.2s ease, color 0.2s ease !important;
+  border-radius: 0 !important;
+  line-height: 1.2 !important;
+}
+
+.nav-dropdown-item:hover {
+  background: rgba(30, 60, 114, 0.05) !important;
+  color: var(--clr-blue-light) !important;
+}
+
+.nav-dropdown-item i {
+  width: 16px;
+  color: var(--clr-blue-mid);
+  opacity: 0.7;
+}
+
+.nav-dropdown-item:hover i {
+  color: var(--clr-gold);
+  opacity: 1;
+}
+
+/* Transparent navbar dropdown support */
+.navbar-transparent .nav-dropdown-toggle {
+  color: rgba(255, 255, 255, 0.88) !important;
+}
+
+.navbar-transparent .nav-dropdown-toggle:hover {
+  color: white !important;
+}
+
+.navbar-transparent .nav-dropdown-menu {
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.navbar-transparent .nav-links .nav-dropdown-item {
+  color: var(--clr-blue) !important;
+}
+
+.navbar-transparent .nav-links .nav-dropdown-item:hover {
+  color: var(--clr-blue-light) !important;
+  background: rgba(30, 60, 114, 0.05) !important;
+}
+
+.navbar-scrolled .nav-dropdown-toggle {
+  color: var(--clr-blue) !important;
+}
+
+.navbar-scrolled .nav-dropdown-menu {
+  background: white;
+  border-color: var(--clr-border);
+}
+
 /* ── Student Portal pill link ── */
 .nav-portal-link {
   display: inline-flex !important;
@@ -338,7 +454,7 @@ main:has(.elearning-header) {
 
 /* Transparent navbar — portal link glassy */
 .navbar-transparent .nav-portal-link {
-  background: rgba(255, 255, 255, 0.18) !important;
+  background: rgba(53, 55, 214, 0.18) !important;
   border-color: rgba(255, 255, 255, 0.45) !important;
   color: white !important;
   backdrop-filter: blur(8px) !important;
@@ -368,7 +484,7 @@ main:has(.elearning-header) {
 .nav-buttons {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 16px;
 }
 
 .mobile-menu-btn {
@@ -1216,6 +1332,14 @@ main:has(.elearning-header) {
   color: white;
   font-size: 96px;
   box-shadow: 0 10px 40px rgba(30, 60, 114, 0.3);
+  overflow: hidden;
+  /* Ensure image doesn't overflow rounded corners */
+}
+
+.about-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 /* ============ MISSION VISION ============ */
@@ -1766,7 +1890,12 @@ main:has(.elearning-header) {
   }
 
   .nav-links {
-    gap: 20px;
+    gap: 8px;
+  }
+
+  .nav-links a {
+    padding: 8px 10px;
+    font-size: 14px;
   }
 
   .hero-content h1 {
@@ -1793,7 +1922,7 @@ main:has(.elearning-header) {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1100px) {
   .navbar {
     padding: 0;
   }
@@ -1826,6 +1955,7 @@ main:has(.elearning-header) {
     background: linear-gradient(135deg, #0d2b5e 0%, #1e3c72 100%);
     padding: 20px 16px 24px;
     gap: 4px;
+    margin-left: 0;
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
     border-top: 1px solid rgba(255, 255, 255, 0.12);
     z-index: 999;
@@ -1839,9 +1969,15 @@ main:has(.elearning-header) {
     display: flex !important;
   }
 
+  .mobile-only-nav .btn-secondary,
+  .mobile-only-nav .btn-outline-light {
+    color: white !important;
+    border-color: rgba(255, 255, 255, 0.3) !important;
+  }
+
   /* Force white text on all nav links inside the mobile dropdown */
   .nav-links a {
-    color: rgba(255, 255, 255, 0.9) !important;
+    color: #ffffff !important;
     font-size: 15px;
     padding: 12px 8px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
@@ -1863,6 +1999,50 @@ main:has(.elearning-header) {
   .nav-links a::after {
     display: none;
     /* hide underline indicator on mobile */
+  }
+
+  /* Mobile Dropdown */
+  .nav-item-dropdown {
+    width: 100%;
+  }
+
+  .nav-dropdown-toggle {
+    width: 100% !important;
+    padding: 12px 8px !important;
+    color: #ffffff !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+    justify-content: space-between !important;
+    font-size: 15px !important;
+    border-radius: 0 !important;
+  }
+
+  .nav-dropdown-menu {
+    position: static !important;
+    transform: none !important;
+    width: 100% !important;
+    background: rgba(0, 0, 0, 0.15) !important;
+    box-shadow: none !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: none;
+    padding: 0 !important;
+    border: none !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .nav-item-dropdown:hover .nav-dropdown-menu,
+  .nav-item-dropdown:focus-within .nav-dropdown-menu {
+    display: block;
+  }
+
+  .nav-dropdown-item {
+    padding: 12px 20px !important;
+    color: #ffffff !important;
+    font-size: 14px !important;
+  }
+
+  .nav-dropdown-item i {
+    color: var(--clr-gold) !important;
   }
 
   /* Hide desktop-only CTA buttons, keep hamburger visible */

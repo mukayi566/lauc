@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
 import ResultEntry from '../components/ResultEntry';
 import ExamManager from '../components/lecturer/ExamManager';
+import { calculateGrade, getGradePoints } from '../utils/resultUtils';
 import {
   collection, query, where, onSnapshot,
   doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc,
@@ -55,8 +56,11 @@ const StaffDashboard = () => {
   const [managedStatus, setManagedStatus] = useState('');
   const [savingCourse, setSavingCourse] = useState(false);
   const [postingAnn, setPostingAnn] = useState(false);
+  const [bulkUploading, setBulkUploading] = useState(false);
+  const [submittingAll, setSubmittingAll] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [dbError, setDbError] = useState('');
+  const [confirmModal, setConfirmModal] = useState({ show: false, title: '', message: '', icon: 'fa-question-circle', onConfirm: null });
 
   /* ── Form state ── */
   const [newAnn, setNewAnn] = useState({ title: '', content: '', status: 'Info', targetCourse: 'All My Students' });
@@ -68,6 +72,7 @@ const StaffDashboard = () => {
   const [courses, setCourses] = useState([]);
   const [students, setStudents] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
+  const [resultLogs, setResultLogs] = useState([]);
 
   const navigate = useNavigate();
   const { signOut, currentUser, changePassword } = useAuth();
@@ -265,6 +270,23 @@ const StaffDashboard = () => {
     return unsubAnn;
   }, [uid]);
 
+  useEffect(() => {
+    if (!uid) return;
+    const logsCol = collection(db, 'staff_logs');
+    const q = query(
+      logsCol,
+      where('staffId', '==', uid),
+      where('actionType', '==', 'result_upload'),
+      orderBy('timestamp', 'desc')
+    );
+
+    const unsubLogs = onSnapshot(q, (snap) => {
+      setResultLogs(snap.docs.map(d => ({ id: d.id, ...d.data() })).slice(0, 5));
+    });
+
+    return () => unsubLogs();
+  }, [uid]);
+
   /* ═══════════════════════════════════════════════════════════════
      ACTIONS
   ═══════════════════════════════════════════════════════════════ */
@@ -281,6 +303,10 @@ const StaffDashboard = () => {
   const showError = (msg) => {
     setDbError(msg);
     setTimeout(() => setDbError(''), 5000);
+  };
+
+  const triggerConfirm = (title, message, icon, onConfirm) => {
+    setConfirmModal({ show: true, title, message, icon, onConfirm });
   };
 
   /* Update password (stored in Firestore) */
@@ -305,9 +331,9 @@ const StaffDashboard = () => {
     } catch (err) {
       console.error(err);
       if (err.code === 'auth/requires-recent-login') {
-        alert('For security reasons, please logout and log back in before changing your password.');
+        triggerConfirm('Re-authentication Required', 'For security reasons, please logout and log back in before changing your password.', 'fa-lock', null);
       } else {
-        alert('Error updating password: ' + err.message);
+        showError('Error updating password: ' + err.message);
       }
     }
   };
@@ -354,7 +380,7 @@ const StaffDashboard = () => {
       showSuccess(`Announcement posted and sent to ${targetStudents.length} students!`);
     } catch (err) {
       console.error('Post announcement error:', err);
-      alert('Error posting announcement. Please try again.');
+      showError('Error posting announcement. Please try again.');
     } finally {
       setPostingAnn(false);
     }
@@ -388,6 +414,203 @@ const StaffDashboard = () => {
     } finally {
       setSavingCourse(false);
     }
+  };
+
+  const logResultAction = async (actionDetails) => {
+    try {
+      await addDoc(collection(db, 'staff_logs'), {
+        staffId: uid,
+        staffName: lecturer.name,
+        actionType: 'result_upload',
+        timestamp: serverTimestamp(),
+        ...actionDetails
+      });
+    } catch (err) {
+      console.error("Error logging action:", err);
+    }
+  };
+
+  const handleBulkResultUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setBulkUploading(true);
+    const reader = new FileReader();
+
+    reader.onload = async (event) => {
+      try {
+        const text = event.target.result;
+        const lines = text.split('\n');
+
+        // Expected CSV: CourseCode, StudentID, CA, Exam
+        let successCount = 0;
+        let errorCount = 0;
+
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+
+          const parts = line.split(',').map(p => p.trim());
+          if (parts.length < 4) {
+            errorCount++;
+            continue;
+          }
+
+          const [courseCode, studentRegNo, ca, exam] = parts;
+
+          // 1. Find the course in lecturer's assigned courses
+          const course = courses.find(c => (c.code || '').toUpperCase() === courseCode.toUpperCase());
+          if (!course) {
+            console.warn(`Course ${courseCode} not assigned to this lecturer.`);
+            errorCount++;
+            continue;
+          }
+
+          // 2. Find the student
+          const student = students.find(s => (s.studentId || '').toUpperCase() === studentRegNo.toUpperCase());
+          if (!student) {
+            console.warn(`Student ${studentRegNo} not found.`);
+            errorCount++;
+            continue;
+          }
+
+          const caVal = parseFloat(ca) || 0;
+          const exVal = parseFloat(exam) || 0;
+          const total = caVal + exVal;
+          const grade = calculateGrade(total);
+
+          const resultData = {
+            studentId: student.docId,
+            studentName: student.name,
+            studentRegNo: student.studentId || student.id,
+            courseId: course.docId,
+            courseCode: course.code,
+            courseName: course.name,
+            caScore: caVal,
+            examScore: exVal,
+            total: total,
+            grade: grade,
+            gpa: getGradePoints(grade),
+            status: 'draft',
+            submittedBy: uid,
+            updatedAt: serverTimestamp(),
+            semester: course.semester || 'Current'
+          };
+
+          // 3. Check for existing result to update or add
+          const resQuery = query(
+            collection(db, 'results'),
+            where('studentId', '==', student.docId),
+            where('courseCode', '==', course.code)
+          );
+          const resSnap = await getDocs(resQuery);
+
+          if (!resSnap.empty) {
+            await updateDoc(doc(db, 'results', resSnap.docs[0].id), resultData);
+          } else {
+            await addDoc(collection(db, 'results'), resultData);
+          }
+          successCount++;
+        }
+
+        showSuccess(`Bulk upload complete! ${successCount} results imported as draft, ${errorCount} errors.`);
+
+        await logResultAction({
+          description: `Bulk result upload performed`,
+          courseCodes: Array.from(new Set(lines.slice(1).map(l => l.split(',')[0].trim()).filter(Boolean))),
+          successCount,
+          errorCount,
+          totalProcessed: successCount + errorCount
+        });
+
+      } catch (err) {
+        console.error("Bulk upload error:", err);
+        showError("Failed to process bulk upload file.");
+      } finally {
+        setBulkUploading(false);
+        // Clear input
+        e.target.value = '';
+      }
+    };
+
+    reader.readAsText(file);
+  };
+
+  const handleSubmitAllResults = async () => {
+    triggerConfirm(
+      "Submit All Results",
+      "Are you sure you want to submit all draft results for your assigned courses for admin approval? This action cannot be easily undone.",
+      "fa-paper-plane",
+      async () => {
+        setSubmittingAll(true);
+        try {
+          const courseCodes = courses.map(c => c.code).filter(Boolean);
+          if (courseCodes.length === 0) return;
+
+          const q = query(
+            collection(db, 'results'),
+            where('courseCode', 'in', courseCodes),
+            where('status', '==', 'draft')
+          );
+          const snap = await getDocs(q);
+
+          if (snap.empty) {
+            showSuccess("No draft results found to submit.");
+            return;
+          }
+
+          const updatePromises = snap.docs.map(d =>
+            updateDoc(doc(db, 'results', d.id), {
+              status: 'submitted',
+              submittedAt: serverTimestamp()
+            })
+          );
+
+          await Promise.all(updatePromises);
+
+          showSuccess(`Successfully submitted ${snap.size} results to admin for approval!`);
+
+          await logResultAction({
+            description: `Mass result submission to admin performed`,
+            courseCodes,
+            totalSubmitted: snap.size
+          });
+
+        } catch (err) {
+          console.error("Mass submission error:", err);
+          showError("Failed to submit results. Please try again.");
+        } finally {
+          setSubmittingAll(false);
+          setConfirmModal(prev => ({ ...prev, show: false }));
+        }
+      }
+    );
+  };
+
+  const handleClearResultLogs = async () => {
+    triggerConfirm(
+      "Clear History",
+      "Are you sure you want to clear your result upload history? This will permanently remove all logs.",
+      "fa-trash-alt",
+      async () => {
+        try {
+          const q = query(
+            collection(db, 'staff_logs'),
+            where('staffId', '==', uid),
+            where('actionType', '==', 'result_upload')
+          );
+          const snap = await getDocs(q);
+          const deletePromises = snap.docs.map(d => deleteDoc(doc(db, 'staff_logs', d.id)));
+          await Promise.all(deletePromises);
+          showSuccess("Result upload history cleared.");
+        } catch (err) {
+          console.error("Error clearing logs:", err);
+          showError("Failed to clear history.");
+        } finally {
+          setConfirmModal(prev => ({ ...prev, show: false }));
+        }
+      }
+    );
   };
 
   /* ── Derived display values ── */
@@ -852,32 +1075,53 @@ const StaffDashboard = () => {
                   <div className="sd-card">
                     <div className="sd-card-body" style={{ padding: 0 }}>
                       {announcements.length === 0 ? (
-                        <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>
-                          <i className="fas fa-bullhorn" style={{ fontSize: 32, marginBottom: 12, display: 'block', opacity: 0.3 }}></i>
-                          No announcements posted yet.
-                        </div>
-                      ) : announcements.map(ann => (
-                        <div key={ann.id} className="sd-notif-row">
-                          <div className="sd-notif-icon" style={{ color: ann.status === 'Urgent' ? '#dc2626' : '#7c3aed' }}>
-                            <i className={`fas ${ann.status === 'Urgent' ? 'fa-exclamation-circle' : 'fa-info-circle'}`}></i>
+                        <div style={{ padding: 60, textAlign: 'center', background: '#f8fafc', borderRadius: 16, border: '2px dashed #e2e8f0' }}>
+                          <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', color: '#94a3b8', fontSize: 24 }}>
+                            <i className="fas fa-bullhorn"></i>
                           </div>
-                          <div className="sd-notif-body">
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <div className="sd-notif-text" style={{ fontWeight: 700, fontSize: 15 }}>{ann.title}</div>
-                              <Badge status={ann.status} />
-                            </div>
-                            <div className="sd-notif-text" style={{ marginTop: 5 }}>{ann.content}</div>
-                            <div className="sd-notif-time" style={{ marginTop: 4 }}>
-                              <i className="far fa-calendar" style={{ marginRight: 4 }}></i>{ann.date}
-                              {ann.postedBy && <span style={{ marginLeft: 10 }}>· Posted by {ann.postedBy}</span>}
-                            </div>
-                          </div>
-                          <button className="sd-icon-btn-sm" style={{ alignSelf: 'center', color: '#dc2626' }}
-                            onClick={() => handleDeleteAnnouncement(ann.id)}>
-                            <i className="fas fa-trash"></i>
-                          </button>
+                          <h4 style={{ color: '#475569', marginBottom: 8 }}>No announcements yet</h4>
+                          <p style={{ color: '#94a3b8', fontSize: 13, maxWidth: 300, margin: '0 auto' }}>Post updates and notices for your students. They will see them instantly on their portal.</p>
                         </div>
-                      ))}
+                      ) : (
+                        <div style={{ display: 'grid', gap: 16 }}>
+                          {announcements.map(ann => (
+                            <div key={ann.id} className="sd-announcement-card">
+                              <div className={`sd-announcement-icon ${ann.status === 'Urgent' ? 'urgent' : 'info'}`}>
+                                <i className={`fas ${ann.status === 'Urgent' ? 'fa-exclamation-circle' : 'fa-info-circle'}`}></i>
+                              </div>
+                              <div className="sd-announcement-content">
+                                <div className="sd-announcement-header">
+                                  <h4 className="sd-announcement-title">{ann.title}</h4>
+                                  <Badge status={ann.status} />
+                                </div>
+                                <div className="sd-announcement-message">{ann.content}</div>
+                                <div className="sd-announcement-footer">
+                                  <div className="sd-announcement-meta">
+                                    <span><i className="far fa-calendar"></i> {ann.date}</span>
+                                    {ann.targetCourse && (
+                                      <span><i className="fas fa-users"></i> {ann.targetCourse}</span>
+                                    )}
+                                    {ann.postedBy && (
+                                      <span><i className="far fa-user"></i> {ann.postedBy}</span>
+                                    )}
+                                  </div>
+                                  <div className="sd-announcement-actions">
+                                    <button className="sd-icon-btn" style={{ color: '#dc2626' }}
+                                      onClick={() => triggerConfirm(
+                                        "Delete Announcement",
+                                        "Are you sure you want to delete this announcement? This will remove it from all students' feeds.",
+                                        "fa-trash",
+                                        () => handleDeleteAnnouncement(ann.id)
+                                      )}>
+                                      <i className="fas fa-trash-alt"></i>
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -931,6 +1175,25 @@ const StaffDashboard = () => {
                           <h2 className="sd-page-title">Result Management</h2>
                           <p className="sd-page-sub">Select a course to input or manage student scores.</p>
                         </div>
+                        <div style={{ display: 'flex', gap: 12 }}>
+                          <label className={`sd-btn ${bulkUploading ? 'sd-btn-ghost' : 'sd-btn-white'}`} style={{ cursor: bulkUploading ? 'not-allowed' : 'pointer' }}>
+                            <i className={bulkUploading ? "fas fa-circle-notch fa-spin" : "fas fa-file-csv"}></i> {bulkUploading ? 'Processing...' : 'Bulk Upload Direct Courses'}
+                            <input
+                              type="file"
+                              accept=".csv"
+                              onChange={handleBulkResultUpload}
+                              disabled={bulkUploading}
+                              style={{ display: 'none' }}
+                            />
+                          </label>
+                          <button
+                            className="sd-btn sd-btn-primary"
+                            onClick={handleSubmitAllResults}
+                            disabled={submittingAll || courses.length === 0}
+                          >
+                            <i className={submittingAll ? "fas fa-circle-notch fa-spin" : "fas fa-paper-plane"}></i> {submittingAll ? 'Submitting...' : 'Submit All to Admin'}
+                          </button>
+                        </div>
                       </div>
                       <div className="sd-card">
                         <div className="sd-table-wrapper">
@@ -963,6 +1226,40 @@ const StaffDashboard = () => {
                           </table>
                         </div>
                       </div>
+
+                      {resultLogs.length > 0 && (
+                        <div className="sd-card" style={{ marginTop: 24 }}>
+                          <div className="sd-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <i className="fas fa-history" style={{ color: '#7c3aed' }}></i>
+                              Recent Upload Activity
+                            </div>
+                            <button className="sd-link-btn" style={{ color: '#dc2626', fontSize: 12 }} onClick={handleClearResultLogs}>
+                              <i className="fas fa-trash-alt" style={{ marginRight: 4 }}></i> Clear History
+                            </button>
+                          </div>
+                          <div className="sd-card-body" style={{ padding: 0 }}>
+                            {resultLogs.map(log => (
+                              <div key={log.id} className="sd-notif-row" style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                <div className="sd-notif-icon" style={{ background: '#f5f3ff', color: '#7c3aed', width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <i className="fas fa-cloud-upload-alt"></i>
+                                </div>
+                                <div className="sd-notif-body">
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div className="sd-notif-text" style={{ fontWeight: 700, fontSize: 14 }}>{log.description}</div>
+                                    <div className="sd-notif-time" style={{ fontSize: 12 }}>{log.timestamp?.toDate().toLocaleString()}</div>
+                                  </div>
+                                  <div style={{ fontSize: 13, color: '#64748b', marginTop: 4, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                                    <span style={{ color: '#059669', fontWeight: 600 }}><i className="fas fa-check-circle" style={{ marginRight: 4 }}></i>{log.successCount} Successful</span>
+                                    <span style={{ color: '#dc2626', fontWeight: 600 }}><i className="fas fa-times-circle" style={{ marginRight: 4 }}></i>{log.errorCount} Errors</span>
+                                    <span style={{ background: '#f1f5f9', padding: '1px 8px', borderRadius: 6, fontSize: 11 }}>Courses: {log.courseCodes?.join(', ')}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </>
                   ) : (
                     <ResultEntry
@@ -1017,47 +1314,59 @@ const StaffDashboard = () => {
       {/* ══════════ NEW ANNOUNCEMENT MODAL ══════════ */}
       {showAnnouncementModal && (
         <div className="sd-modal-overlay">
-          <div className="sd-modal">
+          <div className="sd-modal" style={{ maxWidth: 550 }}>
             <div className="sd-modal-head">
-              <h3><i className="fas fa-bullhorn"></i> New Announcement</h3>
+              <h3><i className="fas fa-plus-circle" style={{ color: '#7c3aed' }}></i> Create Announcement</h3>
               <button className="sd-close-btn" onClick={() => setShowAnnouncementModal(false)}>&times;</button>
             </div>
-            <form onSubmit={handleNewAnnouncement}>
-              <div className="sd-modal-form">
-                <label>Title</label>
-                <input
-                  type="text"
-                  placeholder="Announcement Title"
-                  required
-                  value={newAnn.title}
-                  onChange={(e) => setNewAnn({ ...newAnn, title: e.target.value })}
-                />
-                <label>Message</label>
-                <textarea
-                  style={{ padding: 12, borderRadius: 10, border: '2px solid #e2e8f0', minHeight: 100, outline: 'none', resize: 'vertical' }}
-                  placeholder="Write your announcement here..."
-                  required
-                  value={newAnn.content}
-                  onChange={(e) => setNewAnn({ ...newAnn, content: e.target.value })}
-                />
-                <label>Priority</label>
-                <select value={newAnn.status} onChange={(e) => setNewAnn({ ...newAnn, status: e.target.value })}>
-                  <option value="Info">Normal (Info)</option>
-                  <option value="Urgent">Important (Urgent)</option>
-                </select>
+            <form onSubmit={handleNewAnnouncement} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+              <div className="sd-modal-body" style={{ padding: '24px 30px', flex: 1 }}>
+                <div className="sd-modal-form">
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                    <div>
+                      <label><i className="fas fa-tag"></i> Priority</label>
+                      <select value={newAnn.status} onChange={(e) => setNewAnn({ ...newAnn, status: e.target.value })}>
+                        <option value="Info">Normal (Info)</option>
+                        <option value="Urgent">Important (Urgent)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label><i className="fas fa-users"></i> Audience</label>
+                      <select value={newAnn.targetCourse} onChange={(e) => setNewAnn({ ...newAnn, targetCourse: e.target.value })}>
+                        <option value="All My Students">All My Students ({students.length})</option>
+                        {courses.map(c => (
+                          <option key={c.docId || c.id} value={c.code || c.id}>{c.code || c.id} – {c.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
 
-                <label>Target Recipients</label>
-                <select value={newAnn.targetCourse} onChange={(e) => setNewAnn({ ...newAnn, targetCourse: e.target.value })}>
-                  <option value="All My Students">All My Students ({students.length})</option>
-                  {courses.map(c => (
-                    <option key={c.docId || c.id} value={c.code || c.id}>{c.code || c.id} – {c.name}</option>
-                  ))}
-                </select>
+                  <label><i className="fas fa-heading"></i> Announcement Title</label>
+                  <input
+                    type="text"
+                    placeholder="Enter a descriptive title..."
+                    required
+                    value={newAnn.title}
+                    onChange={(e) => setNewAnn({ ...newAnn, title: e.target.value })}
+                  />
+
+                  <label><i className="fas fa-align-left"></i> Message Content</label>
+                  <textarea
+                    style={{ padding: 14, borderRadius: 10, border: '1px solid #e2e8f0', minHeight: 140, outline: 'none', resize: 'vertical', fontSize: 14, fontFamily: 'inherit', background: '#fafbfd' }}
+                    placeholder="Type your message here. Be as detailed as possible..."
+                    required
+                    value={newAnn.content}
+                    onChange={(e) => setNewAnn({ ...newAnn, content: e.target.value })}
+                  />
+                  <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>
+                    <i className="fas fa-info-circle"></i> This announcement will be immediately visible to all selected students.
+                  </p>
+                </div>
               </div>
-              <div className="sd-modal-actions">
+              <div className="sd-modal-actions" style={{ padding: '20px 30px 30px', margin: 0, borderTop: '1px solid #f1f5f9' }}>
                 <button type="button" className="sd-btn sd-btn-ghost" onClick={() => setShowAnnouncementModal(false)}>Cancel</button>
                 <button type="submit" className="sd-btn sd-btn-primary" disabled={postingAnn}>
-                  {postingAnn ? <><i className="fas fa-circle-notch fa-spin"></i> Posting...</> : 'Post Announcement'}
+                  {postingAnn ? <><i className="fas fa-circle-notch fa-spin"></i> Posting...</> : <><i className="fas fa-paper-plane"></i> Post Announcement</>}
                 </button>
               </div>
             </form>
@@ -1124,6 +1433,31 @@ const StaffDashboard = () => {
             </div>
             <div className="sd-modal-actions">
               <button className="sd-btn sd-btn-primary" style={{ width: '100%' }} onClick={() => setShowProfileModal(false)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════ GLOBAL CONFIRMATION MODAL ══════════ */}
+      {confirmModal.show && (
+        <div className="sd-modal-overlay" style={{ zIndex: 10000 }}>
+          <div className="sd-modal" style={{ maxWidth: 400, textAlign: 'center' }}>
+            <div className="sd-modal-body" style={{ padding: '40px 24px' }}>
+              <div style={{ width: 70, height: 70, borderRadius: '50%', background: '#f5f3ff', color: '#7c3aed', fontSize: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+                <i className={`fas ${confirmModal.icon}`}></i>
+              </div>
+              <h3 style={{ fontSize: 20, fontWeight: 700, color: '#1e293b', marginBottom: 12 }}>{confirmModal.title}</h3>
+              <p style={{ color: '#64748b', lineHeight: 1.6, fontSize: 15 }}>{confirmModal.message}</p>
+            </div>
+            <div className="sd-modal-actions" style={{ borderTop: '1px solid #f1f5f9', padding: '16px 24px' }}>
+              <button className="sd-btn sd-btn-ghost" style={{ flex: 1 }} onClick={() => setConfirmModal({ ...confirmModal, show: false })}>
+                {confirmModal.onConfirm ? 'Cancel' : 'Ok'}
+              </button>
+              {confirmModal.onConfirm && (
+                <button className="sd-btn sd-btn-primary" style={{ flex: 1 }} onClick={confirmModal.onConfirm}>
+                  Confirm Action
+                </button>
+              )}
             </div>
           </div>
         </div>

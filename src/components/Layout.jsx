@@ -238,8 +238,12 @@ const Layout = ({ children }) => {
     <>
       {!isELearningPage && <Navbar />}
       <main>{children}</main>
-      <Footer />
-      <ApplicationChatbot />
+      {!isELearningPage && (
+        <>
+          <Footer />
+          <ApplicationChatbot />
+        </>
+      )}
     </>
   );
 };

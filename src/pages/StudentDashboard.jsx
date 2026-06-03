@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   doc, getDoc, setDoc, updateDoc,
-  collection, getDocs, addDoc,
+  collection, getDocs, addDoc, onSnapshot,
   serverTimestamp, query, orderBy, where
 } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -97,6 +97,7 @@ const StudentDashboard = () => {
   const [notifications, setNotifications] = useState([]);
   const [cgpa, setCgpa] = useState('—');
   const [balanceDue, setBalanceDue] = useState(0);
+  const [liveSessions, setLiveSessions] = useState([]);
 
   /* ── Exam Docket state ── */
   const [examDocket, setExamDocket] = useState(null);
@@ -268,7 +269,6 @@ const StudentDashboard = () => {
       const notifCol = collection(db, 'students', uid, 'notifications');
       const notifSnap = await getDocs(notifCol);
       setNotifications(notifSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-
     } catch (err) {
       console.error('Dashboard load error:', err);
       if (err.code === 'permission-denied') {
@@ -321,6 +321,47 @@ const StudentDashboard = () => {
       }
     }
   };
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  // Separate effect for real-time virtual classes (active and ended today)
+  useEffect(() => {
+    if (!uid || courses.length === 0) return;
+
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const q = query(
+      collection(db, 'virtual_classes'),
+      where('startTime', '>=', startOfToday)
+    );
+
+    const unsub = onSnapshot(q, (snap) => {
+      const sessions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const studentCourseCodes = courses.map(c => c.code || c.id);
+      const relevant = sessions.filter(s => studentCourseCodes.includes(s.course));
+
+      // Dynamic notification for new LIVE classes
+      relevant.forEach(session => {
+        if (session.status === 'active' && !liveSessions.find(s => s.id === session.id && s.status === 'active')) {
+          toast.success(`LIVE NOW: ${session.course} has started!`, {
+            duration: 6000,
+            icon: '📡',
+            style: {
+              borderRadius: '10px',
+              background: '#065f46',
+              color: '#fff',
+              fontWeight: 'bold',
+            },
+          });
+        }
+      });
+
+      setLiveSessions(relevant);
+    });
+
+    return () => unsub();
+  }, [uid, courses]);
 
   const logout = async () => { await signOut(); navigate('/login'); };
 
@@ -721,18 +762,73 @@ const StudentDashboard = () => {
                       <p className="sd-welcome-p">
                         {new Date().toLocaleDateString('en-ZM', { weekday: 'long', day: 'numeric', month: 'long' })}
                       </p>
-                    </div>
-                    <div className="sd-welcome-actions">
-                      <button className="sd-btn sd-btn-white" onClick={() => setActiveTab('courses')}>
-                        <i className="fas fa-book-open"></i> Register Courses
-                      </button>
-                      <button className="sd-btn sd-btn-glass" onClick={() => setActiveTab('results')}>
-                        <i className="fas fa-chart-bar"></i> View Results
-                      </button>
+                      <div className="sd-welcome-actions">
+                        <button className="sd-btn sd-btn-white" onClick={() => setActiveTab('courses')}>
+                          <i className="fas fa-book-open"></i> Register Courses
+                        </button>
+                        <button className="sd-btn sd-btn-glass" onClick={() => setActiveTab('results')}>
+                          <i className="fas fa-chart-bar"></i> View Results
+                        </button>
+                      </div>
                     </div>
                   </div>
 
-                  {/* stat cards */}
+                  {liveSessions.filter(s => s.status === 'active').length > 0 && (
+                    <div className="sd-live-alert sd-tab-fade" style={{
+                      marginBottom: '30px',
+                      background: 'rgba(16, 185, 129, 0.05)',
+                      border: '1px solid rgba(16, 185, 129, 0.2)',
+                      borderLeft: '5px solid #10b981',
+                      borderRadius: '20px',
+                      padding: '24px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '20px',
+                      flexWrap: 'wrap',
+                      animation: 'slideInDown 0.5s ease-out'
+                    }}>
+                      <div className="sd-live-pulse-wrapper">
+                        <div className="sd-live-pulse"></div>
+                        <i className="fas fa-video"></i>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '800', color: '#065f46' }}>
+                          {liveSessions.filter(s => s.status === 'active').length} Class(es) LIVE Right Now!
+                        </h3>
+                        <p style={{ margin: '4px 0 0', color: '#047857', fontSize: '1.05rem', fontWeight: '500' }}>
+                          Join your lecturers in real-time for interactive learning.
+                        </p>
+                      </div>
+                      <div style={{ display: 'flex', gap: '12px' }}>
+                        {liveSessions.filter(s => s.status === 'active').map(session => (
+                          <button
+                            key={session.id}
+                            className="sd-btn"
+                            style={{
+                              background: 'linear-gradient(135deg, #10b981, #059669)',
+                              color: 'white',
+                              border: 'none',
+                              padding: '12px 24px',
+                              borderRadius: '12px',
+                              fontSize: '0.95rem',
+                              fontWeight: '700',
+                              boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+                              transition: 'transform 0.2s',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px'
+                            }}
+                            onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                            onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
+                            onClick={() => navigate('/elearning', { state: { autoJoin: session } })}
+                          >
+                            <i className="fas fa-sign-in-alt"></i> Join {session.course}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="sd-stats-row">
                     {[
                       { icon: 'fa-chart-line', val: cgpa, lbl: 'Current CGPA', color: '#0d9488', bg: 'rgba(13,148,136,0.12)' },
@@ -799,7 +895,24 @@ const StudentDashboard = () => {
                               <i className="fas fa-book"></i>
                             </div>
                             <div className="sd-schedule-info">
-                              <div className="sd-schedule-course">{cls.code} – {cls.name}</div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div className="sd-schedule-course">{cls.code} – {cls.name}</div>
+                                {(() => {
+                                  const courseSessions = liveSessions.filter(ls => ls.course === (cls.code || cls.id));
+                                  const active = courseSessions.find(ls => ls.status === 'active');
+                                  const ended = courseSessions.find(ls => ls.status === 'ended');
+
+                                  if (active) return (
+                                    <span style={{ color: '#10b981', fontSize: '11px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                      <i className="fas fa-circle" style={{ fontSize: '6px', animation: 'pulse 1.5s infinite' }}></i> LIVE
+                                    </span>
+                                  );
+                                  if (ended) return (
+                                    <span style={{ color: '#94a3b8', fontSize: '11px', fontWeight: 600 }}>ENDED</span>
+                                  );
+                                  return null;
+                                })()}
+                              </div>
                               <div className="sd-schedule-meta">{cls.lecturer}</div>
                             </div>
                           </div>

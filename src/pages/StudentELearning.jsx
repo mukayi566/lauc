@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
 import { collection, getDocs, query, where, doc, getDoc, onSnapshot } from 'firebase/firestore';
@@ -25,6 +25,7 @@ const StudentELearning = () => {
     const [joiningSession, setJoiningSession] = useState(null);
     const { currentUser, userRole } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
 
     const uid = currentUser?.uid;
 
@@ -83,8 +84,7 @@ const StudentELearning = () => {
             const updatedCourses = studentCourses.map(c => ({
                 ...c,
                 progress: courseProgressMap[c.docId || c.id] || 0,
-                materials: Math.floor(Math.random() * 5) + 3, // Keep mock materials for now
-                nextLive: 'Scheduled'
+                materials: Math.floor(Math.random() * 5) + 3 // Keep mock materials for now
             }));
 
             setCourses(updatedCourses);
@@ -101,14 +101,33 @@ const StudentELearning = () => {
         loadData();
     }, [loadData]);
 
-    // Real-time listener for active virtual classes
+    // Handle auto-join from Dashboard
     useEffect(() => {
+        const autoJoinSession = location.state?.autoJoin;
+        if (autoJoinSession) {
+            setJoiningSession(autoJoinSession);
+            setActiveSection('live');
+            // Clear the state from history immediately
+            navigate(location.pathname, { replace: true, state: {} });
+        }
+    }, [location.state, navigate, location.pathname]);
+
+    // Real-time listener for virtual classes (active and ended today)
+    useEffect(() => {
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+
         const q = query(
             collection(db, 'virtual_classes'),
-            where('status', '==', 'active')
+            where('startTime', '>=', startOfToday)
         );
+
         const unsub = onSnapshot(q, (snap) => {
-            setLiveSessions(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+            const sessions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            setLiveSessions(sessions);
+            setLoadingLive(false);
+        }, (err) => {
+            console.error("Error fetching live sessions:", err);
             setLoadingLive(false);
         });
         return () => unsub();
@@ -257,15 +276,52 @@ const StudentELearning = () => {
 
                                                     <div className="card-stats">
                                                         <span><i className="fas fa-file-pdf"></i> {course.materials} Resources</span>
-                                                        <span><i className="fas fa-video"></i> {course.nextLive}</span>
+                                                        {(() => {
+                                                            const courseSessions = liveSessions.filter(ls => ls.course === (course.code || course.id));
+                                                            const activeSession = courseSessions.find(ls => ls.status === 'active');
+                                                            const endedSession = courseSessions.find(ls => ls.status === 'ended');
+
+                                                            if (activeSession) {
+                                                                return (
+                                                                    <span style={{ color: '#10b981', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                                        <i className="fas fa-circle" style={{ fontSize: '7px', animation: 'pulse 1.5s infinite' }}></i>
+                                                                        LIVE NOW
+                                                                    </span>
+                                                                );
+                                                            } else if (endedSession) {
+                                                                return (
+                                                                    <span style={{ color: '#f43f5e', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                                        <i className="fas fa-history" style={{ fontSize: '9px' }}></i>
+                                                                        CLASS OVER
+                                                                    </span>
+                                                                );
+                                                            }
+                                                            return <span><i className="fas fa-video"></i> Next: Scheduled</span>;
+                                                        })()}
                                                     </div>
 
-                                                    <button
-                                                        className="btn btn-primary w-full mt-10"
-                                                        onClick={() => handleEnterClassroom(course)}
-                                                    >
-                                                        Enter Classroom
-                                                    </button>
+                                                    <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                                                        <button
+                                                            className="btn btn-primary"
+                                                            style={{ flex: 1 }}
+                                                            onClick={() => handleEnterClassroom(course)}
+                                                        >
+                                                            Study Materials
+                                                        </button>
+                                                        {liveSessions.find(ls => ls.course === (course.code || course.id) && ls.status === 'active') && (
+                                                            <button
+                                                                className="btn"
+                                                                style={{ background: '#10b981', color: 'white', border: 'none', padding: '0 15px' }}
+                                                                onClick={() => {
+                                                                    setActiveSection('live');
+                                                                    setJoiningSession(liveSessions.find(ls => ls.course === (course.code || course.id) && ls.status === 'active'));
+                                                                }}
+                                                                title="Join Live Class"
+                                                            >
+                                                                <i className="fas fa-video"></i>
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>
@@ -297,37 +353,45 @@ const StudentELearning = () => {
                                                 </button>
                                             </div>
                                             <div style={{ flex: 1, overflow: 'hidden' }}>
-                                                <JitsiMeeting
-                                                    domain="meet.jit.si"
-                                                    roomName={joiningSession.roomName}
-                                                    userInfo={{
-                                                        displayName: currentUser?.displayName || 'Student',
-                                                        email: currentUser?.email || ''
-                                                    }}
-                                                    configOverwrite={{
-                                                        startWithAudioMuted: true,
-                                                        startWithVideoMuted: false,
-                                                        disableDeepLinking: true,
-                                                        prejoinPageEnabled: false
-                                                    }}
-                                                    interfaceConfigOverwrite={{
-                                                        SHOW_JITSI_WATERMARK: false,
-                                                        SHOW_WATERMARK_FOR_GUESTS: false,
-                                                        TOOLBAR_BUTTONS: [
-                                                            'microphone', 'camera', 'desktop',
-                                                            'fullscreen', 'hangup', 'chat',
-                                                            'raisehand', 'tileview', 'select-background'
-                                                        ]
-                                                    }}
-                                                    getIFrameRef={(el) => {
-                                                        if (el) {
-                                                            el.style.width = '100%';
-                                                            el.style.height = '100%';
-                                                            el.style.border = 'none';
-                                                        }
-                                                    }}
-                                                    onReadyToClose={() => setJoiningSession(null)}
-                                                />
+                                                {joiningSession?.roomName ? (
+                                                    <JitsiMeeting
+                                                        key={joiningSession.roomName}
+                                                        domain="meet.jit.si"
+                                                        roomName={joiningSession.roomName}
+                                                        userInfo={{
+                                                            displayName: currentUser?.displayName || 'Student',
+                                                            email: currentUser?.email || ''
+                                                        }}
+                                                        configOverwrite={{
+                                                            startWithAudioMuted: true,
+                                                            startWithVideoMuted: false,
+                                                            disableDeepLinking: true,
+                                                            prejoinPageEnabled: false
+                                                        }}
+                                                        interfaceConfigOverwrite={{
+                                                            SHOW_JITSI_WATERMARK: false,
+                                                            SHOW_WATERMARK_FOR_GUESTS: false,
+                                                            TOOLBAR_BUTTONS: [
+                                                                'microphone', 'camera', 'desktop',
+                                                                'fullscreen', 'hangup', 'chat',
+                                                                'raisehand', 'tileview', 'select-background'
+                                                            ]
+                                                        }}
+                                                        getIFrameRef={(el) => {
+                                                            if (el) {
+                                                                el.style.width = '100%';
+                                                                el.style.height = '100%';
+                                                                el.style.border = 'none';
+                                                            }
+                                                        }}
+                                                        onReadyToClose={() => setJoiningSession(null)}
+                                                    />
+                                                ) : (
+                                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'white' }}>
+                                                        <i className="fas fa-spinner fa-spin fa-2x" style={{ marginBottom: '15px' }}></i>
+                                                        <p>Connecting to classroom server...</p>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     ) : (
@@ -346,12 +410,13 @@ const StudentELearning = () => {
                                             ) : liveSessions.length === 0 ? (
                                                 <div style={{ background: 'white', borderRadius: '20px', padding: '60px', textAlign: 'center', border: '1px solid #e2e8f0' }}>
                                                     <i className="fas fa-video-slash fa-3x" style={{ color: '#cbd5e1', marginBottom: '20px' }}></i>
-                                                    <h3 style={{ color: '#1e293b', marginBottom: '10px' }}>No Live Classes Right Now</h3>
+                                                    <h3 style={{ color: '#1e293b', marginBottom: '10px' }}>No Sessions Today</h3>
                                                     <p style={{ color: '#64748b' }}>When a lecturer starts a virtual class, it will appear here for you to join.</p>
                                                 </div>
                                             ) : (
                                                 <div style={{ display: 'grid', gap: '20px' }}>
-                                                    {liveSessions.map(session => (
+                                                    {/* Active Classes */}
+                                                    {liveSessions.filter(s => s.status === 'active').map(session => (
                                                         <div key={session.id} style={{ background: 'white', borderRadius: '16px', padding: '24px', border: '2px solid #dcfce7', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', boxShadow: '0 4px 20px rgba(16, 185, 129, 0.08)' }}>
                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                                                                 <div style={{ width: '56px', height: '56px', background: 'linear-gradient(135deg, #10b981, #059669)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '1.4rem', flexShrink: 0 }}>
@@ -380,6 +445,35 @@ const StudentELearning = () => {
                                                                 <i className="fas fa-video"></i>
                                                                 Join Class
                                                             </button>
+                                                        </div>
+                                                    ))}
+
+                                                    {/* Recently Ended Classes */}
+                                                    {liveSessions.filter(s => s.status === 'ended').map(session => (
+                                                        <div key={session.id} style={{ background: '#f8fafc', borderRadius: '16px', padding: '20px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', opacity: 0.8 }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                                                <div style={{ width: '48px', height: '48px', background: '#e2e8f0', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontSize: '1.2rem', flexShrink: 0 }}>
+                                                                    <i className="fas fa-check-circle"></i>
+                                                                </div>
+                                                                <div>
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+                                                                        <span style={{ background: '#94a3b8', color: 'white', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700 }}>
+                                                                            {session.course}
+                                                                        </span>
+                                                                        <span style={{ color: '#64748b', fontSize: '11px', fontWeight: 600 }}>
+                                                                            Class Ended
+                                                                        </span>
+                                                                    </div>
+                                                                    <h3 style={{ margin: '0 0 2px', fontSize: '14px', color: '#475569', fontWeight: 700 }}>{session.topic}</h3>
+                                                                    <p style={{ margin: 0, color: '#94a3b8', fontSize: '12px' }}>
+                                                                        Was held today by {session.lecturerName || 'Lecturer'}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                            <span style={{ color: '#94a3b8', fontSize: '13px', fontWeight: 600 }}>
+                                                                <i className="fas fa-clock" style={{ marginRight: '5px' }}></i>
+                                                                Closed
+                                                            </span>
                                                         </div>
                                                     ))}
                                                 </div>

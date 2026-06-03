@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { db, storage } from '../firebase';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, where } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, where, doc, updateDoc } from 'firebase/firestore';
 import { JitsiMeeting } from '@jitsi/react-sdk';
 import Layout from '../components/Layout';
 import '../dashboards.css';
@@ -215,7 +215,17 @@ const StaffELearning = () => {
         }
     };
 
-    const endClass = () => {
+    const endClass = async () => {
+        if (activeSession?.id) {
+            try {
+                await updateDoc(doc(db, 'virtual_classes', activeSession.id), {
+                    status: 'ended',
+                    endTime: serverTimestamp()
+                });
+            } catch (error) {
+                console.error("Error ending session in DB:", error);
+            }
+        }
         setIsInClass(false);
         setActiveSession(null);
         setCourse('');

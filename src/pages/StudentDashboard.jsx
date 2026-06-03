@@ -370,15 +370,35 @@ const StudentDashboard = () => {
           const amt = parseFloat(payAmount);
           const txCol = collection(db, 'students', uid, 'transactions');
           const today = new Date().toISOString().split('T')[0];
+          const receiptNo = `TX-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+          const methodLabel = payMethod === 'mobile_money' ? 'Mobile Money' : payMethod === 'card' ? 'Card' : 'Bank Transfer';
+
           const newTx = {
             date: today,
-            desc: payDesc || `Tuition Payment – ${payMethod === 'mobile_money' ? 'Mobile Money' : payMethod === 'card' ? 'Card' : 'Bank Transfer'}`,
+            desc: payDesc || `Tuition Payment – ${methodLabel}`,
             type: 'credit',
             amount: amt,
-            method: payMethod,
+            method: methodLabel,
             createdAt: serverTimestamp(),
           };
           await addDoc(txCol, newTx);
+
+          // ──────────────────────────────────────────────────────
+          // Write to top-level 'payments' collection so Finance
+          // Dashboard sees it in real-time via its onSnapshot listener
+          // ──────────────────────────────────────────────────────
+          await addDoc(collection(db, 'payments'), {
+            studentId: student.id,
+            studentName: student.name,
+            studentUid: uid,
+            amount: amt,
+            method: methodLabel,
+            date: today,
+            receiptNo: receiptNo,
+            desc: payDesc || `Tuition Payment – ${methodLabel}`,
+            status: 'Pending',   // Finance officer can verify/update
+            createdAt: serverTimestamp(),
+          });
 
           // refresh transactions & balance
           const txSnap = await getDocs(query(txCol, orderBy('date', 'desc')));
@@ -391,7 +411,7 @@ const StudentDashboard = () => {
           setBalanceDue(Math.max(0, bal));
 
           setPayStep(4);
-          setPaySuccessMsg(`Receipt #TX-${Math.random().toString(36).substr(2, 9).toUpperCase()}`);
+          setPaySuccessMsg(`Receipt #${receiptNo}`);
           await loadData();
         } catch (err) {
           console.error('Pay error:', err);

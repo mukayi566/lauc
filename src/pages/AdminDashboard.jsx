@@ -57,7 +57,7 @@ const ConfirmDialog = ({ config, onConfirm, onCancel }) => {
 /* ─────────────────────────────────────────
    MODAL
 ───────────────────────────────────────── */
-const Modal = ({ type, editData, lecturers = [], onClose, onSave }) => {
+const Modal = ({ type, editData, lecturers = [], departments = [], onClose, onSave }) => {
   const [form, setForm] = useState(
     editData || (type === 'student'
       ? {
@@ -70,18 +70,20 @@ const Modal = ({ type, editData, lecturers = [], onClose, onSave }) => {
         status: 'Active'
       }
       : type === 'lecturer'
-        ? { name: '', email: '', dept: 'Computer Science', courses: 0 }
+        ? { name: '', email: '', dept: departments[0]?.name || 'General', courses: 0 }
         : type === 'course'
-          ? { name: '', dept: 'Computer Science', credits: 3, lecturer: '', enrolled: 0 }
-          : type === 'admin'
-            ? { name: '', email: '', role: 'admin' }
-            : type === 'registrar'
-              ? { name: '', email: '', role: 'registrar' }
-              : type === 'it'
-                ? { name: '', email: '', role: 'it' }
-                : type === 'finance'
-                  ? { name: '', email: '', role: 'finance' }
-                  : {})
+          ? { name: '', dept: departments[0]?.name || 'General', credits: 3, lecturer: '', enrolled: 0 }
+          : type === 'department'
+            ? { name: '', hodId: '', members: [] }
+            : type === 'admin'
+              ? { name: '', email: '', role: 'admin' }
+              : type === 'registrar'
+                ? { name: '', email: '', role: 'registrar' }
+                : type === 'it'
+                  ? { name: '', email: '', role: 'it' }
+                  : type === 'finance'
+                    ? { name: '', email: '', role: 'finance' }
+                    : {})
   );
 
   const [submitting, setSubmitting] = useState(false);
@@ -92,7 +94,7 @@ const Modal = ({ type, editData, lecturers = [], onClose, onSave }) => {
   const submit = async e => {
     e.preventDefault();
     if (!form.name) return;
-    if (type !== 'course' && !form.email) return;
+    if (type !== 'course' && type !== 'department' && !form.email) return;
     if (type === 'course' && !form.lecturerId) {
       alert('Please select a lecturer to assign to this course.');
       return;
@@ -103,8 +105,6 @@ const Modal = ({ type, editData, lecturers = [], onClose, onSave }) => {
       await onSave(form);
     } catch (err) {
       console.error("Modal save error:", err);
-      // setSubmitting(false) is not needed if the modal is closed on success, 
-      // but if onSave throws and doesn't close the modal, we need it.
       setSubmitting(false);
     }
   };
@@ -121,10 +121,10 @@ const Modal = ({ type, editData, lecturers = [], onClose, onSave }) => {
           {/* COMMON FIELDS */}
           <div className="ad-form-row">
             <div className="ad-field">
-              <label>{type === 'course' ? 'Course Name' : 'Full Name'}</label>
-              <input value={form.name || ''} onChange={e => handle('name', e.target.value)} placeholder={type === 'course' ? "Enter course name" : "Enter full name"} required />
+              <label>{type === 'course' || type === 'department' ? 'Name' : 'Full Name'}</label>
+              <input value={form.name || ''} onChange={e => handle('name', e.target.value)} placeholder={type === 'course' ? "Enter course name" : type === 'department' ? "Enter department name" : "Enter full name"} required />
             </div>
-            {type !== 'course' && (
+            {type !== 'course' && type !== 'department' && (
               <>
                 <div className="ad-field">
                   <label>Email Address</label>
@@ -219,9 +219,11 @@ const Modal = ({ type, editData, lecturers = [], onClose, onSave }) => {
                 <div className="ad-field">
                   <label>Department</label>
                   <select value={form.dept} onChange={e => handle('dept', e.target.value)}>
-                    <option>Computer Science</option>
-                    <option>Nursing</option>
-                    <option>Business</option>
+                    {departments.length === 0 ? (
+                      <option>General</option>
+                    ) : (
+                      departments.map(d => <option key={d.docId}>{d.name}</option>)
+                    )}
                   </select>
                 </div>
               </div>
@@ -238,14 +240,16 @@ const Modal = ({ type, editData, lecturers = [], onClose, onSave }) => {
               <div className="ad-form-row">
                 <div className="ad-field">
                   <label>Department</label>
-                  <select value={form.dept || 'Computer Science'} onChange={e => {
+                  <select value={form.dept || (departments[0]?.name || 'General')} onChange={e => {
                     handle('dept', e.target.value);
                     handle('lecturer', '');
                     handle('lecturerId', ''); // Clear both lecturer fields on dept change
                   }}>
-                    <option>Computer Science</option>
-                    <option>Nursing</option>
-                    <option>Business</option>
+                    {departments.length === 0 ? (
+                      <option>General</option>
+                    ) : (
+                      departments.map(d => <option key={d.docId}>{d.name}</option>)
+                    )}
                   </select>
                 </div>
                 <div className="ad-field">
@@ -277,6 +281,52 @@ const Modal = ({ type, editData, lecturers = [], onClose, onSave }) => {
                       <i className="fas fa-exclamation-triangle" /> No lecturers found for this department.
                     </small>
                   )}
+                </div>
+              </div>
+            </>
+          )}
+
+          {type === 'department' && (
+            <>
+              <div className="ad-form-row">
+                <div className="ad-field">
+                  <label>Head of Department (HOD)</label>
+                  <select value={form.hodId || ''} onChange={e => handle('hodId', e.target.value)}>
+                    <option value="">-- Select HOD --</option>
+                    {lecturers.map(l => (
+                      <option key={l.docId} value={l.docId}>{l.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="ad-field">
+                <label>Department Members (Staff)</label>
+                <div style={{ 
+                  maxHeight: '150px', 
+                  overflowY: 'auto', 
+                  border: '1px solid #e2e8f0', 
+                  padding: '10px', 
+                  borderRadius: '8px',
+                  background: '#f8fafc'
+                }}>
+                  {lecturers.map(l => (
+                    <label key={l.docId} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', fontSize: '14px', cursor: 'pointer' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={(form.members || []).includes(l.docId)} 
+                        onChange={e => {
+                          const members = form.members || [];
+                          if (e.target.checked) {
+                            handle('members', [...members, l.docId]);
+                          } else {
+                            handle('members', members.filter(m => m !== l.docId));
+                          }
+                        }}
+                      />
+                      {l.name} <span style={{ color: '#94a3b8', fontSize: '12px' }}>({l.email})</span>
+                    </label>
+                  ))}
+                  {lecturers.length === 0 && <p className="ad-muted" style={{ fontSize: '13px' }}>No lecturers available.</p>}
                 </div>
               </div>
             </>
@@ -415,6 +465,7 @@ const AdminDashboard = () => {
   const [registrars, setRegistrars] = useState([]);
   const [itOfficers, setItOfficers] = useState([]);
   const [financeOfficers, setFinanceOfficers] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [courses, setCourses] = useState([]);
   const [applications, setApplications] = useState([]);
   const [allResults, setAllResults] = useState([]);
@@ -451,6 +502,11 @@ const AdminDashboard = () => {
 
     const unsubLecturers = onSnapshot(query(collection(db, 'lecturers'), orderBy('createdAt', 'desc')),
       (snapshot) => setLecturers(snapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() }))),
+      handleError
+    );
+
+    const unsubDepartments = onSnapshot(query(collection(db, 'departments'), orderBy('name', 'asc')),
+      (snapshot) => setDepartments(snapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() }))),
       handleError
     );
 
@@ -959,6 +1015,58 @@ const AdminDashboard = () => {
     });
   };
 
+  /* ── DEPARTMENTS ── */
+  const saveDepartment = async (data) => {
+    try {
+      if (data.docId) {
+        const { docId, ...updateData } = data;
+        await updateDoc(doc(db, 'departments', docId), updateData);
+
+        // Update lecturers who are in this department
+        if (data.members) {
+          for (const lecId of data.members) {
+            await updateDoc(doc(db, 'lecturers', lecId), { dept: data.name });
+          }
+        }
+        toast(`${data.name} updated successfully.`);
+      } else {
+        const newDocRef = await addDoc(collection(db, 'departments'), {
+          ...data,
+          createdAt: serverTimestamp()
+        });
+
+        // Update selected lecturers to this department
+        if (data.members) {
+          for (const lecId of data.members) {
+            await updateDoc(doc(db, 'lecturers', lecId), { dept: data.name });
+          }
+        }
+        toast(`${data.name} department created.`);
+      }
+      setModal(null);
+    } catch (err) {
+      console.error(err);
+      toast('Error saving department.', 'error');
+    }
+  };
+
+  const deleteDepartment = (docId) => {
+    const dept = departments.find(d => d.docId === docId);
+    setConfirm({
+      title: 'Delete Department',
+      message: `Are you sure you want to delete the "${dept?.name}" department? This will not remove the lecturers, but they will no longer be assigned to this department.`,
+      action: async () => {
+        try {
+          await deleteDoc(doc(db, 'departments', docId));
+          toast('Department deleted.');
+        } catch (err) {
+          toast('Error deleting department.', 'error');
+        }
+        setConfirm(null);
+      }
+    });
+  };
+
   /* ── COURSES ── */
   const saveCourse = async (data) => {
     try {
@@ -1111,6 +1219,7 @@ const AdminDashboard = () => {
 
   const filteredIT = itOfficers.filter(x => (x.name || '').toLowerCase().includes(search.toLowerCase()) || (x.email || '').toLowerCase().includes(search.toLowerCase()));
   const filteredFinance = financeOfficers.filter(x => (x.name || '').toLowerCase().includes(search.toLowerCase()) || (x.email || '').toLowerCase().includes(search.toLowerCase()));
+  const filteredDepartments = departments.filter(x => (x.name || '').toLowerCase().includes(q));
 
   const pendingApps = applications.filter(a => a.status === 'Pending').length;
   const pendingResults = allResults.filter(r => r.status === 'submitted').length;
@@ -1129,6 +1238,7 @@ const AdminDashboard = () => {
 
   const NAV_ITEMS = [
     { key: 'dashboard', icon: 'fa-gauge-high', label: 'Dashboard' },
+    { key: 'departments', icon: 'fa-building-columns', label: 'Departments' },
     { key: 'students', icon: 'fa-users', label: 'Students' },
     { key: 'lecturers', icon: 'fa-chalkboard-user', label: 'Lecturers' },
     { key: 'registrars', icon: 'fa-id-card-clip', label: 'Registrars' },
@@ -1150,6 +1260,7 @@ const AdminDashboard = () => {
           type={modal.type}
           editData={modal.editData}
           lecturers={lecturers}
+          departments={departments}
           onClose={() => setModal(null)}
           onSave={
             modal.type === 'student' ? saveStudent :
@@ -1158,7 +1269,8 @@ const AdminDashboard = () => {
                   modal.type === 'registrar' ? saveRegistrar :
                     modal.type === 'it' ? saveITOfficer :
                       modal.type === 'finance' ? saveFinanceOfficer :
-                        saveCourse
+                        modal.type === 'department' ? saveDepartment :
+                          saveCourse
           }
         />
       )}
@@ -1282,6 +1394,7 @@ const AdminDashboard = () => {
                 {[
                   { icon: 'fa-users', color: '#1e3c72', label: 'Total Students', value: students.length, trend: '+12%' },
                   { icon: 'fa-chalkboard-user', color: '#7c3aed', label: 'Total Lecturers', value: lecturers.length, trend: '+2%' },
+                  { icon: 'fa-building-columns', color: '#2563eb', label: 'Departments', value: departments.length, trend: '' },
                   { icon: 'fa-poll', color: '#0d9488', label: 'Pending Results', value: pendingResults, trend: '' },
                   { icon: 'fa-file-signature', color: '#d97706', label: 'Pending Apps', value: pendingApps, trend: '' },
                 ].map((s, i) => (
@@ -1339,6 +1452,9 @@ const AdminDashboard = () => {
                     </button>
                     <button className="ad-qa-btn" onClick={() => setModal({ type: 'admin' })}>
                       <i className="fas fa-user-shield" /> <span>Add Admin</span>
+                    </button>
+                    <button className="ad-qa-btn" onClick={() => setModal({ type: 'department' })}>
+                      <i className="fas fa-building-columns" /> <span>Add Dept</span>
                     </button>
                     <button className="ad-qa-btn" onClick={() => setModal({ type: 'course' })}>
                       <i className="fas fa-book-medical" /> <span>Add Course</span>
@@ -1407,6 +1523,58 @@ const AdminDashboard = () => {
                       </table>
                     )}
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════
+              DEPARTMENTS TAB
+          ══════════════════════════════════ */}
+          {activeTab === 'departments' && (
+            <div className="ad-page">
+              <div className="ad-card">
+                <div className="ad-card__head">
+                  <h3><i className="fas fa-building-columns" /> Academic Departments <span className="ad-count">{filteredDepartments.length}</span></h3>
+                  <div className="ad-card__actions">
+                    <button className="ad-btn ad-btn--primary" onClick={() => setModal({ type: 'department' })}>
+                      <i className="fas fa-plus" /> Add Department
+                    </button>
+                  </div>
+                </div>
+                <div className="ad-card__body ad-card__body--p0">
+                  {filteredDepartments.length === 0
+                    ? <div className="ad-empty"><i className="fas fa-search" /><p>No departments match your search.</p></div>
+                    : (
+                      <table className="ad-table ad-table--hover">
+                        <thead>
+                          <tr><th>Department Name</th><th>Head of Department (HOD)</th><th>Staff</th><th>Actions</th></tr>
+                        </thead>
+                        <tbody>
+                          {filteredDepartments.map(d => {
+                            const hod = lecturers.find(l => l.docId === d.hodId);
+                            const membersCount = (d.members || []).length;
+                            return (
+                              <tr key={d.docId}>
+                                <td><b>{d.name}</b></td>
+                                <td>{hod ? <b>{hod.name}</b> : <span className="ad-muted">Not assigned</span>}</td>
+                                <td><span className="ad-pill">{membersCount} members</span></td>
+                                <td>
+                                  <div className="ad-actions">
+                                    <button className="ad-icon-btn ad-icon-btn--edit" title="Edit" onClick={() => setModal({ type: 'department', editData: d })}>
+                                      <i className="fas fa-pen" />
+                                    </button>
+                                    <button className="ad-icon-btn ad-icon-btn--delete" title="Delete" onClick={() => deleteDepartment(d.docId)}>
+                                      <i className="fas fa-trash" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    )}
                 </div>
               </div>
             </div>

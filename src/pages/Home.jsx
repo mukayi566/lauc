@@ -255,6 +255,8 @@ const Home = () => {
               { type: 'Diploma Programme', title: 'Journalism Diploma', rating: '4.5', duration: '3 years', desc: 'Master the arts of reporting, broadcasting and digital media.' },
               { type: 'Diploma Programme', title: 'Psycho-Social Counselling', rating: '4.7', duration: '2 years', desc: 'Focus on therapy and counseling skills for clinical environments.' },
               { type: 'Diploma Programme', title: 'Computer Hardware & Mgmt', rating: '4.6', duration: '2 years', desc: 'Technical training in system maintenance and networking.' },
+              { type: 'Degree Programme', title: 'Public Relations', rating: '4.7', duration: '2 years', desc: 'Strategic communication and media relations for corporate and public sectors.' },
+              { type: 'Degree Programme', title: 'Social Work', rating: '4.8', duration: '2 years', desc: 'Empowering communities and supporting social welfare through professional intervention.' },
             ].map((p) => (
               <div key={p.title} className="program-card">
                 <div className="program-header">

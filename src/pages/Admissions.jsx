@@ -135,7 +135,12 @@ const Admissions = () => {
   return (
     <Layout>
       {/* HERO */}
-      <section className="hero">
+      <section className="hero" style={{ 
+        backgroundImage: `linear-gradient(rgba(30, 60, 114, 0.8), rgba(30, 60, 114, 0.8)), url('/admissions.png')`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        position: 'relative'
+      }}>
         <div className="hero-content">
           <div className="page-breadcrumb"><i className="fas fa-home"></i> Home / Admissions</div>
           <h1>Admissions 2026</h1>
@@ -348,32 +353,17 @@ const Admissions = () => {
                     <label htmlFor="program">Course you wish to enroll *</label>
                     <select id="program" name="program" required>
                       <option value="">Select a Program</option>
-                      <optgroup label="Degree Programmes (4 Years)">
+                      <optgroup label="Degree Programmes (2-4 Years)">
                         <option>Secondary Teachers’ Degree</option>
                         <option>Primary Teachers’ Degree</option>
-                        <option>Early Childhood Teachers’ Degree</option>
+                        <option>Public Relations Degree</option>
+                        <option>Social Work Degree</option>
                       </optgroup>
                       <optgroup label="Diploma Programmes (2-3 Years)">
-                        <option>Secondary Teachers’ Diploma</option>
-                        <option>Primary Teachers’ Diploma</option>
-                        <option>Early Childhood Diploma</option>
                         <option>Sales and Marketing Diploma</option>
-                        <option>Social Work Diploma</option>
-                        <option>Public Relations Diploma</option>
                         <option>Journalism Diploma</option>
-                        <option>Psycho-Social Counselling and Therapy Diploma</option>
-                        <option>Hospitality & Events Administration Diploma</option>
-                        <option>Computer Hardware & Management Diploma</option>
-                        <option>Food & Beverage Management Diploma</option>
-                        <option>Food Production Diploma</option>
-                        <option>Post Graduate Diploma in Lecturing/Methodology</option>
-                      </optgroup>
-                      <optgroup label="Short Courses / Certificates">
-                        <option>Food Production Certificate</option>
-                        <option>Computer Software & Hardware Certificate</option>
-                        <option>Tailoring & Design</option>
-                        <option>Bricklaying and Plastering</option>
-                        <option>Carpentry & Joinery</option>
+                        <option>Psycho-Social Counselling</option>
+                        <option>Computer Hardware & Mgmt</option>
                       </optgroup>
                     </select>
                   </div>

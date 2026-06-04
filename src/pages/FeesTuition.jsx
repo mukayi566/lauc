@@ -49,12 +49,12 @@ const FeesTuition = () => {
                                 </thead>
                                 <tbody>
                                     <tr style={{ borderBottom: '1px solid #eee' }}>
-                                        <td style={{ padding: '12px' }}>Teachers' Degree</td>
+                                        <td style={{ padding: '12px' }}>Degree Programmes</td>
                                         <td style={{ padding: '12px' }}>K 4,000</td>
                                         <td style={{ padding: '12px' }}>K 4,500</td>
                                     </tr>
                                     <tr style={{ borderBottom: '1px solid #eee' }}>
-                                        <td style={{ padding: '12px' }}>Teachers' Diploma</td>
+                                        <td style={{ padding: '12px' }}>Diploma Programmes</td>
                                         <td style={{ padding: '12px' }}>K 3,000</td>
                                         <td style={{ padding: '12px' }}>K 3,500</td>
                                     </tr>
@@ -64,13 +64,13 @@ const FeesTuition = () => {
                                         <td style={{ padding: '12px' }}>—</td>
                                     </tr>
                                     <tr>
-                                        <td style={{ padding: '12px' }}>Computer/Food Diplomas</td>
+                                        <td style={{ padding: '12px' }}>Computer Hardware & Mgmt Diploma</td>
                                         <td colSpan="2" style={{ padding: '12px' }}>K 5,500 - K 6,000 / Sem</td>
                                     </tr>
                                 </tbody>
                             </table>
                             <div style={{ marginTop: '20px', padding: '15px', background: '#f0f9ff', borderRadius: '8px' }}>
-                                <small style={{ color: '#0369a1' }}>* Includes: Sales, Social Work, PR, Journalism, Counselling, Hospitality</small>
+                                <small style={{ color: '#0369a1' }}>* Includes: Sales, Journalism, Counselling</small>
                             </div>
                         </div>
 

@@ -5,50 +5,61 @@ import { db } from '../firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
 
 const programs = [
-  // DEGREES
-  {
-    type: 'Degree Programme', level: 'Degree', duration: '4 years', rating: '4.9',
-    title: 'Bachelor of Science in Nursing',
-    desc: 'Professional nursing and midwifery training. Accredited for clinical excellence and compassionate care.',
-    modules: ['Anatomy & Physiology', 'Nursing Fundamentals', 'Medical-Surgical Nursing', 'Maternal Health', 'Community Nursing'],
-    careers: ['Registered Nurse', 'Clinical Instructor', 'Ward Manager', 'Health Care Consultant'],
-  },
   {
     type: 'Degree Programme', level: 'Degree', duration: '4 years', rating: '4.8',
-    title: 'BSc in Clinical Medical Sciences',
-    desc: 'Advanced medical sciences program preparing graduates for professional clinical practice as Medical Licentiates.',
-    modules: ['Clinical Anatomy', 'Pathology', 'Pharmacology', 'Internal Medicine', 'Surgery Principles'],
-    careers: ['Medical Licentiate', 'Health Program Coordinator', 'Clinical Researcher', 'Hospital Administrator'],
+    title: 'Secondary Teachers’ Degree',
+    desc: 'Comprehensive teacher training for secondary education. Math and English required.',
+    modules: ['Educational Psychology', 'Curriculum Development', 'Subject Specialization', 'Classroom Management', 'Teaching Methods'],
+    careers: ['Secondary School Teacher', 'Education Consultant', 'Curriculum Developer', 'School Administrator'],
   },
   {
     type: 'Degree Programme', level: 'Degree', duration: '4 years', rating: '4.7',
-    title: 'Bachelor of Business Administration',
-    desc: 'Comprehensive business training covering management, finance, marketing, and entrepreneurship.',
-    modules: ['Business Management', 'Financial Accounting', 'Marketing Strategy', 'Human Resource Management', 'Business Ethics'],
-    careers: ['Business Manager', 'Financial Analyst', 'Marketing Executive', 'Entrepreneur'],
-  },
-  {
-    type: 'Degree Programme', level: 'Degree', duration: '4 years', rating: '4.7',
-    title: 'Bachelor of Science in Public Health',
-    desc: 'Focus on community health, epidemiology, and health policy management for population wellness.',
-    modules: ['Epidemiology', 'Health Social Sciences', 'Environmental Health Basics', 'Biostatistics', 'Public Health Policy'],
-    careers: ['Public Health Officer', 'Health Educator', 'Epidemiologist', 'Policy Analyst'],
-  },
-
-  // DIPLOMAS
-  {
-    type: 'Diploma Programme', level: 'Diploma', duration: '3 years', rating: '4.8',
-    title: 'Diploma in Registered Nursing',
-    desc: 'Practical nursing education with extensive clinical placement in top healthcare facilities.',
-    modules: ['Clinical Nursing Skills', 'Paediatric Nursing', 'Psychiatric Nursing', 'Emergency Care', 'Nursing Ethics'],
-    careers: ['Registered Nurse', 'Clinic Supervisor', 'Community Health Nurse'],
+    title: 'Primary Teachers’ Degree',
+    desc: 'Specialized training for primary school educators with focus on foundations.',
+    modules: ['Child Development', 'Literacy & Numeracy Foundations', 'Inclusive Education', 'Educational Assessment', 'Pedagogical Content'],
+    careers: ['Primary School Teacher', 'Early Childhood Educator', 'Education Researcher', 'Special Needs Teacher'],
   },
   {
     type: 'Diploma Programme', level: 'Diploma', duration: '3 years', rating: '4.6',
-    title: 'Diploma in Public Health',
-    desc: 'Essential public health skills for community-level health intervention, promotion, and management.',
-    modules: ['Community Health', 'Primary Healthcare', 'Nutrition', 'Environmental Sanitation', 'Health Education'],
-    careers: ['Community Health Worker', 'Health Promotion Officer', 'Field Researcher'],
+    title: 'Sales and Marketing Diploma',
+    desc: 'Business-focused training in market analysis and sales strategy.',
+    modules: ['Market Research', 'Sales Management', 'Digital Marketing', 'Consumer Behavior', 'Public Relations'],
+    careers: ['Sales Representative', 'Marketing Coordinator', 'Brand Ambassador', 'Market Analyst'],
+  },
+  {
+    type: 'Diploma Programme', level: 'Diploma', duration: '3 years', rating: '4.5',
+    title: 'Journalism Diploma',
+    desc: 'Master the arts of reporting, broadcasting and digital media.',
+    modules: ['News Writing & Reporting', 'Media Law & Ethics', 'Broadcast Journalism', 'Digital Content Creation', 'Photojournalism'],
+    careers: ['Reporter', 'News Anchor', 'Content Creator', 'Media Producer'],
+  },
+  {
+    type: 'Diploma Programme', level: 'Diploma', duration: '2 years', rating: '4.7',
+    title: 'Psycho-Social Counselling',
+    desc: 'Focus on therapy and counseling skills for clinical environments.',
+    modules: ['Counseling Theories', 'Abnormal Psychology', 'Group Therapy', 'Crisis Intervention', 'Ethics in Counseling'],
+    careers: ['Counselor', 'Social Worker', 'Mental Health Advocate', 'Rehabilitation Specialist'],
+  },
+  {
+    type: 'Diploma Programme', level: 'Diploma', duration: '2 years', rating: '4.6',
+    title: 'Computer Hardware & Mgmt',
+    desc: 'Technical training in system maintenance and networking.',
+    modules: ['Computer Architecture', 'Network Fundamentals', 'System Troubleshooting', 'Server Management', 'IT Support'],
+    careers: ['IT Technician', 'Network Administrator', 'Hardware Engineer', 'System Support Specialist'],
+  },
+  {
+    type: 'Degree Programme', level: 'Degree', duration: '2 years', rating: '4.7',
+    title: 'Public Relations',
+    desc: 'Strategic communication and media relations for corporate and public sectors.',
+    modules: ['Corporate Communication', 'Media Relations', 'Crisis Management', 'Publicity & Promotion', 'Digital PR Strategy'],
+    careers: ['PR Officer', 'Communications Specialist', 'Media Consultant', 'Press Secretary'],
+  },
+  {
+    type: 'Degree Programme', level: 'Degree', duration: '2 years', rating: '4.8',
+    title: 'Social Work',
+    desc: 'Empowering communities and supporting social welfare through professional intervention.',
+    modules: ['Social Policy', 'Community Development', 'Human Rights', 'Child & Family Welfare', 'Social Work Ethics'],
+    careers: ['Social Worker', 'Community Organizer', 'Welfare Officer', 'Policy Analyst'],
   },
 ];
 
@@ -74,11 +85,16 @@ const Programs = () => {
   return (
     <Layout>
       {/* HERO */}
-      <section className="hero">
+      <section className="hero" style={{ 
+        backgroundImage: `linear-gradient(rgba(30, 60, 114, 0.8), rgba(30, 60, 114, 0.8)), url('/academic programs.png')`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        position: 'relative'
+      }}>
         <div className="hero-content">
           <div className="page-breadcrumb"><i className="fas fa-home"></i> Home / Programs</div>
           <h1>Academic Programs</h1>
-          <p>Explore our diverse range of healthcare, business, and social science programs designed to launch your career.</p>
+          <p>Explore our diverse range of education, business, and social science programs designed to launch your career.</p>
         </div>
 
         {/* Seamless Curved Wave Divider */}

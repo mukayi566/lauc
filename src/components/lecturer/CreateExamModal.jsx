@@ -82,11 +82,12 @@ const CreateExamModalContent = ({
   return (
     <div className="sd-modal-overlay" onClick={onClose}>
       <div className="sd-modal" style={{ maxWidth: 800, width: '95%', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
-        <div className="sd-modal-head">
-          <h3>
-            <i className="fas fa-file-signature"></i> {initialExam ? 'Edit Exam' : 'Create Exam or Quiz'}
+        <div className="sd-modal-head" style={{ padding: '20px 24px', borderBottom: '1px solid #f1f5f9' }}>
+          <h3 style={{ fontSize: 18, fontWeight: 700, color: '#1e293b' }}>
+            <i className="fas fa-file-signature" style={{ color: 'var(--primary-color)', marginRight: 10 }}></i> 
+            {initialExam ? 'Edit Assessment' : 'New Assessment'}
           </h3>
-          <button className="sd-close-btn" onClick={onClose}>&times;</button>
+          <button className="sd-close-btn" onClick={onClose} style={{ background: '#f1f5f9', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>&times;</button>
         </div>
 
         <form
@@ -97,160 +98,205 @@ const CreateExamModalContent = ({
           className="sd-modal-form"
           style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
         >
-          <div className="sd-modal-body" style={{ padding: '20px 24px' }}>
-            <label>Course</label>
-            <select
-              value={form.courseId}
-              onChange={(e) => updateForm((prev) => ({ ...prev, courseId: e.target.value }))}
-              required
-            >
-              <option value="">Select course</option>
-              {courses.map((course) => (
-                <option key={course.docId || course.id} value={course.docId || course.id}>
-                  {(course.code || course.id)} - {course.name}
-                </option>
-              ))}
-            </select>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginTop: 10 }}>
-              <div>
-                <label>Title</label>
-                <input
-                  type="text"
-                  value={form.title}
-                  onChange={(e) => updateForm((prev) => ({ ...prev, title: e.target.value }))}
-                  placeholder="e.g. Week 4 Quiz"
-                  required
-                />
-              </div>
-              <div>
-                <label>Type</label>
-                <select
-                  value={form.type}
-                  onChange={(e) => updateForm((prev) => ({ ...prev, type: e.target.value }))}
-                >
-                  <option value="quiz">Quiz</option>
-                  <option value="exam">Exam</option>
-                </select>
-              </div>
-            </div>
-
-            <label>Description</label>
-            <textarea
-              value={form.description}
-              onChange={(e) => updateForm((prev) => ({ ...prev, description: e.target.value }))}
-              style={{ 
-                padding: '12px 14px', 
-                borderRadius: 8, 
-                border: '1px solid #e2e8f0', 
-                minHeight: 120, 
-                resize: 'vertical',
-                width: '100%',
-                background: '#fafbfd',
-                fontFamily: 'inherit',
-                fontSize: 14,
-                marginTop: 4
-              }}
-              placeholder="Outline the scope or instructions."
-            />
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginTop: 10 }}>
-              <div>
-                <label>Duration (minutes)</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={form.durationMinutes}
-                  onChange={(e) => updateForm((prev) => ({ ...prev, durationMinutes: e.target.value }))}
-                  required
-                />
-              </div>
-              <div>
-                <label>Total Marks</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={form.totalMarks}
-                  onChange={(e) => updateForm((prev) => ({ ...prev, totalMarks: e.target.value }))}
-                  required
-                />
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginTop: 10 }}>
-              <div>
-                <label>Start Date & Time</label>
-                <input
-                  type="datetime-local"
-                  value={form.startDate}
-                  onChange={(e) => {
-                    setEndDateManuallyChanged(false);
-                    updateForm((prev) => ({ ...prev, startDate: e.target.value }));
-                  }}
-                  required
-                />
-              </div>
-              <div>
-                <label>End Date & Time</label>
-                <input
-                  type="datetime-local"
-                  value={displayedEndDate}
-                  onChange={(e) => {
-                    setEndDateManuallyChanged(true);
-                    setForm((prev) => ({ ...prev, endDate: e.target.value }));
-                  }}
-                  required
-                />
-                <div style={{ marginTop: 8, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 12, color: '#64748b' }}>
-                    {endDateManuallyChanged
-                      ? 'Using your manual end time.'
-                      : 'Auto-calculated from start time + duration.'}
-                  </span>
-                  <button
-                    type="button"
-                    className="sd-link-btn"
-                    onClick={() => {
-                      setEndDateManuallyChanged(false);
-                      setForm((prev) => ({
-                        ...prev,
-                        endDate: computeEndDate(prev.startDate, prev.durationMinutes) || prev.endDate,
-                      }));
-                    }}
+          <div className="sd-modal-body" style={{ padding: '24px', background: '#fff' }}>
+            {/* Section: Basic Information */}
+            <div style={{ marginBottom: 30 }}>
+              <h4 style={{ fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#94a3b8', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <i className="fas fa-info-circle"></i> Basic Information
+              </h4>
+              
+              <div style={{ display: 'grid', gap: 20 }}>
+                <div>
+                  <label className="sd-modal-form label" style={{ marginTop: 0 }}>Course Assignment</label>
+                  <select
+                    value={form.courseId}
+                    onChange={(e) => updateForm((prev) => ({ ...prev, courseId: e.target.value }))}
+                    className="sd-input"
+                    required
                   >
-                    Reset to auto
-                  </button>
+                    <option value="">Select course</option>
+                    {courses.map((course) => (
+                      <option key={course.docId || course.id} value={course.docId || course.id}>
+                        {(course.code || course.id)} - {course.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 20 }}>
+                  <div>
+                    <label className="sd-modal-form label" style={{ marginTop: 0 }}>Assessment Title</label>
+                    <input
+                      type="text"
+                      value={form.title}
+                      onChange={(e) => updateForm((prev) => ({ ...prev, title: e.target.value }))}
+                      className="sd-input"
+                      placeholder="e.g. Mid-term Examination"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="sd-modal-form label" style={{ marginTop: 0 }}>Category</label>
+                    <select
+                      value={form.type}
+                      onChange={(e) => updateForm((prev) => ({ ...prev, type: e.target.value }))}
+                      className="sd-input"
+                    >
+                      <option value="quiz">Quiz</option>
+                      <option value="exam">Exam</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="sd-modal-form label" style={{ marginTop: 0 }}>Description & Instructions</label>
+                  <textarea
+                    value={form.description}
+                    onChange={(e) => updateForm((prev) => ({ ...prev, description: e.target.value }))}
+                    className="sd-input"
+                    style={{ minHeight: 100, resize: 'vertical' }}
+                    placeholder="Provide students with the scope and rules of this assessment."
+                  />
                 </div>
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginTop: 16 }}>
-              <label style={{ display: 'flex', gap: 10, alignItems: 'center', margin: 0, textTransform: 'none', color: '#1e293b', fontSize: 14 }}>
-                <input
-                  type="checkbox"
-                  checked={form.antiCheat}
-                  onChange={(e) => updateForm((prev) => ({ ...prev, antiCheat: e.target.checked }))}
-                />
-                Enable anti-cheat protection
-              </label>
+            {/* Section: Schedule & Scoring */}
+            <div style={{ marginBottom: 30 }}>
+              <h4 style={{ fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#94a3b8', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <i className="fas fa-clock"></i> Schedule & Scoring
+              </h4>
 
-              <label style={{ display: 'flex', gap: 10, alignItems: 'center', margin: 0, textTransform: 'none', color: '#1e293b', fontSize: 14 }}>
-                <input
-                  type="checkbox"
-                  checked={form.shuffleQuestions}
-                  onChange={(e) => updateForm((prev) => ({ ...prev, shuffleQuestions: e.target.checked }))}
-                />
-                Shuffle questions for students
-              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
+                <div>
+                  <label className="sd-modal-form label" style={{ marginTop: 0 }}>Time Limit (Minutes)</label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type="number"
+                      min="1"
+                      value={form.durationMinutes}
+                      onChange={(e) => updateForm((prev) => ({ ...prev, durationMinutes: e.target.value }))}
+                      className="sd-input"
+                      style={{ paddingLeft: 40 }}
+                      required
+                    />
+                    <i className="fas fa-hourglass-half" style={{ position: 'absolute', left: 15, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}></i>
+                  </div>
+                </div>
+                <div>
+                  <label className="sd-modal-form label" style={{ marginTop: 0 }}>Total Grade Points</label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type="number"
+                      min="1"
+                      value={form.totalMarks}
+                      onChange={(e) => updateForm((prev) => ({ ...prev, totalMarks: e.target.value }))}
+                      className="sd-input"
+                      style={{ paddingLeft: 40 }}
+                      required
+                    />
+                    <i className="fas fa-star" style={{ position: 'absolute', left: 15, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}></i>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                <div>
+                  <label className="sd-modal-form label" style={{ marginTop: 0 }}>Window Opens</label>
+                  <input
+                    type="datetime-local"
+                    value={form.startDate}
+                    onChange={(e) => {
+                      setEndDateManuallyChanged(false);
+                      updateForm((prev) => ({ ...prev, startDate: e.target.value }));
+                    }}
+                    className="sd-input"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="sd-modal-form label" style={{ marginTop: 0 }}>Window Closes</label>
+                  <input
+                    type="datetime-local"
+                    value={displayedEndDate}
+                    onChange={(e) => {
+                      setEndDateManuallyChanged(true);
+                      setForm((prev) => ({ ...prev, endDate: e.target.value }));
+                    }}
+                    className="sd-input"
+                    required
+                  />
+                  <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 11, color: endDateManuallyChanged ? '#f59e0b' : '#64748b', fontWeight: 500 }}>
+                      <i className={`fas ${endDateManuallyChanged ? 'fa-hand-paper' : 'fa-magic'}`}></i> {endDateManuallyChanged ? 'Manual override' : 'Auto-calculated'}
+                    </span>
+                    {endDateManuallyChanged && (
+                      <button
+                        type="button"
+                        className="sd-link-btn"
+                        style={{ fontSize: 11 }}
+                        onClick={() => {
+                          setEndDateManuallyChanged(false);
+                          setForm((prev) => ({
+                            ...prev,
+                            endDate: computeEndDate(prev.startDate, prev.durationMinutes) || prev.endDate,
+                          }));
+                        }}
+                      >
+                        Reset to Auto
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Section: Assessment Settings */}
+            <div>
+              <h4 style={{ fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#94a3b8', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <i className="fas fa-cog"></i> Security & Experience
+              </h4>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, background: '#f8fafc', padding: 20, borderRadius: 12, border: '1px solid #e2e8f0' }}>
+                <label style={{ display: 'flex', gap: 12, cursor: 'pointer' }}>
+                  <div style={{ marginTop: 3 }}>
+                    <input
+                      type="checkbox"
+                      checked={form.antiCheat}
+                      onChange={(e) => updateForm((prev) => ({ ...prev, antiCheat: e.target.checked }))}
+                      style={{ width: 18, height: 18, cursor: 'pointer' }}
+                    />
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 600, color: '#1e293b', fontSize: 14 }}>Anti-Cheat Protection</div>
+                    <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>Locks student window and tracks violations.</div>
+                  </div>
+                </label>
+
+                <label style={{ display: 'flex', gap: 12, cursor: 'pointer' }}>
+                  <div style={{ marginTop: 3 }}>
+                    <input
+                      type="checkbox"
+                      checked={form.shuffleQuestions}
+                      onChange={(e) => updateForm((prev) => ({ ...prev, shuffleQuestions: e.target.checked }))}
+                      style={{ width: 18, height: 18, cursor: 'pointer' }}
+                    />
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 600, color: '#1e293b', fontSize: 14 }}>Shuffle Questions</div>
+                    <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>Randomize question order for each student.</div>
+                  </div>
+                </label>
+              </div>
             </div>
           </div>
 
-          <div className="sd-modal-actions" style={{ padding: '16px 24px', borderTop: '1px solid #f1f5f9', background: '#fafbfd', margin: 0 }}>
-            <button type="button" className="sd-btn sd-btn-ghost" onClick={onClose}>Cancel</button>
-            <button type="submit" className="sd-btn sd-btn-primary" disabled={saving}>
+          <div className="sd-modal-actions" style={{ padding: '20px 24px', borderTop: '1px solid #f1f5f9', background: '#f8fafc', margin: 0, justifyContent: 'flex-end', gap: 12 }}>
+            <button type="button" className="sd-btn sd-btn-ghost" onClick={onClose} style={{ padding: '10px 24px' }}>Cancel</button>
+            <button type="submit" className="sd-btn sd-btn-primary" disabled={saving} style={{ padding: '10px 32px', minWidth: 160 }}>
               {saving
-                ? <><i className="fas fa-circle-notch fa-spin"></i> Saving...</>
-                : initialExam ? 'Save Changes' : 'Create Assessment'}
+                ? <><i className="fas fa-circle-notch fa-spin"></i> Processing...</>
+                : initialExam ? 'Update Details' : 'Initialize Assessment'}
             </button>
           </div>
         </form>

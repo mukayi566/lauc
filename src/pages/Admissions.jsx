@@ -136,9 +136,9 @@ const Admissions = () => {
     <Layout>
       {/* HERO */}
       <section className="hero" style={{ 
-        backgroundImage: `linear-gradient(rgba(30, 60, 114, 0.8), rgba(30, 60, 114, 0.8)), url('/admissions.png')`,
+        backgroundImage: `linear-gradient(rgba(30, 60, 114, 0.8), rgba(30, 60, 114, 0.8)), url('/admissions-image.jpeg')`,
         backgroundSize: 'cover',
-        backgroundPosition: 'center',
+        backgroundPosition: 'center 20%',
         position: 'relative'
       }}>
         <div className="hero-content">

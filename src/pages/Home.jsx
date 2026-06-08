@@ -35,7 +35,7 @@ const Home = () => {
       btn2Class: 'btn-secondary'
     },
     {
-      image: '/hero-image2.jpg',
+      image: '/slide-2.png',
       title: 'Shaping Future Educators & Professionals',
       subtitle: 'Accredited Education, Journalism, ICT, and Social Work programmes designed for professional success.',
       btn1Text: 'Our Programs',
@@ -257,6 +257,9 @@ const Home = () => {
               { type: 'Diploma Programme', title: 'Computer Hardware & Mgmt', rating: '4.6', duration: '2 years', desc: 'Technical training in system maintenance and networking.' },
               { type: 'Degree Programme', title: 'Public Relations', rating: '4.7', duration: '2 years', desc: 'Strategic communication and media relations for corporate and public sectors.' },
               { type: 'Degree Programme', title: 'Social Work', rating: '4.8', duration: '2 years', desc: 'Empowering communities and supporting social welfare through professional intervention.' },
+              { type: 'Certificate Programme', title: 'Food Production', rating: '4.4', desc: 'Practical certification in food production, kitchen operations and hospitality service.' },
+              { type: 'Certificate Programme', title: 'Fashion and Design', rating: '4.3', desc: 'Creative certification in fashion design, styling and apparel development.' },
+              { type: 'Certificate Programme', title: 'Heavy Duty Driving School', rating: '4.2', desc: 'Professional heavy-duty driving certification for commercial and transport operations.' },
             ].map((p) => (
               <div key={p.title} className="program-card">
                 <div className="program-header">
@@ -272,7 +275,9 @@ const Home = () => {
                 </div>
                 <div className="program-body">
                   <p className="program-description">{p.desc}</p>
-                  <div className="program-duration"><i className="fas fa-clock"></i> Duration: {p.duration}</div>
+                  {p.duration && (
+                    <div className="program-duration"><i className="fas fa-clock"></i> Duration: {p.duration}</div>
+                  )}
                   <Link to="/admissions#apply" className="program-cta">Join Us</Link>
                 </div>
               </div>

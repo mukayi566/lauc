@@ -5,7 +5,7 @@ import Layout from '../components/Layout';
 const About = () => (
   <Layout>
     {/* HERO */}
-    <section className="hero" style={{ backgroundImage: `linear-gradient(rgba(13, 43, 94, 0.75), rgba(30, 60, 114, 0.65)), url(/fairview-about-us.jpg)`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+    <section className="hero" style={{ backgroundImage: `linear-gradient(rgba(13, 43, 94, 0.75), rgba(30, 60, 114, 0.65)), url(/fairview-about-us.jpeg)`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
       <div className="hero-content">
         <div className="page-breadcrumb"><i className="fas fa-home"></i> Home / About Us</div>
         <h1>About Fairview University College</h1>
@@ -57,7 +57,7 @@ const About = () => (
             </div>
           </div>
           <div className="about-visual">
-            <img src="/About.jpg" alt="About Fairview University College" className="about-img" />
+            <img src="/about-image.jpeg" alt="About Fairview University College" className="about-img" />
           </div>
         </div>
 

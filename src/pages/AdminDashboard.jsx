@@ -187,7 +187,7 @@ const Modal = ({ type, editData, lecturers = [], departments = [], onClose, onSa
             </>
           )}
 
-          {(type === 'admin' || type === 'registrar' || type === 'it' || type === 'finance') && (
+          {(type === 'admin' || type === 'registrar' || type === 'it' || type === 'finance' || type === 'hr') && (
             <>
               <div className="ad-form-row">
                 <div className="ad-field">
@@ -197,6 +197,7 @@ const Modal = ({ type, editData, lecturers = [], departments = [], onClose, onSa
                     {type === 'registrar' && <option value="registrar">Registrar Officer</option>}
                     {type === 'it' && <option value="it">IT Support Officer</option>}
                     {type === 'finance' && <option value="finance">Finance Officer</option>}
+                    {type === 'hr' && <option value="hr">HR Officer</option>}
                   </select>
                 </div>
               </div>
@@ -206,7 +207,8 @@ const Modal = ({ type, editData, lecturers = [], departments = [], onClose, onSa
                     type === 'admin' ? 'Fairview@Admin2026' :
                       type === 'registrar' ? 'Fairview@Registrar2026' :
                         type === 'it' ? 'Fairview@IT2026' :
-                          'Fairview@Finance2026'
+                          type === 'finance' ? 'Fairview@Finance2026' :
+                            'Fairview@HR2026'
                   }</code>
                 </div>
               )}
@@ -465,6 +467,7 @@ const AdminDashboard = () => {
   const [registrars, setRegistrars] = useState([]);
   const [itOfficers, setItOfficers] = useState([]);
   const [financeOfficers, setFinanceOfficers] = useState([]);
+  const [hrOfficers, setHrOfficers] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [courses, setCourses] = useState([]);
   const [applications, setApplications] = useState([]);
@@ -563,6 +566,13 @@ const AdminDashboard = () => {
       handleError
     );
 
+    const unsubHR = onSnapshot(query(collection(db, 'users'), where('role', '==', 'hr')),
+      (snapshot) => {
+        setHrOfficers(snapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() })));
+      },
+      handleError
+    );
+
     return () => {
       unsubStudents();
       unsubLecturers();
@@ -574,6 +584,7 @@ const AdminDashboard = () => {
       unsubRegistrars();
       unsubIT();
       unsubFinance();
+      unsubHR();
     };
   }, []);
 
@@ -1015,6 +1026,56 @@ const AdminDashboard = () => {
     });
   };
 
+  /* ── HR OFFICERS ── */
+  const saveHROfficer = async (data) => {
+    try {
+      if (data.docId) {
+        const { docId, ...updateData } = data;
+        await updateDoc(doc(db, 'users', docId), updateData);
+        toast(`${data.name} updated successfully.`);
+      } else {
+        const defaultPassword = 'Fairview@HR2026';
+        let uid = null;
+        try {
+          const userCredential = await createUserWithEmailAndPassword(secondaryAuth, data.email, defaultPassword);
+          uid = userCredential.user.uid;
+          await secondaryAuth.signOut();
+        } catch (authErr) {
+          toast(`Auth error: ${authErr.message}`, 'error');
+          throw authErr;
+        }
+
+        await setDoc(doc(db, 'users', uid), {
+          name: data.name,
+          email: data.email,
+          role: 'hr',
+          password: defaultPassword,
+          mustChangePassword: true,
+          createdAt: serverTimestamp()
+        });
+
+        setModal(null);
+        toast(`${data.name} added as HR Officer. Default Password: ${defaultPassword}`);
+      }
+    } catch (err) {
+      if (!err.code) toast('Error saving HR officer.', 'error');
+    }
+  };
+
+  const deleteHROfficer = (docId) => {
+    setConfirm({
+      title: 'Remove HR Officer',
+      message: 'Remove this HR staff? Access will be revoked.',
+      action: async () => {
+        try {
+          await deleteDoc(doc(db, 'users', docId));
+          toast('HR Officer removed.', 'error');
+        } catch (err) { toast('Error removing.', 'error'); }
+        setConfirm(null);
+      }
+    });
+  };
+
   /* ── DEPARTMENTS ── */
   const saveDepartment = async (data) => {
     try {
@@ -1219,6 +1280,7 @@ const AdminDashboard = () => {
 
   const filteredIT = itOfficers.filter(x => (x.name || '').toLowerCase().includes(search.toLowerCase()) || (x.email || '').toLowerCase().includes(search.toLowerCase()));
   const filteredFinance = financeOfficers.filter(x => (x.name || '').toLowerCase().includes(search.toLowerCase()) || (x.email || '').toLowerCase().includes(search.toLowerCase()));
+  const filteredHR = hrOfficers.filter(x => (x.name || '').toLowerCase().includes(search.toLowerCase()) || (x.email || '').toLowerCase().includes(search.toLowerCase()));
   const filteredDepartments = departments.filter(x => (x.name || '').toLowerCase().includes(q));
 
   const pendingApps = applications.filter(a => a.status === 'Pending').length;
@@ -1244,6 +1306,7 @@ const AdminDashboard = () => {
     { key: 'registrars', icon: 'fa-id-card-clip', label: 'Registrars' },
     { key: 'it', icon: 'fa-microchip', label: 'IT Support' },
     { key: 'finance', icon: 'fa-wallet', label: 'Finance Dept' },
+    { key: 'hr', icon: 'fa-briefcase', label: 'HR Officers' },
     { key: 'admins', icon: 'fa-user-shield', label: 'Admins' },
     { key: 'courses', icon: 'fa-book-open', label: 'Courses' },
     { key: 'results', icon: 'fa-poll', label: 'Results', badge: pendingResults },
@@ -1269,8 +1332,9 @@ const AdminDashboard = () => {
                   modal.type === 'registrar' ? saveRegistrar :
                     modal.type === 'it' ? saveITOfficer :
                       modal.type === 'finance' ? saveFinanceOfficer :
-                        modal.type === 'department' ? saveDepartment :
-                          saveCourse
+                        modal.type === 'hr' ? saveHROfficer :
+                          modal.type === 'department' ? saveDepartment :
+                            saveCourse
           }
         />
       )}
@@ -1820,6 +1884,46 @@ const AdminDashboard = () => {
                                   <button className="ad-icon-btn ad-icon-btn--edit" title="Reset Password" onClick={() => handlePasswordReset(officer.email)}><i className="fas fa-key" /></button>
                                   <button className="ad-icon-btn ad-icon-btn--edit" title="Edit" onClick={() => setModal({ type: 'finance', editData: officer })}><i className="fas fa-pen" /></button>
                                   <button className="ad-icon-btn ad-icon-btn--delete" title="Delete" onClick={() => deleteFinanceOfficer(officer.docId)}><i className="fas fa-trash" /></button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'hr' && (
+            <div className="ad-page">
+              <div className="ad-card">
+                <div className="ad-card__head">
+                  <h3><i className="fas fa-briefcase" /> HR Officers <span className="ad-count">{filteredHR.length}</span></h3>
+                  <div className="ad-card__actions">
+                    <button className="ad-btn ad-btn--primary" onClick={() => setModal({ type: 'hr' })}>
+                      <i className="fas fa-plus" /> Add HR Officer
+                    </button>
+                  </div>
+                </div>
+                <div className="ad-card__body ad-card__body--p0">
+                  {filteredHR.length === 0
+                    ? <div className="ad-empty"><i className="fas fa-search" /><p>No HR officers found.</p></div>
+                    : (
+                      <table className="ad-table ad-table--hover">
+                        <thead><tr><th>Name</th><th>Email</th><th>Created</th><th>Actions</th></tr></thead>
+                        <tbody>
+                          {filteredHR.map(officer => (
+                            <tr key={officer.docId}>
+                              <td><b>{officer.name}</b></td>
+                              <td className="ad-muted">{officer.email}</td>
+                              <td className="ad-muted">{officer.createdAt?.toDate ? officer.createdAt.toDate().toLocaleDateString() : '—'}</td>
+                              <td>
+                                <div className="ad-actions">
+                                  <button className="ad-icon-btn ad-icon-btn--edit" title="Reset Password" onClick={() => handlePasswordReset(officer.email)}><i className="fas fa-key" /></button>
+                                  <button className="ad-icon-btn ad-icon-btn--edit" title="Edit" onClick={() => setModal({ type: 'hr', editData: officer })}><i className="fas fa-pen" /></button>
+                                  <button className="ad-icon-btn ad-icon-btn--delete" title="Delete" onClick={() => deleteHROfficer(officer.docId)}><i className="fas fa-trash" /></button>
                                 </div>
                               </td>
                             </tr>

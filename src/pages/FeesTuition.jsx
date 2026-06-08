@@ -7,7 +7,7 @@ const FeesTuition = () => {
     return (
         <Layout>
             {/* HERO */}
-            <section className="hero">
+            <section className="hero" style={{ backgroundImage: `linear-gradient(rgba(30, 60, 114, 0.7), rgba(30, 60, 114, 0.7)), url('/fees-tuition.jpeg')`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
                 <div className="hero-content">
                     <div className="page-breadcrumb"><i className="fas fa-home"></i> Home / Fees & Tuition</div>
                     <h1>Fees & Tuition {currentYear}</h1>

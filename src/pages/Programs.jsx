@@ -48,6 +48,27 @@ const programs = [
     careers: ['IT Technician', 'Network Administrator', 'Hardware Engineer', 'System Support Specialist'],
   },
   {
+    type: 'Certificate Programme', level: 'Certificate', rating: '4.4',
+    title: 'Food Production',
+    desc: 'Practical certification in food production, kitchen operations and hospitality service.',
+    modules: ['Food Safety', 'Kitchen Operations', 'Menu Planning', 'Food Preparation', 'Nutrition Basics'],
+    careers: ['Culinary Assistant', 'Kitchen Supervisor', 'Food Production Worker', 'Catering Assistant'],
+  },
+  {
+    type: 'Certificate Programme', level: 'Certificate', rating: '4.3',
+    title: 'Fashion and Design',
+    desc: 'Creative certification in fashion design, styling and apparel development.',
+    modules: ['Design Fundamentals', 'Textile Selection', 'Pattern Making', 'Fashion Illustration', 'Garment Construction'],
+    careers: ['Fashion Assistant', 'Design Trainee', 'Style Consultant', 'Garment Technician'],
+  },
+  {
+    type: 'Certificate Programme', level: 'Certificate', rating: '4.2',
+    title: 'Heavy Duty Driving School',
+    desc: 'Professional heavy-duty driving certification for commercial and transport operations.',
+    modules: ['Vehicle Safety', 'Route Planning', 'Load Handling', 'Road Regulations', 'Defensive Driving'],
+    careers: ['Heavy Vehicle Driver', 'Transport Operator', 'Logistics Driver', 'Fleet Driver'],
+  },
+  {
     type: 'Degree Programme', level: 'Degree', duration: '2 years', rating: '4.7',
     title: 'Public Relations',
     desc: 'Strategic communication and media relations for corporate and public sectors.',
@@ -145,7 +166,9 @@ const Programs = () => {
                 </div>
                 <div className="program-body">
                   <p className="program-description">{p.desc}</p>
-                  <div className="program-duration"><i className="fas fa-clock"></i> Duration: {p.duration}</div>
+                  {p.duration && (
+                    <div className="program-duration"><i className="fas fa-clock"></i> Duration: {p.duration}</div>
+                  )}
 
                   {/* EXPAND */}
                   {expanded === i && (

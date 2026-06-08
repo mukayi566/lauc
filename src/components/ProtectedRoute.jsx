@@ -19,6 +19,7 @@ import { getSubdomain } from '../utils/subdomain';
 const roleRouteMap = {
   admin: '/admin-dashboard',
   staff: '/staff-dashboard',
+  hr: '/hr-dashboard',
   student: '/student-dashboard',
   registrar: '/registrar-dashboard',
 };

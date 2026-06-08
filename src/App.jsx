@@ -20,10 +20,12 @@ import StaffDashboard from './pages/StaffDashboard';
 import StudentDashboard from './pages/StudentDashboard';
 import RegistrarDashboard from './pages/RegistrarDashboard';
 import RegistrarLogin from './pages/RegistrarLogin';
+import HRDashboard from './pages/HRDashboard';
 
 import FAQ from './pages/FAQ';
 import Research from './pages/Research';
 import ELearning from './pages/ELearning';
+import HRLogin from './pages/HRLogin';
 import ITLogin from './pages/ITLogin';
 import ITDashboard from './pages/ITDashboard';
 import FinanceLogin from './pages/FinanceLogin';
@@ -42,6 +44,7 @@ function App() {
     student: <StudentLogin />,
     staff: <StaffLogin />,
     admin: <AdminLogin />,
+    hr: <HRLogin />,
     registrar: <RegistrarLogin />,
     it: <ITLogin />,
     finance: <FinanceLogin />,
@@ -72,6 +75,7 @@ function App() {
           <Route path="/login" element={<PortalGateway />} />
           <Route path="/student-login" element={<StudentLogin />} />
           <Route path="/staff-login" element={<StaffLogin />} />
+          <Route path="/hr-login" element={<HRLogin />} />
           <Route path="/admin-login" element={<AdminLogin />} />
           <Route path="/registrar-login" element={<RegistrarLogin />} />
           <Route path="/it-login" element={<ITLogin />} />
@@ -91,6 +95,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['staff']}>
                 <StaffDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/hr-dashboard"
+            element={
+              <ProtectedRoute allowedRoles={['hr']}>
+                <HRDashboard />
               </ProtectedRoute>
             }
           />

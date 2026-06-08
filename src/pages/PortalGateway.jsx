@@ -27,6 +27,17 @@ const portals = [
     features: ['Upload Results', 'Manage Classes', 'Student Records', 'Reports'],
   },
   {
+    role: 'HR',
+    icon: 'fa-briefcase',
+    route: '/hr-login',
+    description: 'Manage employee records, recruitment and HR workflows.',
+    color: '#7c3aed',
+    accent: '#a855f7',
+    gradient: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)',
+    badge: 'HR Portal',
+    features: ['Employee Records', 'Recruitment', 'Payroll Overview', 'HR Reports'],
+  },
+  {
     role: 'Admin',
     icon: 'fa-user-shield',
     route: '/admin-login',

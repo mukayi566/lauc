@@ -8,7 +8,7 @@ import { calculateGrade, getGradePoints } from '../utils/resultUtils';
 import {
   collection, query, where, onSnapshot,
   doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc,
-  serverTimestamp, orderBy, collectionGroup
+  serverTimestamp, orderBy, collectionGroup, writeBatch
 } from 'firebase/firestore';
 import '../dashboards.css';
 
@@ -558,48 +558,70 @@ const StaffDashboard = () => {
   };
 
   const handleSubmitAllResults = async () => {
+    // 1. Filter unique course codes assigned to this lecturer
+    const courseCodes = [...new Set(courses.map(c => c.code).filter(Boolean))];
+
+    if (courseCodes.length === 0) {
+      showError("No assigned course codes found.");
+      return;
+    }
+
     triggerConfirm(
       "Submit All Results",
-      "Are you sure you want to submit all draft results for your assigned courses for admin approval? This action cannot be easily undone.",
+      `Are you sure you want to submit all draft results for your ${courseCodes.length} assigned courses for admin approval?`,
       "fa-paper-plane",
       async () => {
         setSubmittingAll(true);
         try {
-          const courseCodes = courses.map(c => c.code).filter(Boolean);
-          if (courseCodes.length === 0) return;
+          // 2. Query in batches (Firestore 'in' limit is max 30, but we use 10 for safety/older SDKs)
+          const BATCH_SIZE = 10;
+          let allDrafts = [];
 
-          const q = query(
-            collection(db, 'results'),
-            where('courseCode', 'in', courseCodes),
-            where('status', '==', 'draft')
-          );
-          const snap = await getDocs(q);
+          for (let i = 0; i < courseCodes.length; i += BATCH_SIZE) {
+            const chunk = courseCodes.slice(i, i + BATCH_SIZE);
+            const q = query(
+              collection(db, 'results'),
+              where('courseCode', 'in', chunk),
+              where('status', '==', 'draft')
+            );
+            const snap = await getDocs(q);
+            allDrafts = [...allDrafts, ...snap.docs];
+          }
 
-          if (snap.empty) {
+          if (allDrafts.length === 0) {
             showSuccess("No draft results found to submit.");
+            setSubmittingAll(false);
+            setConfirmModal(prev => ({ ...prev, show: false }));
             return;
           }
 
-          const updatePromises = snap.docs.map(d =>
-            updateDoc(doc(db, 'results', d.id), {
-              status: 'submitted',
-              submittedAt: serverTimestamp()
-            })
-          );
+          // 3. Perform updates in batches (Firestore writeBatch limit is 500)
+          const WRITE_BATCH_SIZE = 500;
+          for (let i = 0; i < allDrafts.length; i += WRITE_BATCH_SIZE) {
+            const batch = writeBatch(db);
+            const chunk = allDrafts.slice(i, i + WRITE_BATCH_SIZE);
 
-          await Promise.all(updatePromises);
+            chunk.forEach(d => {
+              batch.update(doc(db, 'results', d.id), {
+                status: 'submitted',
+                submittedAt: serverTimestamp()
+              });
+            });
 
-          showSuccess(`Successfully submitted ${snap.size} results to admin for approval!`);
+            await batch.commit();
+          }
+
+          showSuccess(`Successfully submitted ${allDrafts.length} results to admin for approval!`);
 
           await logResultAction({
             description: `Mass result submission to admin performed`,
             courseCodes,
-            totalSubmitted: snap.size
+            totalSubmitted: allDrafts.length
           });
 
         } catch (err) {
           console.error("Mass submission error:", err);
-          showError("Failed to submit results. Please try again.");
+          showError("Failed to submit results. Root cause: " + (err.message || 'Unknown error'));
         } finally {
           setSubmittingAll(false);
           setConfirmModal(prev => ({ ...prev, show: false }));
@@ -1240,7 +1262,7 @@ const StaffDashboard = () => {
                           </label>
                           <button className="sd-btn sd-btn-primary" onClick={handleSubmitAllResults} disabled={submittingAll || courses.length === 0}>
                             <i className={submittingAll ? 'fas fa-circle-notch fa-spin' : 'fas fa-paper-plane'}></i>{' '}
-                            {submittingAll ? 'Submitting...' : 'Submit All to Admin'}
+                            {submittingAll ? 'Submitting...' : 'Submit All Results'}
                           </button>
                         </div>
                       </div>

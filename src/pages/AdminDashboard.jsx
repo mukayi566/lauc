@@ -57,7 +57,7 @@ const ConfirmDialog = ({ config, onConfirm, onCancel }) => {
 /* ─────────────────────────────────────────
    MODAL
 ───────────────────────────────────────── */
-const Modal = ({ type, editData, lecturers = [], departments = [], onClose, onSave }) => {
+const Modal = ({ type, editData, lecturers = [], departments = [], courses = [], onClose, onSave }) => {
   const [form, setForm] = useState(
     editData || (type === 'student'
       ? {
@@ -72,7 +72,7 @@ const Modal = ({ type, editData, lecturers = [], departments = [], onClose, onSa
       : type === 'lecturer'
         ? { name: '', email: '', dept: departments[0]?.name || 'General', courses: 0 }
         : type === 'course'
-          ? { name: '', dept: departments[0]?.name || 'General', credits: 3, lecturer: '', enrolled: 0 }
+          ? { name: '', dept: departments[0]?.name || 'General', credits: 3, lecturer: '', enrolled: 0, code: '', codeMode: 'auto' }
           : type === 'department'
             ? { name: '', hodId: '', members: [] }
             : type === 'admin'
@@ -86,6 +86,39 @@ const Modal = ({ type, editData, lecturers = [], departments = [], onClose, onSa
                     : {})
   );
 
+  // ── Course Code helpers ──
+  const [codeError, setCodeError] = useState('');
+
+  const generateCourseCode = (dept, allCourses) => {
+    // Build a 2-4 letter prefix from department name
+    const words = (dept || 'GEN').trim().split(/\s+/);
+    let prefix = '';
+    if (words.length === 1) {
+      prefix = words[0].slice(0, 4).toUpperCase();
+    } else {
+      // Take first letter of each word, up to 4 chars
+      prefix = words.map(w => w[0]).join('').slice(0, 4).toUpperCase();
+    }
+    const year = new Date().getFullYear();
+    // Find highest sequence for this prefix+year
+    const pattern = new RegExp(`^${prefix}-${year}-(\\d+)$`);
+    let maxSeq = 0;
+    (allCourses || []).forEach(c => {
+      const match = (c.code || c.id || '').match(pattern);
+      if (match) maxSeq = Math.max(maxSeq, parseInt(match[1], 10));
+    });
+    return `${prefix}-${year}-${String(maxSeq + 1).padStart(3, '0')}`;
+  };
+
+  const validateCode = (code, allCourses, currentDocId) => {
+    if (!code) return '';
+    const upper = code.trim().toUpperCase();
+    const duplicate = (allCourses || []).find(c =>
+      (c.code || c.id || '').toUpperCase() === upper && c.docId !== currentDocId
+    );
+    return duplicate ? `Code "${upper}" is already in use by another course.` : '';
+  };
+
   const [submitting, setSubmitting] = useState(false);
   const title = editData ? `Edit ${type}` : `Add New ${type}`;
 
@@ -97,6 +130,11 @@ const Modal = ({ type, editData, lecturers = [], departments = [], onClose, onSa
     if (type !== 'course' && type !== 'department' && !form.email) return;
     if (type === 'course' && !form.lecturerId) {
       alert('Please select a lecturer to assign to this course.');
+      return;
+    }
+    // Block save if there is a code uniqueness error
+    if (type === 'course' && codeError) {
+      alert(`Please fix the course code error before saving: ${codeError}`);
       return;
     }
 
@@ -245,7 +283,12 @@ const Modal = ({ type, editData, lecturers = [], departments = [], onClose, onSa
                   <select value={form.dept || (departments[0]?.name || 'General')} onChange={e => {
                     handle('dept', e.target.value);
                     handle('lecturer', '');
-                    handle('lecturerId', ''); // Clear both lecturer fields on dept change
+                    handle('lecturerId', '');
+                    // Auto-refresh generated code when dept changes (only in auto mode)
+                    if ((form.codeMode || 'auto') === 'auto') {
+                      handle('code', generateCourseCode(e.target.value, courses));
+                      setCodeError('');
+                    }
                   }}>
                     {departments.length === 0 ? (
                       <option>General</option>
@@ -259,6 +302,104 @@ const Modal = ({ type, editData, lecturers = [], departments = [], onClose, onSa
                   <input type="number" min="1" max="6" value={form.credits || 3} onChange={e => handle('credits', Number(e.target.value))} />
                 </div>
               </div>
+
+              {/* ── Course Code Section ── */}
+              <div className="ad-form-row">
+                <div className="ad-field" style={{ flex: 1 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span>Course Code {editData && <span style={{ color: '#94a3b8', fontSize: '12px' }}>(editing—code locked)</span>}</span>
+                    {!editData && (
+                      <span style={{ display: 'flex', gap: '6px', fontSize: '12px' }}>
+                        <button
+                          type="button"
+                          style={{
+                            padding: '2px 10px', borderRadius: '20px', border: 'none', cursor: 'pointer', fontSize: '11px', fontWeight: 600,
+                            background: (form.codeMode || 'auto') === 'auto' ? 'var(--ad-primary, #1e3c72)' : '#e2e8f0',
+                            color: (form.codeMode || 'auto') === 'auto' ? '#fff' : '#475569'
+                          }}
+                          onClick={() => {
+                            handle('codeMode', 'auto');
+                            const generated = generateCourseCode(form.dept || departments[0]?.name || 'GEN', courses);
+                            handle('code', generated);
+                            setCodeError(validateCode(generated, courses, editData?.docId));
+                          }}
+                        >
+                          <i className="fas fa-wand-magic-sparkles" /> Auto
+                        </button>
+                        <button
+                          type="button"
+                          style={{
+                            padding: '2px 10px', borderRadius: '20px', border: 'none', cursor: 'pointer', fontSize: '11px', fontWeight: 600,
+                            background: (form.codeMode || 'auto') === 'manual' ? 'var(--ad-primary, #1e3c72)' : '#e2e8f0',
+                            color: (form.codeMode || 'auto') === 'manual' ? '#fff' : '#475569'
+                          }}
+                          onClick={() => {
+                            handle('codeMode', 'manual');
+                            handle('code', '');
+                            setCodeError('');
+                          }}
+                        >
+                          <i className="fas fa-pen" /> Manual
+                        </button>
+                      </span>
+                    )}
+                  </label>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <input
+                      value={form.code || ''}
+                      placeholder={(form.codeMode || 'auto') === 'auto' ? 'Auto-generated on save…' : 'e.g. ICT3412 or FD101'}
+                      readOnly={editData ? true : (form.codeMode || 'auto') === 'auto'}
+                      style={{
+                        flex: 1,
+                        background: editData ? '#f1f5f9' : (form.codeMode || 'auto') === 'auto' ? '#f8fafc' : undefined,
+                        fontFamily: 'monospace',
+                        fontWeight: 700,
+                        letterSpacing: '1px',
+                        borderColor: codeError ? '#ef4444' : undefined
+                      }}
+                      onChange={e => {
+                        if (editData || (form.codeMode || 'auto') === 'auto') return;
+                        const val = e.target.value.toUpperCase();
+                        handle('code', val);
+                        setCodeError(validateCode(val, courses, editData?.docId));
+                      }}
+                    />
+                    {!editData && (form.codeMode || 'auto') === 'auto' && (
+                      <button
+                        type="button"
+                        title="Re-generate code"
+                        style={{
+                          padding: '8px 12px', background: 'var(--ad-primary, #1e3c72)', color: '#fff',
+                          border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', whiteSpace: 'nowrap'
+                        }}
+                        onClick={() => {
+                          const generated = generateCourseCode(form.dept || departments[0]?.name || 'GEN', courses);
+                          handle('code', generated);
+                          setCodeError(validateCode(generated, courses, editData?.docId));
+                        }}
+                      >
+                        <i className="fas fa-rotate" /> Regenerate
+                      </button>
+                    )}
+                  </div>
+                  {codeError && (
+                    <small style={{ color: '#ef4444', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <i className="fas fa-circle-exclamation" /> {codeError}
+                    </small>
+                  )}
+                  {!codeError && form.code && (
+                    <small style={{ color: '#10b981', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <i className="fas fa-circle-check" /> Code is available
+                    </small>
+                  )}
+                  {!editData && (form.codeMode || 'auto') === 'auto' && !form.code && (
+                    <small style={{ color: '#94a3b8', marginTop: '4px', display: 'block' }}>
+                      <i className="fas fa-info-circle" /> Code will be auto-generated when you click "Add course".
+                    </small>
+                  )}
+                </div>
+              </div>
+
               <div className="ad-form-row">
                 <div className="ad-field">
                   <label>Assigned Lecturer</label>
@@ -303,19 +444,19 @@ const Modal = ({ type, editData, lecturers = [], departments = [], onClose, onSa
               </div>
               <div className="ad-field">
                 <label>Department Members (Staff)</label>
-                <div style={{ 
-                  maxHeight: '150px', 
-                  overflowY: 'auto', 
-                  border: '1px solid #e2e8f0', 
-                  padding: '10px', 
+                <div style={{
+                  maxHeight: '150px',
+                  overflowY: 'auto',
+                  border: '1px solid #e2e8f0',
+                  padding: '10px',
                   borderRadius: '8px',
                   background: '#f8fafc'
                 }}>
                   {lecturers.map(l => (
                     <label key={l.docId} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', fontSize: '14px', cursor: 'pointer' }}>
-                      <input 
-                        type="checkbox" 
-                        checked={(form.members || []).includes(l.docId)} 
+                      <input
+                        type="checkbox"
+                        checked={(form.members || []).includes(l.docId)}
                         onChange={e => {
                           const members = form.members || [];
                           if (e.target.checked) {
@@ -1129,15 +1270,36 @@ const AdminDashboard = () => {
   };
 
   /* ── COURSES ── */
+
+  // Generates a department-based course code: PREFIX-YEAR-SEQ
+  const generateCourseCode = (dept, existingCourses) => {
+    const words = (dept || 'GEN').trim().split(/\s+/);
+    let prefix = '';
+    if (words.length === 1) {
+      prefix = words[0].slice(0, 4).toUpperCase();
+    } else {
+      prefix = words.map(w => w[0]).join('').slice(0, 4).toUpperCase();
+    }
+    const year = new Date().getFullYear();
+    const pattern = new RegExp(`^${prefix}-${year}-(\\d+)$`);
+    let maxSeq = 0;
+    (existingCourses || []).forEach(c => {
+      const match = (c.code || c.id || '').match(pattern);
+      if (match) maxSeq = Math.max(maxSeq, parseInt(match[1], 10));
+    });
+    return `${prefix}-${year}-${String(maxSeq + 1).padStart(3, '0')}`;
+  };
+
   const saveCourse = async (data) => {
     try {
       if (data.docId) {
-        // Detect lecturer reassignment
+        // ── UPDATE existing course ──
         const oldCourse = courses.find(c => c.docId === data.docId);
         const oldLecturerId = oldCourse?.lecturerId;
         const newLecturerId = data.lecturerId;
 
-        const { docId, ...updateData } = data;
+        // Strip internal UI-only fields before writing to Firestore
+        const { docId, codeMode, ...updateData } = data;
         await updateDoc(doc(db, 'courses', docId), updateData);
 
         // Update lecturer course counts if lecturer changed
@@ -1161,11 +1323,31 @@ const AdminDashboard = () => {
         }
         toast('Course updated successfully.');
       } else {
-        const id = `CS${300 + courses.length}`;
-        const newDocRef = await addDoc(collection(db, 'courses'), {
-          ...data,
-          id,
-          code: id, // Explicitly add code field for consistency
+        // ── CREATE new course ──
+        // Determine the final course code
+        let finalCode = (data.code || '').trim().toUpperCase();
+
+        if (!finalCode) {
+          // Auto-mode: generate a code on the fly
+          finalCode = generateCourseCode(data.dept, courses);
+        }
+
+        // Final duplicate guard (race-condition safety): check in memory
+        const duplicate = courses.find(c =>
+          (c.code || c.id || '').toUpperCase() === finalCode
+        );
+        if (duplicate) {
+          toast(`Course code "${finalCode}" is already taken. Please choose a different code.`, 'error');
+          return;
+        }
+
+        // Strip UI-only fields before writing
+        const { codeMode, ...cleanData } = data;
+
+        await addDoc(collection(db, 'courses'), {
+          ...cleanData,
+          code: finalCode,
+          id: finalCode,       // Keep id in sync for backwards-compat
           enrolled: 0,
           createdAt: serverTimestamp()
         });
@@ -1179,7 +1361,7 @@ const AdminDashboard = () => {
             });
           }
         }
-        toast('Course added and lecturer assigned successfully.');
+        toast(`Course added with code "${finalCode}". Lecturer assigned successfully.`);
       }
       setModal(null);
     } catch (err) {
@@ -1263,6 +1445,39 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleApproveAllResults = () => {
+    const pending = allResults.filter(r => r.status === 'submitted');
+    if (pending.length === 0) {
+      toast('No pending results to approve.', 'error');
+      return;
+    }
+
+    setConfirm({
+      title: 'Approve All Results',
+      message: `Are you sure you want to approve all ${pending.length} pending results?`,
+      action: async () => {
+        try {
+          setLoading(true);
+          const promises = pending.map(res =>
+            updateDoc(doc(db, 'results', res.docId), {
+              status: 'approved',
+              approvedBy: settings.adminDisplayName,
+              updatedAt: serverTimestamp()
+            })
+          );
+          await Promise.all(promises);
+          toast(`Successfully approved ${pending.length} results.`);
+        } catch (err) {
+          console.error(err);
+          toast('Error bulk approving results.', 'error');
+        } finally {
+          setLoading(false);
+          setConfirm(null);
+        }
+      }
+    });
+  };
+
   /* search filter helpers */
   const q = search.toLowerCase();
   const filteredStudents = students.filter(x => (x.name || '').toLowerCase().includes(q) || (x.email || '').toLowerCase().includes(q) || (x.program || '').toLowerCase().includes(q));
@@ -1324,6 +1539,7 @@ const AdminDashboard = () => {
           editData={modal.editData}
           lecturers={lecturers}
           departments={departments}
+          courses={courses}
           onClose={() => setModal(null)}
           onSave={
             modal.type === 'student' ? saveStudent :
@@ -2011,7 +2227,7 @@ const AdminDashboard = () => {
                         <tbody>
                           {filteredCourses.map(c => (
                             <tr key={c.docId}>
-                              <td><code className="ad-code">{c.id}</code></td>
+                              <td><code className="ad-code">{c.code || c.id}</code></td>
                               <td><b>{c.name}</b></td>
                               <td>{c.dept}</td>
                               <td><span className="ad-pill">{c.credits} cr</span></td>
@@ -2243,6 +2459,13 @@ const AdminDashboard = () => {
                 <div>
                   <h2 className="ad-section-title">Result Approval & Publishing</h2>
                   <p className="ad-section-sub">Manage student results submitted by lecturers.</p>
+                </div>
+                <div className="ad-card__actions">
+                  {allResults.some(r => r.status === 'submitted') && (
+                    <button className="ad-btn ad-btn--primary" onClick={handleApproveAllResults}>
+                      <i className="fas fa-check-double" /> Approve All Pending
+                    </button>
+                  )}
                 </div>
               </div>
 

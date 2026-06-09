@@ -694,10 +694,6 @@ const HRDashboard = () => {
           <button className="sd-hamburger" onClick={() => setIsSidebarOpen(!isSidebarOpen)}><i className="fas fa-bars"></i></button>
           <div className="sd-topbar-title">HR Admin Module</div>
           <div className="sd-topbar-right">
-            <div className="header-badge" style={{ background: '#fef3c7', borderColor: '#fde68a', color: '#b45309' }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#d97706' }}></span>
-              HR Portal
-            </div>
             <div className="sd-icon-btn"><i className="fas fa-bell"></i></div>
             <div className="sd-topbar-avatar">{profile?.name?.charAt(0) || 'H'}</div>
           </div>

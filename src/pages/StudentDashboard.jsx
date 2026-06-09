@@ -84,6 +84,11 @@ const StudentDashboard = () => {
   const [selectedHostel, setSelectedHostel] = useState(null);
   const [bookingHostel, setBookingHostel] = useState(false);
   const [bookingSuccessMsg, setBookingSuccessMsg] = useState('');
+  const [appeals, setAppeals] = useState([]);
+  const [showAppealModal, setShowAppealModal] = useState(false);
+  const [submittingAppeal, setSubmittingAppeal] = useState(false);
+  const [appealForm, setAppealForm] = useState({ courseCode: '', courseName: '', result: '', reason: '', evidenceUrl: '' });
+  const [appealStep, setAppealStep] = useState(1); // 1: Form, 2: Payment, 3: Success
 
   /* ── DB data state ── */
   const [loading, setLoading] = useState(true);
@@ -269,6 +274,11 @@ const StudentDashboard = () => {
       const notifCol = collection(db, 'students', uid, 'notifications');
       const notifSnap = await getDocs(notifCol);
       setNotifications(notifSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+
+      /* ── appeals ── */
+      const appealsQuery = query(collection(db, 'appeals'), where('studentUid', '==', uid));
+      const appealsSnap = await getDocs(appealsQuery);
+      setAppeals(appealsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
     } catch (err) {
       console.error('Dashboard load error:', err);
       if (err.code === 'permission-denied') {
@@ -562,6 +572,92 @@ const StudentDashboard = () => {
     }
   };
 
+  /* Appeal Actions */
+  const openAppealForm = (result) => {
+    setAppealForm({
+      courseCode: result.courseCode,
+      courseName: result.courseName,
+      result: result.grade,
+      reason: '',
+      evidenceUrl: '',
+      resultId: result.id
+    });
+    setAppealStep(1);
+    setShowAppealModal(true);
+  };
+
+  const handleAppealPayment = async () => {
+    setSubmittingAppeal(true);
+    try {
+      // Simulate payment processing
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // 1. Create Transaction for Finance
+      const txCol = collection(db, 'students', uid, 'transactions');
+      const today = new Date().toISOString().split('T')[0];
+      const receiptNo = `APL-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+
+      const newTx = {
+        date: today,
+        desc: `Appeal Fee – ${appealForm.courseCode}`,
+        type: 'credit',
+        amount: 500,
+        method: 'Online Payment',
+        createdAt: serverTimestamp(),
+      };
+      await addDoc(txCol, newTx);
+
+      // 2. Submit Appeal
+      const appealData = {
+        ...appealForm,
+        studentUid: uid,
+        studentId: student.id,
+        studentName: student.name,
+        studentEmail: student.email,
+        status: 'Pending',
+        paymentStatus: 'Paid',
+        receiptNo: receiptNo,
+        timestamp: serverTimestamp(),
+      };
+      await addDoc(collection(db, 'appeals'), appealData);
+
+      // Refresh data
+      await loadData();
+      setAppealStep(3);
+      toast.success("Appeal submitted successfully!");
+      setTimeout(() => {
+        setShowAppealModal(false);
+      }, 3000);
+    } catch (err) {
+      console.error('Appeal error:', err);
+      toast.error("Error submitting appeal. Please try again.");
+    } finally {
+      setSubmittingAppeal(false);
+    }
+  };
+
+  const openAppealUpload = () => {
+    if (!window.cloudinary) {
+      toast.error("Cloudinary not loaded. Please try again later.");
+      return;
+    }
+    window.cloudinary.openUploadWidget(
+      {
+        cloudName: import.meta.env.VITE_CLOUDINARY_CLOUD_NAME,
+        uploadPreset: import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET,
+        sources: ['local', 'url'],
+        multiple: false,
+        resourceType: 'auto',
+      },
+      (error, result) => {
+        if (!error && result && result.event === "success") {
+          setAppealForm(prev => ({ ...prev, evidenceUrl: result.info.secure_url }));
+          toast.success('Evidence uploaded successfully!');
+        }
+      }
+    );
+  };
+
   /* Download result stub */
   const downloadResult = (sem) => {
     setDownloadMsg(`Transcript for "${sem}" is being prepared for download.`);
@@ -591,6 +687,7 @@ const StudentDashboard = () => {
     { id: 'home', icon: 'fa-home', label: 'Dashboard', group: 'Main' },
     { id: 'courses', icon: 'fa-book-open', label: 'Register Courses', group: 'Academics' },
     { id: 'results', icon: 'fa-chart-bar', label: 'Results', group: 'Academics' },
+    { id: 'appeals', icon: 'fa-gavel', label: 'Exam Appeals', group: 'Academics' },
     { id: 'timetable', icon: 'fa-calendar-alt', label: 'Timetable', group: 'Academics' },
     { id: 'online-exams', icon: 'fa-laptop', label: 'Online Exams', group: 'Academics' },
     { id: 'elearning', icon: 'fa-graduation-cap', label: 'E-Learning platform', group: 'Academics' },
@@ -1057,6 +1154,7 @@ const StudentDashboard = () => {
                                 <th>Total</th>
                                 <th>Grade</th>
                                 <th>GPA</th>
+                                <th>Actions</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -1069,6 +1167,18 @@ const StudentDashboard = () => {
                                   <td><strong>{r.total}</strong></td>
                                   <td><span className="sd-grade">{r.grade}</span></td>
                                   <td>{parseFloat(r.gpa).toFixed(2)}</td>
+                                  <td>
+                                    {['Supplementary', 'Deferred', 'F', 'Failed (F)'].includes(r.grade) && (
+                                      <button
+                                        className="sd-btn sd-btn-ghost sd-btn-xs"
+                                        onClick={() => openAppealForm(r)}
+                                        disabled={appeals.find(a => a.courseCode === r.courseCode && a.status !== 'Resolved')}
+                                      >
+                                        <i className="fas fa-gavel"></i>
+                                        {appeals.find(a => a.courseCode === r.courseCode && a.status !== 'Resolved') ? ' Appeal Active' : ' Appeal Result'}
+                                      </button>
+                                    )}
+                                  </td>
                                 </tr>
                               ))}
                             </tbody>
@@ -1076,6 +1186,72 @@ const StudentDashboard = () => {
                         </div>
                       )}
                   </div>
+                </div>
+              )}
+
+              {/* ══════════ APPEALS TAB ══════════ */}
+              {activeTab === 'appeals' && (
+                <div className="sd-tab-fade">
+                  <div className="sd-page-header">
+                    <div>
+                      <h2 className="sd-page-title">Exam Appeals</h2>
+                      <p className="sd-page-sub">Track the status of your result disputes.</p>
+                    </div>
+                  </div>
+
+                  {appeals.length === 0 ? (
+                    <div className="sd-card" style={{ textAlign: 'center', padding: '60px 20px' }}>
+                      <div className="sd-stat-icon" style={{ background: '#f8fafc', color: '#94a3b8', width: 64, height: 64, fontSize: 28, margin: '0 auto 20px' }}>
+                        <i className="fas fa-gavel"></i>
+                      </div>
+                      <h3 style={{ color: '#475569', marginBottom: 10 }}>No appeals found</h3>
+                      <p style={{ color: '#94a3b8', fontSize: 13, maxWidth: 350, margin: '0 auto' }}>
+                        If you believe there is a mistake in your published results, you can submit an appeal by clicking the <strong>"Appeal Result"</strong> button in your <button className="sd-link-btn" onClick={() => setActiveTab('results')}>Results</button> tab.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="sd-card">
+                      <div className="sd-card-header">
+                        <span>Submitted Appeals</span>
+                        <span className="sd-badge badge-teal">{appeals.length} Total</span>
+                      </div>
+                      <div className="sd-table-wrapper">
+                        <table className="sd-table">
+                          <thead>
+                            <tr>
+                              <th>Course</th>
+                              <th>Result</th>
+                              <th>Reason</th>
+                              <th>Status</th>
+                              <th>Outcome</th>
+                              <th>Date</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {appeals.map(apl => (
+                              <tr key={apl.id}>
+                                <td className="sd-td-bold">
+                                  <div>{apl.courseCode}</div>
+                                  <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 400 }}>{apl.courseName}</div>
+                                </td>
+                                <td><span className="sd-grade">{apl.result}</span></td>
+                                <td style={{ maxWidth: 200, fontSize: 12 }}>{apl.reason}</td>
+                                <td>
+                                  <span className={`sd-badge ${apl.status === 'Pending' ? 'badge-gold' :
+                                    apl.status === 'Under Review' ? 'badge-teal' : 'badge-green'
+                                    }`}>
+                                    {apl.status}
+                                  </span>
+                                </td>
+                                <td className="sd-td-bold">{apl.outcome || '—'}</td>
+                                <td style={{ fontSize: 11 }}>{apl.timestamp?.toDate ? apl.timestamp.toDate().toLocaleDateString() : '—'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1600,432 +1776,547 @@ const StudentDashboard = () => {
       </div>
 
       {/* ════════════ PAY MODAL ════════════ */}
-      {showPayModal && (
-        <div className="sd-modal-overlay" onClick={closePayModal}>
-          <div className="sd-modal" onClick={e => e.stopPropagation()}>
-            <div className="sd-modal-head">
-              <h3><i className="fas fa-credit-card"></i> Pay Fees</h3>
-              <button className="sd-close-btn" onClick={closePayModal}>&times;</button>
-            </div>
-
-            <div className="sd-modal-body">
-              <div className="sd-pay-steps">
-                {[1, 2, 3, 4].map(s => (
-                  <div key={s} className={`sd-pay-step-dot ${payStep >= s ? 'active' : ''}`}></div>
-                ))}
+      {
+        showPayModal && (
+          <div className="sd-modal-overlay" onClick={closePayModal}>
+            <div className="sd-modal" onClick={e => e.stopPropagation()}>
+              <div className="sd-modal-head">
+                <h3><i className="fas fa-credit-card"></i> Pay Fees</h3>
+                <button className="sd-close-btn" onClick={closePayModal}>&times;</button>
               </div>
 
-              {/* Step 1: Amount & Desc */}
-              {payStep === 1 && (
-                <form onSubmit={handlePay} className="sd-modal-form">
-                  <label>Amount (ZMW – K)</label>
-                  <input
-                    type="number" placeholder="e.g. 5000"
-                    value={payAmount} onChange={e => setPayAmount(e.target.value)}
-                    required min="1" autoFocus
-                  />
-                  <label>Description (optional)</label>
-                  <input
-                    type="text" placeholder="e.g. Semester Tuition"
-                    value={payDesc} onChange={e => setPayDesc(e.target.value)}
-                  />
-                  <div className="sd-modal-info">
-                    <i className="fas fa-info-circle"></i> Outstanding: <strong>{ZMW(balanceDue)}</strong>
-                  </div>
-                  <div className="sd-modal-actions">
-                    <button type="button" className="sd-btn sd-btn-ghost" onClick={closePayModal}>Cancel</button>
-                    <button type="submit" className="sd-btn sd-btn-primary">Next Step <i className="fas fa-arrow-right"></i></button>
-                  </div>
-                </form>
-              )}
-
-              {/* Step 2: Method & Details */}
-              {payStep === 2 && (
-                <div className="sd-modal-form">
-                  <label>Select Payment Method</label>
-                  <div className="sd-payment-methods-grid">
-                    {[
-                      { id: 'mobile_money', icon: 'fa-mobile-alt', label: 'Mobile Money' },
-                      { id: 'card', icon: 'fa-credit-card', label: 'Card' },
-                      { id: 'bank_transfer', icon: 'fa-university', label: 'Bank Transfer' },
-                      { id: 'cash', icon: 'fa-money-bill-wave', label: 'Cash' },
-                    ].map(m => (
-                      <div
-                        key={m.id}
-                        className={`sd-method-card ${payMethod === m.id ? 'active' : ''}`}
-                        onClick={() => setPayMethod(m.id)}
-                      >
-                        <i className={`fas ${m.icon}`}></i>
-                        <span>{m.label}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {payMethod === 'card' && (
-                    <div className="sd-tab-fade">
-                      <div className="sd-card-preview">
-                        <div className="sd-card-chip"></div>
-                        <div className="sd-card-number-view">
-                          {cardData.number || '•••• •••• •••• ••••'}
-                        </div>
-                        <div className="sd-card-bottom">
-                          <div>
-                            <div className="sd-card-label">Card Holder</div>
-                            <div className="sd-card-holder-view">{cardData.name || student.name}</div>
-                          </div>
-                          <div>
-                            <div className="sd-card-label">Expires</div>
-                            <div className="sd-card-expiry-view">{cardData.expiry || 'MM/YY'}</div>
-                          </div>
-                        </div>
-                      </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                        <div style={{ gridColumn: 'span 2' }}>
-                          <label>Card Number</label>
-                          <input
-                            type="text" placeholder="0000 0000 0000 0000"
-                            maxLength="19"
-                            value={cardData.number}
-                            onChange={e => setCardData({ ...cardData, number: e.target.value.replace(/\W/gi, '').replace(/(.{4})/g, '$1 ').trim() })}
-                          />
-                        </div>
-                        <div>
-                          <label>Expiry Date</label>
-                          <input
-                            type="text" placeholder="MM/YY" maxLength="5"
-                            value={cardData.expiry}
-                            onChange={e => setCardData({ ...cardData, expiry: e.target.value })}
-                          />
-                        </div>
-                        <div>
-                          <label>CVC</label>
-                          <input type="password" placeholder="***" maxLength="3" />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {payMethod === 'mobile_money' && (
-                    <div className="sd-tab-fade">
-                      <label>Mobile Number</label>
-                      <input type="tel" placeholder="+260 97..." defaultValue={student.phone} />
-                      <p style={{ fontSize: '11px', color: '#64748b', marginTop: '8px' }}>
-                        <i className="fas fa-info-circle"></i> A push notification will be sent to your phone to authorize the payment.
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="sd-modal-actions">
-                    <button type="button" className="sd-btn sd-btn-ghost" onClick={() => setPayStep(1)}>Back</button>
-                    <button type="button" className="sd-btn sd-btn-primary" onClick={() => handlePay()}>
-                      Pay {ZMW(payAmount)}
-                    </button>
-                  </div>
+              <div className="sd-modal-body">
+                <div className="sd-pay-steps">
+                  {[1, 2, 3, 4].map(s => (
+                    <div key={s} className={`sd-pay-step-dot ${payStep >= s ? 'active' : ''}`}></div>
+                  ))}
                 </div>
-              )}
 
-              {/* Step 3: Processing */}
-              {payStep === 3 && (
-                <div className="sd-processing-box">
-                  <div className="sd-processing-ring"><div></div><div></div><div></div><div></div></div>
-                  <h4>Processing Payment...</h4>
-                  <p className="sd-modal-hint">Please wait while we secure your transaction with {payMethod.replace('_', ' ')}.</p>
-                  <div className="sd-progress-bar-wrap">
-                    <div className="sd-progress-bar-fill" style={{ width: `${payProgress}%` }}></div>
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '10px' }}>{payProgress}% securely encrypted</div>
-                </div>
-              )}
-
-              {/* Step 4: Success */}
-              {payStep === 4 && (
-                <div className="sd-tab-fade" style={{ textAlign: 'center' }}>
-                  <div className="sd-success-check">
-                    <i className="fas fa-check"></i>
-                  </div>
-                  <h3 style={{ color: '#0d9488', fontSize: '22px', marginBottom: '10px' }}>Payment Successful!</h3>
-                  <p className="sd-modal-hint">Thank you for your payment. Your student account has been updated.</p>
-
-                  <div className="sd-receipt-card">
-                    <div className="sd-receipt-row"><span>Receipt No:</span><span className="sd-receipt-val">{paySuccessMsg}</span></div>
-                    <div className="sd-receipt-row"><span>Amount Paid:</span><span className="sd-receipt-val">{ZMW(payAmount)}</span></div>
-                    <div className="sd-receipt-row"><span>Date:</span><span className="sd-receipt-val">{new Date().toLocaleDateString()}</span></div>
-                    <div className="sd-receipt-row"><span>Method:</span><span className="sd-receipt-val" style={{ textTransform: 'capitalize' }}>{payMethod.replace('_', ' ')}</span></div>
-                    <div className="sd-receipt-row" style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #e2e8f0' }}>
-                      <span>New Balance:</span><span className="sd-receipt-val">{ZMW(balanceDue)}</span>
-                    </div>
-                  </div>
-
-                  <div className="sd-modal-actions" style={{ justifyContent: 'center' }}>
-                    <button className="sd-btn sd-btn-primary" onClick={closePayModal}>Done</button>
-                    <button className="sd-btn sd-btn-ghost" onClick={() => window.print()}><i className="fas fa-print"></i> Print Receipt</button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ════════════ REGISTER MODAL ════════════ */}
-      {showRegModal && (
-        <div className="sd-modal-overlay" onClick={() => setShowRegModal(false)}>
-          <div className="sd-modal" onClick={e => e.stopPropagation()}>
-            <div className="sd-modal-head">
-              <h3><i className="fas fa-book-open"></i> Add Courses</h3>
-              <button className="sd-close-btn" onClick={() => setShowRegModal(false)}>&times;</button>
-            </div>
-
-            <div className="sd-modal-body">
-              {regSuccessMsg ? (
-                <div className={`sd-success-msg ${regSuccessMsg.startsWith('Error') ? 'sd-err-msg' : ''}`}>
-                  <i className={`fas ${regSuccessMsg.startsWith('Error') ? 'fa-times-circle' : 'fa-check-circle'}`}></i><br />
-                  {regSuccessMsg.startsWith('Error') ? 'Registration Failed' : 'Registered!'}<br />
-                  <small>{regSuccessMsg}</small>
-                </div>
-              ) : (
-                <>
-                  <p className="sd-modal-hint">Select courses to add to your registration:</p>
-                  <div className="sd-course-list">
-                    {availableCourses
-                      .filter(ac => !courses.some(c => c.code === ac.code))
-                      .map(c => (
-                        <div
-                          key={c.id}
-                          className={`sd-course-option ${regSelected.includes(c.id) ? 'selected' : ''}`}
-                          onClick={() => toggleCourse(c.id)}
-                        >
-                          <div>
-                            <div className="sd-co-name">{c.name}</div>
-                            <div className="sd-co-meta">{c.code} · {c.credits || c.units} units · {c.lecturer}</div>
-                          </div>
-                          <div className="sd-co-check">
-                            <i className={`fas ${regSelected.includes(c.id) ? 'fa-check-circle' : 'fa-circle'}`}></i>
-                          </div>
-                        </div>
-                      ))}
-                    {availableCourses.filter(ac => !courses.some(c => c.code === ac.code)).length === 0 && (
-                      <div style={{ textAlign: 'center', padding: '20px', color: '#94a3b8' }}>
-                        All available courses are already registered.
-                      </div>
-                    )}
-                  </div>
-                  <div className="sd-modal-actions" style={{ marginTop: 'auto', paddingTop: '15px' }}>
-                    <button type="button" className="sd-btn sd-btn-ghost" style={{ flex: 1 }} onClick={() => setShowRegModal(false)}>Cancel</button>
-                    <button
-                      type="button" className="sd-btn sd-btn-primary"
-                      style={{ flex: 2, justifyContent: 'center', fontSize: '15px' }}
-                      onClick={handleRegister}
-                      disabled={regSelected.length === 0 || registeringCourse}
-                    >
-                      {registeringCourse
-                        ? <><i className="fas fa-circle-notch fa-spin"></i> Registering…</>
-                        : (
-                          <>
-                            <i className="fas fa-check-double"></i>
-                            Register {regSelected.length > 0 ? `Selected (${regSelected.length})` : 'Courses'}
-                          </>
-                        )}
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ════════════ HOSTEL BOOKING MODAL ════════════ */}
-      {showHostelModal && (
-        <div className="sd-modal-overlay" onClick={() => setShowHostelModal(false)}>
-          <div className="sd-modal" onClick={e => e.stopPropagation()}>
-            <div className="sd-modal-head">
-              <h3><i className="fas fa-hotel"></i> Confirm Booking</h3>
-              <button className="sd-close-btn" onClick={() => setShowHostelModal(false)}>&times;</button>
-            </div>
-
-            <div className="sd-modal-body">
-              {bookingSuccessMsg ? (
-                <div className="sd-success-msg">
-                  <i className="fas fa-check-circle"></i><br />
-                  Application Submitted!<br />
-                  <small>{bookingSuccessMsg}</small>
-                </div>
-              ) : (
-                <div className="sd-modal-form">
-                  <div className="sd-booking-summary">
-                    <div className="sd-bs-item"><span>Selected Hostel:</span><strong>{selectedHostel?.name}</strong></div>
-                    <div className="sd-bs-item"><span>Room Type:</span><strong>{selectedHostel?.capacity}</strong></div>
-                    <div className="sd-bs-item"><span>Semester Fee:</span><strong className="text-credit">{ZMW(selectedHostel?.price || 0)}</strong></div>
-                  </div>
-
-                  <div className="sd-notice-box">
-                    <i className="fas fa-info-circle"></i>
-                    <p>By clicking confirm, you agree to the university housing terms and conditions. The fee will be added to your outstanding balance.</p>
-                  </div>
-
-                  <div className="sd-modal-actions">
-                    <button type="button" className="sd-btn sd-btn-ghost" onClick={() => setShowHostelModal(false)}>Cancel</button>
-                    <button
-                      type="button" className="sd-btn sd-btn-primary"
-                      onClick={async () => {
-                        setBookingHostel(true);
-                        // Simulate booking process
-                        setTimeout(async () => {
-                          try {
-                            // Update student record with hostel info
-                            await updateDoc(doc(db, 'students', uid), {
-                              hostelName: selectedHostel.name,
-                              hostelRoom: `Room ${Math.floor(Math.random() * 100) + 101}`,
-                              hostelCleared: false,
-                              updatedAt: serverTimestamp()
-                            });
-
-                            // Add a transaction for the hostel fee
-                            const txCol = collection(db, 'students', uid, 'transactions');
-                            await addDoc(txCol, {
-                              date: new Date().toISOString().split('T')[0],
-                              desc: `Hostel Fee – ${selectedHostel.name}`,
-                              type: 'debit',
-                              amount: selectedHostel.price,
-                              createdAt: serverTimestamp(),
-                            });
-
-                            await loadData();
-                            setBookingSuccessMsg(`Your application for ${selectedHostel.name} has been processed. Access details updated.`);
-                            setTimeout(() => {
-                              setBookingSuccessMsg('');
-                              setShowHostelModal(false);
-                              setActiveTab('home');
-                            }, 3000);
-                          } catch (err) {
-                            toast.error("Error booking hostel: " + err.message);
-                          } finally {
-                            setBookingHostel(false);
-                          }
-                        }, 1500);
-                      }}
-                      disabled={bookingHostel}
-                    >
-                      {bookingHostel ? <><i className="fas fa-circle-notch fa-spin"></i> Processing…</> : 'Confirm Booking'}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ════════════ PROFILE MODAL ════════════ */}
-      {showProfileModal && (
-        <div className="sd-modal-overlay" onClick={() => setShowProfileModal(false)}>
-          <div className="sd-modal" onClick={e => e.stopPropagation()}>
-            <div className="sd-modal-head">
-              <h3><i className="fas fa-user-cog"></i> Account Settings</h3>
-              <button className="sd-close-btn" onClick={() => setShowProfileModal(false)}>&times;</button>
-            </div>
-
-            <div className="sd-modal-body">
-              {profileSuccessMsg ? (
-                <div className={`sd-success-msg ${profileSuccessMsg.startsWith('Error') ? 'sd-err-msg' : ''}`}>
-                  <i className={`fas ${profileSuccessMsg.startsWith('Error') ? 'fa-times-circle' : 'fa-check-circle'}`}></i><br />
-                  <small>{profileSuccessMsg}</small>
-                </div>
-              ) : (
-                <>
-                  <div className="sd-profile-modal-top">
-                    <div className="sd-avatar-xl">{student.initials}</div>
-                    <div>
-                      <div className="sd-pm-name">{student.name}</div>
-                      <div className="sd-pm-email">{student.email}</div>
-                      <div className="sd-pm-id">{student.id}</div>
-                    </div>
-                  </div>
-                  <form onSubmit={handleSaveProfile} className="sd-modal-form">
-                    <label>Full Name</label>
+                {/* Step 1: Amount & Desc */}
+                {payStep === 1 && (
+                  <form onSubmit={handlePay} className="sd-modal-form">
+                    <label>Amount (ZMW – K)</label>
                     <input
-                      type="text" value={profileForm.name || ''}
-                      onChange={e => setProfileForm(p => ({ ...p, name: e.target.value }))}
-                      required
+                      type="number" placeholder="e.g. 5000"
+                      value={payAmount} onChange={e => setPayAmount(e.target.value)}
+                      required min="1" autoFocus
                     />
-                    <label>Email (read-only)</label>
-                    <input type="email" value={profileForm.email || ''} readOnly style={{ background: '#f8fafc', color: '#94a3b8' }} />
-                    <label>Phone Number</label>
+                    <label>Description (optional)</label>
                     <input
-                      type="tel" placeholder="+260 97 000 0000"
-                      value={profileForm.phone || ''}
-                      onChange={e => setProfileForm(p => ({ ...p, phone: e.target.value }))}
+                      type="text" placeholder="e.g. Semester Tuition"
+                      value={payDesc} onChange={e => setPayDesc(e.target.value)}
                     />
-                    <label>Program</label>
-                    <input
-                      type="text"
-                      value={profileForm.program || ''}
-                      onChange={e => setProfileForm(p => ({ ...p, program: e.target.value }))}
-                    />
+                    <div className="sd-modal-info">
+                      <i className="fas fa-info-circle"></i> Outstanding: <strong>{ZMW(balanceDue)}</strong>
+                    </div>
                     <div className="sd-modal-actions">
-                      <button type="button" className="sd-btn sd-btn-ghost" onClick={() => setShowProfileModal(false)}>Cancel</button>
-                      <button type="submit" className="sd-btn sd-btn-primary" disabled={savingProfile}>
-                        {savingProfile ? <><i className="fas fa-circle-notch fa-spin"></i> Saving…</> : 'Save Changes'}
-                      </button>
+                      <button type="button" className="sd-btn sd-btn-ghost" onClick={closePayModal}>Cancel</button>
+                      <button type="submit" className="sd-btn sd-btn-primary">Next Step <i className="fas fa-arrow-right"></i></button>
                     </div>
                   </form>
-                </>
-              )}
+                )}
+
+                {/* Step 2: Method & Details */}
+                {payStep === 2 && (
+                  <div className="sd-modal-form">
+                    <label>Select Payment Method</label>
+                    <div className="sd-payment-methods-grid">
+                      {[
+                        { id: 'mobile_money', icon: 'fa-mobile-alt', label: 'Mobile Money' },
+                        { id: 'card', icon: 'fa-credit-card', label: 'Card' },
+                        { id: 'bank_transfer', icon: 'fa-university', label: 'Bank Transfer' },
+                        { id: 'cash', icon: 'fa-money-bill-wave', label: 'Cash' },
+                      ].map(m => (
+                        <div
+                          key={m.id}
+                          className={`sd-method-card ${payMethod === m.id ? 'active' : ''}`}
+                          onClick={() => setPayMethod(m.id)}
+                        >
+                          <i className={`fas ${m.icon}`}></i>
+                          <span>{m.label}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {payMethod === 'card' && (
+                      <div className="sd-tab-fade">
+                        <div className="sd-card-preview">
+                          <div className="sd-card-chip"></div>
+                          <div className="sd-card-number-view">
+                            {cardData.number || '•••• •••• •••• ••••'}
+                          </div>
+                          <div className="sd-card-bottom">
+                            <div>
+                              <div className="sd-card-label">Card Holder</div>
+                              <div className="sd-card-holder-view">{cardData.name || student.name}</div>
+                            </div>
+                            <div>
+                              <div className="sd-card-label">Expires</div>
+                              <div className="sd-card-expiry-view">{cardData.expiry || 'MM/YY'}</div>
+                            </div>
+                          </div>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                          <div style={{ gridColumn: 'span 2' }}>
+                            <label>Card Number</label>
+                            <input
+                              type="text" placeholder="0000 0000 0000 0000"
+                              maxLength="19"
+                              value={cardData.number}
+                              onChange={e => setCardData({ ...cardData, number: e.target.value.replace(/\W/gi, '').replace(/(.{4})/g, '$1 ').trim() })}
+                            />
+                          </div>
+                          <div>
+                            <label>Expiry Date</label>
+                            <input
+                              type="text" placeholder="MM/YY" maxLength="5"
+                              value={cardData.expiry}
+                              onChange={e => setCardData({ ...cardData, expiry: e.target.value })}
+                            />
+                          </div>
+                          <div>
+                            <label>CVC</label>
+                            <input type="password" placeholder="***" maxLength="3" />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {payMethod === 'mobile_money' && (
+                      <div className="sd-tab-fade">
+                        <label>Mobile Number</label>
+                        <input type="tel" placeholder="+260 97..." defaultValue={student.phone} />
+                        <p style={{ fontSize: '11px', color: '#64748b', marginTop: '8px' }}>
+                          <i className="fas fa-info-circle"></i> A push notification will be sent to your phone to authorize the payment.
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="sd-modal-actions">
+                      <button type="button" className="sd-btn sd-btn-ghost" onClick={() => setPayStep(1)}>Back</button>
+                      <button type="button" className="sd-btn sd-btn-primary" onClick={() => handlePay()}>
+                        Pay {ZMW(payAmount)}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 3: Processing */}
+                {payStep === 3 && (
+                  <div className="sd-processing-box">
+                    <div className="sd-processing-ring"><div></div><div></div><div></div><div></div></div>
+                    <h4>Processing Payment...</h4>
+                    <p className="sd-modal-hint">Please wait while we secure your transaction with {payMethod.replace('_', ' ')}.</p>
+                    <div className="sd-progress-bar-wrap">
+                      <div className="sd-progress-bar-fill" style={{ width: `${payProgress}%` }}></div>
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '10px' }}>{payProgress}% securely encrypted</div>
+                  </div>
+                )}
+
+                {/* Step 4: Success */}
+                {payStep === 4 && (
+                  <div className="sd-tab-fade" style={{ textAlign: 'center' }}>
+                    <div className="sd-success-check">
+                      <i className="fas fa-check"></i>
+                    </div>
+                    <h3 style={{ color: '#0d9488', fontSize: '22px', marginBottom: '10px' }}>Payment Successful!</h3>
+                    <p className="sd-modal-hint">Thank you for your payment. Your student account has been updated.</p>
+
+                    <div className="sd-receipt-card">
+                      <div className="sd-receipt-row"><span>Receipt No:</span><span className="sd-receipt-val">{paySuccessMsg}</span></div>
+                      <div className="sd-receipt-row"><span>Amount Paid:</span><span className="sd-receipt-val">{ZMW(payAmount)}</span></div>
+                      <div className="sd-receipt-row"><span>Date:</span><span className="sd-receipt-val">{new Date().toLocaleDateString()}</span></div>
+                      <div className="sd-receipt-row"><span>Method:</span><span className="sd-receipt-val" style={{ textTransform: 'capitalize' }}>{payMethod.replace('_', ' ')}</span></div>
+                      <div className="sd-receipt-row" style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #e2e8f0' }}>
+                        <span>New Balance:</span><span className="sd-receipt-val">{ZMW(balanceDue)}</span>
+                      </div>
+                    </div>
+
+                    <div className="sd-modal-actions" style={{ justifyContent: 'center' }}>
+                      <button className="sd-btn sd-btn-primary" onClick={closePayModal}>Done</button>
+                      <button className="sd-btn sd-btn-ghost" onClick={() => window.print()}><i className="fas fa-print"></i> Print Receipt</button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
+
+      {/* ════════════ REGISTER MODAL ════════════ */}
+      {
+        showRegModal && (
+          <div className="sd-modal-overlay" onClick={() => setShowRegModal(false)}>
+            <div className="sd-modal" onClick={e => e.stopPropagation()}>
+              <div className="sd-modal-head">
+                <h3><i className="fas fa-book-open"></i> Add Courses</h3>
+                <button className="sd-close-btn" onClick={() => setShowRegModal(false)}>&times;</button>
+              </div>
+
+              <div className="sd-modal-body">
+                {regSuccessMsg ? (
+                  <div className={`sd-success-msg ${regSuccessMsg.startsWith('Error') ? 'sd-err-msg' : ''}`}>
+                    <i className={`fas ${regSuccessMsg.startsWith('Error') ? 'fa-times-circle' : 'fa-check-circle'}`}></i><br />
+                    {regSuccessMsg.startsWith('Error') ? 'Registration Failed' : 'Registered!'}<br />
+                    <small>{regSuccessMsg}</small>
+                  </div>
+                ) : (
+                  <>
+                    <p className="sd-modal-hint">Select courses to add to your registration:</p>
+                    <div className="sd-course-list">
+                      {availableCourses
+                        .filter(ac => !courses.some(c => c.code === ac.code))
+                        .map(c => (
+                          <div
+                            key={c.id}
+                            className={`sd-course-option ${regSelected.includes(c.id) ? 'selected' : ''}`}
+                            onClick={() => toggleCourse(c.id)}
+                          >
+                            <div>
+                              <div className="sd-co-name">{c.name}</div>
+                              <div className="sd-co-meta">{c.code} · {c.credits || c.units} units · {c.lecturer}</div>
+                            </div>
+                            <div className="sd-co-check">
+                              <i className={`fas ${regSelected.includes(c.id) ? 'fa-check-circle' : 'fa-circle'}`}></i>
+                            </div>
+                          </div>
+                        ))}
+                      {availableCourses.filter(ac => !courses.some(c => c.code === ac.code)).length === 0 && (
+                        <div style={{ textAlign: 'center', padding: '20px', color: '#94a3b8' }}>
+                          All available courses are already registered.
+                        </div>
+                      )}
+                    </div>
+                    <div className="sd-modal-actions" style={{ marginTop: 'auto', paddingTop: '15px' }}>
+                      <button type="button" className="sd-btn sd-btn-ghost" style={{ flex: 1 }} onClick={() => setShowRegModal(false)}>Cancel</button>
+                      <button
+                        type="button" className="sd-btn sd-btn-primary"
+                        style={{ flex: 2, justifyContent: 'center', fontSize: '15px' }}
+                        onClick={handleRegister}
+                        disabled={regSelected.length === 0 || registeringCourse}
+                      >
+                        {registeringCourse
+                          ? <><i className="fas fa-circle-notch fa-spin"></i> Registering…</>
+                          : (
+                            <>
+                              <i className="fas fa-check-double"></i>
+                              Register {regSelected.length > 0 ? `Selected (${regSelected.length})` : 'Courses'}
+                            </>
+                          )}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* ════════════ HOSTEL BOOKING MODAL ════════════ */}
+      {
+        showHostelModal && (
+          <div className="sd-modal-overlay" onClick={() => setShowHostelModal(false)}>
+            <div className="sd-modal" onClick={e => e.stopPropagation()}>
+              <div className="sd-modal-head">
+                <h3><i className="fas fa-hotel"></i> Confirm Booking</h3>
+                <button className="sd-close-btn" onClick={() => setShowHostelModal(false)}>&times;</button>
+              </div>
+
+              <div className="sd-modal-body">
+                {bookingSuccessMsg ? (
+                  <div className="sd-success-msg">
+                    <i className="fas fa-check-circle"></i><br />
+                    Application Submitted!<br />
+                    <small>{bookingSuccessMsg}</small>
+                  </div>
+                ) : (
+                  <div className="sd-modal-form">
+                    <div className="sd-booking-summary">
+                      <div className="sd-bs-item"><span>Selected Hostel:</span><strong>{selectedHostel?.name}</strong></div>
+                      <div className="sd-bs-item"><span>Room Type:</span><strong>{selectedHostel?.capacity}</strong></div>
+                      <div className="sd-bs-item"><span>Semester Fee:</span><strong className="text-credit">{ZMW(selectedHostel?.price || 0)}</strong></div>
+                    </div>
+
+                    <div className="sd-notice-box">
+                      <i className="fas fa-info-circle"></i>
+                      <p>By clicking confirm, you agree to the university housing terms and conditions. The fee will be added to your outstanding balance.</p>
+                    </div>
+
+                    <div className="sd-modal-actions">
+                      <button type="button" className="sd-btn sd-btn-ghost" onClick={() => setShowHostelModal(false)}>Cancel</button>
+                      <button
+                        type="button" className="sd-btn sd-btn-primary"
+                        onClick={async () => {
+                          setBookingHostel(true);
+                          // Simulate booking process
+                          setTimeout(async () => {
+                            try {
+                              // Update student record with hostel info
+                              await updateDoc(doc(db, 'students', uid), {
+                                hostelName: selectedHostel.name,
+                                hostelRoom: `Room ${Math.floor(Math.random() * 100) + 101}`,
+                                hostelCleared: false,
+                                updatedAt: serverTimestamp()
+                              });
+
+                              // Add a transaction for the hostel fee
+                              const txCol = collection(db, 'students', uid, 'transactions');
+                              await addDoc(txCol, {
+                                date: new Date().toISOString().split('T')[0],
+                                desc: `Hostel Fee – ${selectedHostel.name}`,
+                                type: 'debit',
+                                amount: selectedHostel.price,
+                                createdAt: serverTimestamp(),
+                              });
+
+                              await loadData();
+                              setBookingSuccessMsg(`Your application for ${selectedHostel.name} has been processed. Access details updated.`);
+                              setTimeout(() => {
+                                setBookingSuccessMsg('');
+                                setShowHostelModal(false);
+                                setActiveTab('home');
+                              }, 3000);
+                            } catch (err) {
+                              toast.error("Error booking hostel: " + err.message);
+                            } finally {
+                              setBookingHostel(false);
+                            }
+                          }, 1500);
+                        }}
+                        disabled={bookingHostel}
+                      >
+                        {bookingHostel ? <><i className="fas fa-circle-notch fa-spin"></i> Processing…</> : 'Confirm Booking'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* ════════════ APPEAL MODAL ════════════ */}
+      {
+        showAppealModal && (
+          <div className="sd-modal-overlay" onClick={() => setShowAppealModal(false)}>
+            <div className="sd-modal" onClick={e => e.stopPropagation()}>
+              <div className="sd-modal-head">
+                <h3><i className="fas fa-gavel"></i> Exam Appeal Form</h3>
+                <button className="sd-close-btn" onClick={() => setShowAppealModal(false)}>&times;</button>
+              </div>
+
+              <div className="sd-modal-body">
+                {appealStep === 1 && (
+                  <div className="sd-tab-fade">
+                    <div className="sd-notice-box" style={{ background: 'rgba(59, 130, 246, 0.05)', borderColor: '#3b82f6', color: '#1e40af', marginBottom: 20 }}>
+                      <i className="fas fa-info-circle"></i>
+                      <p>Appealing <strong>{appealForm.courseCode}</strong> ({appealForm.courseName}). Original Result: <strong>{appealForm.result}</strong></p>
+                    </div>
+
+                    <div className="sd-modal-form">
+                      <label>Reason for Appeal</label>
+                      <textarea
+                        className="sd-input"
+                        rows="4"
+                        placeholder="Explain why you are disputing this result..."
+                        value={appealForm.reason}
+                        onChange={e => setAppealForm({ ...appealForm, reason: e.target.value })}
+                        style={{ width: '100%', borderRadius: 8, border: '1px solid #e2e8f0', padding: 10, fontSize: 13, resize: 'none' }}
+                        required
+                      ></textarea>
+
+                      <label style={{ marginTop: 15, display: 'block' }}>Supporting Evidence (Optional)</label>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 5 }}>
+                        <button type="button" className="sd-btn sd-btn-ghost sd-btn-xs" onClick={openAppealUpload}>
+                          <i className="fas fa-upload"></i> {appealForm.evidenceUrl ? 'Change Evidence' : 'Upload File'}
+                        </button>
+                        {appealForm.evidenceUrl && <span style={{ fontSize: 11, color: '#0d9488' }}><i className="fas fa-check-circle"></i> Evidence linked</span>}
+                      </div>
+
+                      <div className="sd-appeal-fee-box" style={{ marginTop: 25, padding: 15, background: '#f8fafc', borderRadius: 12, border: '1px dashed #e2e8f0', textAlign: 'center' }}>
+                        <div style={{ fontSize: 12, color: '#64748b', marginBottom: 5 }}>Mandatory Appeal Fee</div>
+                        <div style={{ fontSize: 24, fontWeight: 800, color: '#1e293b' }}>K 500.00</div>
+                      </div>
+
+                      <div className="sd-modal-actions" style={{ marginTop: 20 }}>
+                        <button type="button" className="sd-btn sd-btn-ghost" onClick={() => setShowAppealModal(false)}>Cancel</button>
+                        <button
+                          type="button"
+                          className="sd-btn sd-btn-primary"
+                          disabled={!appealForm.reason}
+                          onClick={() => setAppealStep(2)}
+                        >
+                          Proceed to Payment
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {appealStep === 2 && (
+                  <div className="sd-tab-fade">
+                    <div style={{ textAlign: 'center', marginBottom: 20 }}>
+                      <div className="sd-stat-icon" style={{ margin: '0 auto 15px', background: 'rgba(245,158,11,0.1)', color: '#f59e0b' }}>
+                        <i className="fas fa-credit-card"></i>
+                      </div>
+                      <h4 style={{ margin: 0, fontSize: 18 }}>Confirm Payment</h4>
+                      <p style={{ color: '#64748b', fontSize: 13 }}>Appeal Fee for {appealForm.courseCode}</p>
+                    </div>
+
+                    <div className="sd-receipt-card" style={{ background: '#fbfcfd', marginBottom: 20 }}>
+                      <div className="sd-receipt-row"><span>Item:</span><span className="sd-receipt-val">Exam Appeal</span></div>
+                      <div className="sd-receipt-row"><span>Course:</span><span className="sd-receipt-val">{appealForm.courseCode}</span></div>
+                      <div className="sd-receipt-row"><span>Total Due:</span><span className="sd-receipt-val" style={{ color: '#dc2626' }}>K 500.00</span></div>
+                    </div>
+
+                    <div className="sd-modal-actions">
+                      <button type="button" className="sd-btn sd-btn-ghost" onClick={() => setAppealStep(1)}>Back</button>
+                      <button
+                        type="button"
+                        className="sd-btn sd-btn-primary"
+                        style={{ background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none' }}
+                        disabled={submittingAppeal}
+                        onClick={handleAppealPayment}
+                      >
+                        {submittingAppeal ? <><i className="fas fa-circle-notch fa-spin"></i> Processing…</> : `Pay K 500 & Submit`}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {appealStep === 3 && (
+                  <div className="sd-tab-fade" style={{ textAlign: 'center', padding: '20px 0' }}>
+                    <div className="sd-success-check" style={{ margin: '0 auto 20px' }}>
+                      <i className="fas fa-check"></i>
+                    </div>
+                    <h3>Appeal Submitted!</h3>
+                    <p style={{ color: '#64748b', marginBottom: 25 }}>Your appeal has been received and is now in the Registrar's queue for review. You can track the status in the Results tab.</p>
+                    <button className="sd-btn sd-btn-primary" onClick={() => setShowAppealModal(false)}>Close</button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* ════════════ PROFILE MODAL ════════════ */}
+      {
+        showProfileModal && (
+          <div className="sd-modal-overlay" onClick={() => setShowProfileModal(false)}>
+            <div className="sd-modal" onClick={e => e.stopPropagation()}>
+              <div className="sd-modal-head">
+                <h3><i className="fas fa-user-cog"></i> Account Settings</h3>
+                <button className="sd-close-btn" onClick={() => setShowProfileModal(false)}>&times;</button>
+              </div>
+
+              <div className="sd-modal-body">
+                {profileSuccessMsg ? (
+                  <div className={`sd-success-msg ${profileSuccessMsg.startsWith('Error') ? 'sd-err-msg' : ''}`}>
+                    <i className={`fas ${profileSuccessMsg.startsWith('Error') ? 'fa-times-circle' : 'fa-check-circle'}`}></i><br />
+                    <small>{profileSuccessMsg}</small>
+                  </div>
+                ) : (
+                  <>
+                    <div className="sd-profile-modal-top">
+                      <div className="sd-avatar-xl">{student.initials}</div>
+                      <div>
+                        <div className="sd-pm-name">{student.name}</div>
+                        <div className="sd-pm-email">{student.email}</div>
+                        <div className="sd-pm-id">{student.id}</div>
+                      </div>
+                    </div>
+                    <form onSubmit={handleSaveProfile} className="sd-modal-form">
+                      <label>Full Name</label>
+                      <input
+                        type="text" value={profileForm.name || ''}
+                        onChange={e => setProfileForm(p => ({ ...p, name: e.target.value }))}
+                        required
+                      />
+                      <label>Email (read-only)</label>
+                      <input type="email" value={profileForm.email || ''} readOnly style={{ background: '#f8fafc', color: '#94a3b8' }} />
+                      <label>Phone Number</label>
+                      <input
+                        type="tel" placeholder="+260 97 000 0000"
+                        value={profileForm.phone || ''}
+                        onChange={e => setProfileForm(p => ({ ...p, phone: e.target.value }))}
+                      />
+                      <label>Program</label>
+                      <input
+                        type="text"
+                        value={profileForm.program || ''}
+                        onChange={e => setProfileForm(p => ({ ...p, program: e.target.value }))}
+                      />
+                      <div className="sd-modal-actions">
+                        <button type="button" className="sd-btn sd-btn-ghost" onClick={() => setShowProfileModal(false)}>Cancel</button>
+                        <button type="submit" className="sd-btn sd-btn-primary" disabled={savingProfile}>
+                          {savingProfile ? <><i className="fas fa-circle-notch fa-spin"></i> Saving…</> : 'Save Changes'}
+                        </button>
+                      </div>
+                    </form>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      }
 
       {/* ════════════ FORCE PASSWORD CHANGE MODAL ════════════ */}
-      {showPasswordForce && (
-        <div className="sd-modal-overlay">
-          <div className="sd-modal" onClick={e => e.stopPropagation()}>
-            <div className="sd-modal-head" style={{ borderBottom: 'none' }}>
-              <h3><i className="fas fa-shield-alt" style={{ color: '#dc2626' }}></i> Security Update Required</h3>
-            </div>
-            <div className="sd-modal-body">
-              <div style={{ background: '#fff1f2', border: '1px solid #fecaca', padding: '16px', borderRadius: '8px', marginBottom: '20px', color: '#991b1b', fontSize: '13px', lineHeight: '1.5' }}>
-                <i className="fas fa-info-circle"></i> For your security, you must change your password from the default one provided during registration before you can access your dashboard.
+      {
+        showPasswordForce && (
+          <div className="sd-modal-overlay">
+            <div className="sd-modal" onClick={e => e.stopPropagation()}>
+              <div className="sd-modal-head" style={{ borderBottom: 'none' }}>
+                <h3><i className="fas fa-shield-alt" style={{ color: '#dc2626' }}></i> Security Update Required</h3>
               </div>
-              <form onSubmit={handleUpdatePassword} className="sd-modal-form">
-                <label>New Password</label>
-                <input
-                  type="password"
-                  placeholder="Enter new secure password"
-                  value={passForm.new}
-                  onChange={e => setPassForm({ ...passForm, new: e.target.value })}
-                  required
-                  autoFocus
-                />
-                <label>Confirm New Password</label>
-                <input
-                  type="password"
-                  placeholder="Confirm your new password"
-                  value={passForm.confirm}
-                  onChange={e => setPassForm({ ...passForm, confirm: e.target.value })}
-                  required
-                />
-                <div className="sd-modal-actions" style={{ marginTop: '24px' }}>
-                  <button type="submit" className="sd-btn sd-btn-primary" style={{ width: '100%', justifyContent: 'center', height: '45px', fontSize: '15px' }}>
-                    Update Password & Continue
+              <div className="sd-modal-body">
+                <div style={{ background: '#fff1f2', border: '1px solid #fecaca', padding: '16px', borderRadius: '8px', marginBottom: '20px', color: '#991b1b', fontSize: '13px', lineHeight: '1.5' }}>
+                  <i className="fas fa-info-circle"></i> For your security, you must change your password from the default one provided during registration before you can access your dashboard.
+                </div>
+                <form onSubmit={handleUpdatePassword} className="sd-modal-form">
+                  <label>New Password</label>
+                  <input
+                    type="password"
+                    placeholder="Enter new secure password"
+                    value={passForm.new}
+                    onChange={e => setPassForm({ ...passForm, new: e.target.value })}
+                    required
+                    autoFocus
+                  />
+                  <label>Confirm New Password</label>
+                  <input
+                    type="password"
+                    placeholder="Confirm your new password"
+                    value={passForm.confirm}
+                    onChange={e => setPassForm({ ...passForm, confirm: e.target.value })}
+                    required
+                  />
+                  <div className="sd-modal-actions" style={{ marginTop: '24px' }}>
+                    <button type="submit" className="sd-btn sd-btn-primary" style={{ width: '100%', justifyContent: 'center', height: '45px', fontSize: '15px' }}>
+                      Update Password & Continue
+                    </button>
+                  </div>
+                </form>
+                <div style={{ textAlign: 'center', marginTop: '20px' }}>
+                  <button
+                    onClick={logout}
+                    className="sd-link-btn"
+                    style={{ color: '#64748b', fontSize: '13px' }}
+                  >
+                    <i className="fas fa-sign-out-alt"></i> Cancel and Logout
                   </button>
                 </div>
-              </form>
-              <div style={{ textAlign: 'center', marginTop: '20px' }}>
-                <button
-                  onClick={logout}
-                  className="sd-link-btn"
-                  style={{ color: '#64748b', fontSize: '13px' }}
-                >
-                  <i className="fas fa-sign-out-alt"></i> Cancel and Logout
-                </button>
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 };
 

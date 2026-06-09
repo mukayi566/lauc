@@ -4539,3 +4539,38 @@
     height: 34px;
   }
 }
+
+/* ── Appeal Utilities ── */
+.badge-gold {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.badge-teal {
+  background: #ccfbf1;
+  color: #0f766e;
+}
+
+.badge-green {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.sd-btn-xs {
+  padding: 4px 8px;
+  font-size: 11px;
+  height: auto;
+  min-height: unset;
+}
+
+.sd-btn-ghost {
+  background: transparent;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+
+.sd-btn-ghost:hover {
+  background: #f8fafc;
+  color: #1e293b;
+  border-color: #cbd5e1;
+}

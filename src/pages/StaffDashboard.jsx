@@ -727,7 +727,7 @@ const StaffDashboard = () => {
       {sidebarOpen && <div className="sd-overlay" onClick={() => setSidebarOpen(false)} />}
 
       {/* SIDEBAR */}
-      <div className={`sd-sidebar ${sidebarOpen ? 'sd-sidebar--open' : ''}`}>
+      <div className={`sd-sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="sd-sidebar-logo">
           <div className="sd-logo-icon"><i className="fas fa-chalkboard-teacher"></i></div>
           <div>

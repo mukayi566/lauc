@@ -731,7 +731,7 @@ const StudentDashboard = () => {
      SIDEBAR
   ══════════════════════════════════════════════ */
   const sidebar = (
-    <div className={`sd-sidebar ${sidebarOpen ? 'sd-sidebar--open' : ''}`}>
+    <div className={`sd-sidebar ${sidebarOpen ? 'open' : ''}`}>
       <div className="sd-sidebar-logo">
         <div className="sd-logo-icon"><i className="fas fa-graduation-cap"></i></div>
         <div>

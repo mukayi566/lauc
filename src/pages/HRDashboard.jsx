@@ -17,6 +17,21 @@ import {
 } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 import '../dashboards.css';
+import Recruitment from '../components/HR/Recruitment';
+import Attendance from '../components/HR/Attendance';
+import LeaveManagement from '../components/HR/LeaveManagement';
+import Training from '../components/HR/Training';
+import AssetManagement from '../components/HR/AssetManagement';
+import OrgStructure from '../components/HR/OrgStructure';
+import DocumentManagement from '../components/HR/DocumentManagement';
+import Disciplinary from '../components/HR/Disciplinary';
+import Benefits from '../components/HR/Benefits';
+import Communications from '../components/HR/Communications';
+import WorkflowApprovals from '../components/HR/WorkflowApprovals';
+import AuditLogs from '../components/HR/AuditLogs';
+import HRSettings from '../components/HR/HRSettings';
+import PayrollPremium from '../components/HR/PayrollPremium';
+
 
 const HRDashboard = () => {
   // Small inline sparkline (SVG) for quick trends
@@ -121,6 +136,7 @@ const HRDashboard = () => {
   const [bulkUploading, setBulkUploading] = useState(false);
   const [approvingPayrollId, setApprovingPayrollId] = useState(null);
 
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { currentUser, signOut, changePassword } = useAuth();
   const navigate = useNavigate();
 
@@ -572,8 +588,8 @@ const HRDashboard = () => {
   };
 
   return (
-    <div className="sd-shell">
-      <aside className="sd-sidebar">
+    <div className={`sd-shell ${isSidebarOpen ? 'sidebar-open' : ''}`}>
+      <aside className={`sd-sidebar ${isSidebarOpen ? 'open' : ''}`}>
         <div className="sd-sidebar-header">
           <div className="sd-sidebar-logo">
             <div className="sd-logo-icon" style={{ background: '#fde68a', color: '#92400e' }}>
@@ -595,15 +611,73 @@ const HRDashboard = () => {
         </div>
 
         <nav className="sd-nav">
-          <div className="sd-nav-group">HR Operations</div>
-          {['overview', 'payroll', 'inventory', 'employees', 'reports', 'performance'].map((tab) => (
+          <div className="sd-nav-group">Core Operations</div>
+          {[
+            { id: 'overview', label: 'Dashboard', icon: 'fa-home' },
+            { id: 'employees', label: 'Employees', icon: 'fa-users' },
+            { id: 'payroll', label: 'Payroll', icon: 'fa-money-bill-wave' },
+            { id: 'attendance', label: 'Attendance', icon: 'fa-clock' },
+            { id: 'leaves', label: 'Leave management', icon: 'fa-calendar-alt' },
+          ].map((item) => (
             <button
-              key={tab}
-              className={`sd-nav-link ${activeTab === tab ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab)}
+              key={item.id}
+              className={`sd-nav-link ${activeTab === item.id ? 'active' : ''}`}
+              onClick={() => { setActiveTab(item.id); setIsSidebarOpen(false); }}
             >
-              <i className={`fas ${tab === 'overview' ? 'fa-home' : tab === 'payroll' ? 'fa-money-bill-wave' : tab === 'inventory' ? 'fa-boxes' : tab === 'employees' ? 'fa-users' : tab === 'reports' ? 'fa-chart-pie' : 'fa-trophy'}`}></i>
-              {tab === 'overview' ? 'Overview' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+              <i className={`fas ${item.icon}`}></i>
+              {item.label}
+            </button>
+          ))}
+
+          <div className="sd-nav-group">Talent & Performance</div>
+          {[
+            { id: 'recruitment', label: 'Recruitment', icon: 'fa-user-plus' },
+            { id: 'performance', label: 'Performance', icon: 'fa-trophy' },
+            { id: 'training', label: 'Training', icon: 'fa-graduation-cap' },
+          ].map((item) => (
+            <button
+              key={item.id}
+              className={`sd-nav-link ${activeTab === item.id ? 'active' : ''}`}
+              onClick={() => { setActiveTab(item.id); setIsSidebarOpen(false); }}
+            >
+              <i className={`fas ${item.icon}`}></i>
+              {item.label}
+            </button>
+          ))}
+
+          <div className="sd-nav-group">Administrative</div>
+          {[
+            { id: 'inventory', label: 'Asset Management', icon: 'fa-boxes' },
+            { id: 'departments', label: 'Departments', icon: 'fa-building' },
+            { id: 'documents', label: 'Documents', icon: 'fa-folder-open' },
+            { id: 'benefits', label: 'Benefits', icon: 'fa-hand-holding-heart' },
+          ].map((item) => (
+            <button
+              key={item.id}
+              className={`sd-nav-link ${activeTab === item.id ? 'active' : ''}`}
+              onClick={() => { setActiveTab(item.id); setIsSidebarOpen(false); }}
+            >
+              <i className={`fas ${item.icon}`}></i>
+              {item.label}
+            </button>
+          ))}
+
+          <div className="sd-nav-group">Governance</div>
+          {[
+            { id: 'communications', label: 'Communications', icon: 'fa-bullhorn' },
+            { id: 'approvals', label: 'Workflow Approvals', icon: 'fa-check-double' },
+            { id: 'disciplinary', label: 'Disciplinary', icon: 'fa-gavel' },
+            { id: 'audit', label: 'Audit Logs', icon: 'fa-user-shield' },
+            { id: 'reports', label: 'Reports', icon: 'fa-chart-pie' },
+            { id: 'settings', label: 'Setting', icon: 'fa-cog' },
+          ].map((item) => (
+            <button
+              key={item.id}
+              className={`sd-nav-link ${activeTab === item.id ? 'active' : ''}`}
+              onClick={() => { setActiveTab(item.id); setIsSidebarOpen(false); }}
+            >
+              <i className={`fas ${item.icon}`}></i>
+              {item.label}
             </button>
           ))}
         </nav>
@@ -617,13 +691,9 @@ const HRDashboard = () => {
 
       <main className="sd-body">
         <header className="sd-topbar">
-          <button className="sd-hamburger"><i className="fas fa-bars"></i></button>
+          <button className="sd-hamburger" onClick={() => setIsSidebarOpen(!isSidebarOpen)}><i className="fas fa-bars"></i></button>
           <div className="sd-topbar-title">HR Admin Module</div>
           <div className="sd-topbar-right">
-            <div className="header-badge" style={{ background: '#fef3c7', borderColor: '#fde68a', color: '#b45309' }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#d97706' }}></span>
-              HR Portal
-            </div>
             <div className="sd-icon-btn"><i className="fas fa-bell"></i></div>
             <div className="sd-topbar-avatar">{profile?.name?.charAt(0) || 'H'}</div>
           </div>
@@ -716,13 +786,13 @@ const HRDashboard = () => {
                   </div>
                   <div className="sd-card-body" style={{ padding: '24px' }}>
                     <p className="sd-muted" style={{ marginBottom: 20 }}>Real-time health signals from staff records and inventory status.</p>
-                    
+
                     {/* 
                         Logic: Grid layout for intelligence signals with clear donut visualizations.
                         Flow: Derived values (active staff and stock status) are passed to MiniDonut 
                         to provide an immediate visual health check.
                     */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+                    <div className="sd-intel-grid">
                       <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #eef2ff' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                           <MiniDonut value={activeCount} max={Math.max(1, employees.length)} color="#2563eb" size={56} />
@@ -732,7 +802,7 @@ const HRDashboard = () => {
                           </div>
                         </div>
                         <div style={{ marginTop: 12, fontSize: '11px', color: activeCount >= employees.length * 0.8 ? '#10b981' : '#f59e0b', fontWeight: 700 }}>
-                          <i className={`fas ${activeCount >= employees.length * 0.8 ? 'fa-arrow-up' : 'fa-exclamation-circle'}`}></i> 
+                          <i className={`fas ${activeCount >= employees.length * 0.8 ? 'fa-arrow-up' : 'fa-exclamation-circle'}`}></i>
                           {activeCount >= employees.length * 0.8 ? ' Stable workforce signals' : ' Staff activity alert'}
                         </div>
                       </div>
@@ -746,7 +816,7 @@ const HRDashboard = () => {
                           </div>
                         </div>
                         <div style={{ marginTop: 12, fontSize: '11px', color: assetsAvailable >= inventoryItems.length * 0.5 ? '#16a34a' : '#dc2626', fontWeight: 700 }}>
-                          <i className={`fas ${assetsAvailable >= inventoryItems.length * 0.5 ? 'fa-check-circle' : 'fa-warehouse'}`}></i> 
+                          <i className={`fas ${assetsAvailable >= inventoryItems.length * 0.5 ? 'fa-check-circle' : 'fa-warehouse'}`}></i>
                           {assetsAvailable >= inventoryItems.length * 0.5 ? ' Inventory levels optimal' : ' Low stock levels'}
                         </div>
                       </div>
@@ -768,7 +838,8 @@ const HRDashboard = () => {
             </>
           )}
 
-          {activeTab === 'payroll' && (
+          {activeTab === 'payroll' && <PayrollPremium employees={employees} profile={profile} />}
+          {activeTab === 'payroll_old' && (
             <>
               <div className="sd-card">
                 <div className="sd-card-header">
@@ -931,7 +1002,7 @@ const HRDashboard = () => {
                     </div>
                     <div className="sd-modal-body">
                       <div style={{ marginBottom: 16, padding: 12, background: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0', color: '#166534' }}>
-                        <strong>CSV Format Required:</strong><br/>
+                        <strong>CSV Format Required:</strong><br />
                         <code style={{ fontSize: 12, display: 'block', marginTop: 6, background: '#fff', padding: 8, borderRadius: 4, overflow: 'auto' }}>
                           employeeName,employeeId,type,amount,month
                         </code>
@@ -963,7 +1034,7 @@ const HRDashboard = () => {
             </>
           )}
 
-          {activeTab === 'inventory' && (
+          {activeTab === 'inventory_old' && (
             <div className="sd-two-col">
               <div className="sd-card">
                 <div className="sd-card-header">
@@ -1050,12 +1121,40 @@ const HRDashboard = () => {
             <>
               <div className="sd-card">
                 <div className="sd-card-header">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: 12 }}>
                     <span><i className="fas fa-users"></i> Employee Records</span>
-                    <div style={{ display: 'flex', gap: 8 }}>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       <div style={{ color: '#6b7280', alignSelf: 'center', marginRight: 10 }}>{filteredEmployees.length} records</div>
                       <button className="sd-btn sd-btn-white" onClick={handleExportEmployees} title="Export employee records to CSV">
                         <i className="fas fa-download"></i> Export CSV
+                      </button>
+                      <button
+                        className="sd-btn sd-btn-glass"
+                        onClick={async () => {
+                          if (window.confirm(`Are you sure you want to process payroll for all ${filteredEmployees.length} filtered employees?`)) {
+                            const month = new Date().toISOString().slice(0, 7);
+                            let count = 0;
+                            for (const emp of filteredEmployees) {
+                              try {
+                                await addDoc(collection(db, 'payroll'), {
+                                  employeeName: emp.name,
+                                  employeeId: emp.id,
+                                  type: 'Staff',
+                                  amount: 0, // Placeholder, needs manual update or base salary implementation
+                                  month: month,
+                                  code: `PAY-BULK-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+                                  status: 'Pending',
+                                  processedBy: profile?.name || 'HR Officer',
+                                  createdAt: serverTimestamp()
+                                });
+                                count++;
+                              } catch (err) { console.error(err); }
+                            }
+                            toast.success(`Bulk payroll draft created for ${count} employees.`);
+                          }
+                        }}
+                      >
+                        <i className="fas fa-money-check-alt"></i> Pay All (Draft)
                       </button>
                       <button className="sd-btn sd-btn-primary" onClick={() => setShowRegisterModal(true)}>
                         <i className="fas fa-user-plus" /> Register Employee
@@ -1188,12 +1287,12 @@ const HRDashboard = () => {
                         Flow: Data is prepared from state values to show a comparison between Staff and TEVETA funds.
                     */}
                     <div style={{ padding: '20px 0' }}>
-                      <SimpleBarChart 
+                      <SimpleBarChart
                         data={[
                           { label: 'Staff Payroll', value: totalStaffPayroll },
                           { label: 'TEVETA Funds', value: totalDebtPayroll },
                           { label: 'Approved', value: payrollRecords.filter(p => p.status === 'Approved').reduce((s, r) => s + (Number(r.amount) || 0), 0) }
-                        ]} 
+                        ]}
                         color="#059669"
                         height={160}
                       />
@@ -1221,22 +1320,22 @@ const HRDashboard = () => {
                         Logic: Progress bars to show workforce mix.
                         Flow: Filters the employees list by role to calculate percentages.
                     */}
-                    <ProgressBar 
-                      label="Academic Staff (Lecturers)" 
-                      value={Math.round((employees.filter(e => e.role === 'staff' || !e.role).length / Math.max(1, employees.length)) * 100)} 
-                      color="#7c3aed" 
+                    <ProgressBar
+                      label="Academic Staff (Lecturers)"
+                      value={Math.round((employees.filter(e => e.role === 'staff' || !e.role).length / Math.max(1, employees.length)) * 100)}
+                      color="#7c3aed"
                     />
-                    <ProgressBar 
-                      label="Administrative Staff" 
-                      value={Math.round((employees.filter(e => ['hr', 'finance', 'registrar'].includes(e.role)).length / Math.max(1, employees.length)) * 100)} 
-                      color="#2563eb" 
+                    <ProgressBar
+                      label="Administrative Staff"
+                      value={Math.round((employees.filter(e => ['hr', 'finance', 'registrar'].includes(e.role)).length / Math.max(1, employees.length)) * 100)}
+                      color="#2563eb"
                     />
-                    <ProgressBar 
-                      label="Technical / IT Support" 
-                      value={Math.round((employees.filter(e => e.role === 'it').length / Math.max(1, employees.length)) * 100)} 
-                      color="#0d9488" 
+                    <ProgressBar
+                      label="Technical / IT Support"
+                      value={Math.round((employees.filter(e => e.role === 'it').length / Math.max(1, employees.length)) * 100)}
+                      color="#0d9488"
                     />
-                    
+
                     <div style={{ marginTop: 24, padding: 16, background: '#f0f9ff', borderRadius: 12, border: '1px solid #e0f2fe' }}>
                       <div style={{ fontSize: 13, color: '#0369a1', fontWeight: 600 }}>
                         <i className="fas fa-info-circle" style={{ marginRight: 8 }}></i>
@@ -1258,7 +1357,7 @@ const HRDashboard = () => {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+              <div className="sd-intel-grid">
                 <div className="sd-card">
                   <div className="sd-card-header">
                     <span><i className="fas fa-bullseye"></i> Key Performance Indicators</span>
@@ -1358,6 +1457,20 @@ const HRDashboard = () => {
               </div>
             </div>
           )}
+
+          {activeTab === 'recruitment' && <Recruitment />}
+          {activeTab === 'attendance' && <Attendance />}
+          {activeTab === 'leaves' && <LeaveManagement />}
+          {activeTab === 'training' && <Training />}
+          {activeTab === 'departments' && <OrgStructure />}
+          {activeTab === 'documents' && <DocumentManagement />}
+          {activeTab === 'benefits' && <Benefits />}
+          {activeTab === 'communications' && <Communications />}
+          {activeTab === 'approvals' && <WorkflowApprovals />}
+          {activeTab === 'disciplinary' && <Disciplinary />}
+          {activeTab === 'audit' && <AuditLogs />}
+          {activeTab === 'settings' && <HRSettings />}
+          {activeTab === 'inventory' && <AssetManagement />}
         </div>
       </main>
 

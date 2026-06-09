@@ -43,6 +43,8 @@ const RegistrarDashboard = () => {
     const [students, setStudents] = useState([]);
     const [courses, setCourses] = useState([]);
     const [registrations, setRegistrations] = useState([]); // Recent registrations
+    const [appeals, setAppeals] = useState([]);
+    const [allResults, setAllResults] = useState([]);
 
     /* ── Form state (Registration) ── */
     const [regForm, setRegForm] = useState({
@@ -94,6 +96,22 @@ const RegistrarDashboard = () => {
         return () => {
             unsubStudents();
             unsubCourses();
+        };
+    }, []);
+
+    useEffect(() => {
+        const q = query(collection(db, 'appeals'), orderBy('timestamp', 'desc'));
+        const unsub = onSnapshot(q, (snap) => {
+            setAppeals(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        });
+
+        const unsubResults = onSnapshot(query(collection(db, 'results'), orderBy('updatedAt', 'desc')), (snap) => {
+            setAllResults(snap.docs.map(d => ({ docId: d.id, ...d.data() })));
+        });
+
+        return () => {
+            unsub();
+            unsubResults();
         };
     }, []);
 
@@ -266,10 +284,105 @@ const RegistrarDashboard = () => {
 
     const getStudentId = (s) => s.studentId || s.student_id || '—';
 
+    const handleUpdateAppeal = async (appealId, status, outcome) => {
+        try {
+            const appealRef = doc(db, 'appeals', appealId);
+            const updateData = { status, updatedAt: serverTimestamp() };
+            if (outcome) updateData.outcome = outcome;
+
+            await updateDoc(appealRef, updateData);
+
+            // Notify student
+            const appeal = appeals.find(a => a.id === appealId);
+            if (appeal) {
+                await addDoc(collection(db, 'students', appeal.studentUid, 'notifications'), {
+                    text: `Appeal Update: Your appeal for ${appeal.courseCode} is now ${status}. ${outcome ? `Outcome: ${outcome}` : ''}`,
+                    time: 'Just now',
+                    icon: 'fa-gavel',
+                    color: '#3b82f6',
+                    read: false,
+                    timestamp: serverTimestamp()
+                });
+            }
+
+            showSuccess(`Appeal ${status.toLowerCase()} successfully!`);
+        } catch (err) {
+            handleError('Failed to update appeal.');
+        }
+    };
+
+    const handleResultAction = async (resultId, action) => {
+        try {
+            const statusMap = {
+                'approve': 'approved',
+                'reject': 'draft',
+                'publish': 'published'
+            };
+            const newStatus = statusMap[action];
+            await updateDoc(doc(db, 'results', resultId), {
+                status: newStatus,
+                [action === 'approve' ? 'approvedBy' : action === 'publish' ? 'publishedBy' : 'rejectedBy']: registrar.name,
+                updatedAt: serverTimestamp()
+            });
+
+            // Notify student if published
+            if (action === 'publish') {
+                const res = allResults.find(r => r.docId === resultId);
+                if (res) {
+                    await addDoc(collection(db, 'students', res.studentId, 'notifications'), {
+                        text: `Results for ${res.courseCode} have been published.`,
+                        time: 'Just now',
+                        icon: 'fa-poll',
+                        color: '#0d9488',
+                        read: false,
+                        createdAt: serverTimestamp()
+                    });
+                }
+            }
+
+            showSuccess(`Result ${newStatus} successfully.`);
+        } catch (err) {
+            handleError('Error updating result status.');
+        }
+    };
+
+    const handleApproveAllResults = () => {
+        const pending = allResults.filter(r => r.status === 'submitted');
+        if (pending.length === 0) {
+            handleError('No pending results to approve.');
+            return;
+        }
+
+        if (window.confirm(`Are you sure you want to approve all ${pending.length} pending results?`)) {
+            const bulkApprove = async () => {
+                try {
+                    setLoading(true);
+                    const promises = pending.map(res =>
+                        updateDoc(doc(db, 'results', res.docId), {
+                            status: 'approved',
+                            approvedBy: registrar.name,
+                            updatedAt: serverTimestamp()
+                        })
+                    );
+                    await Promise.all(promises);
+                    showSuccess(`Successfully approved ${pending.length} results.`);
+                } catch (err) {
+                    console.error(err);
+                    handleError('Error bulk approving results.');
+                } finally {
+                    setLoading(false);
+                }
+            };
+            bulkApprove();
+        }
+    };
+
     const navItems = [
         { id: 'dashboard', icon: 'fa-tachometer-alt', label: 'Overview' },
         { id: 'registration', icon: 'fa-user-plus', label: 'Registration' },
         { id: 'enrollment', icon: 'fa-calendar-check', label: 'Enrollment' },
+        { id: 'results', icon: 'fa-poll', label: 'Results Approval' },
+        { id: 'appeals', icon: 'fa-gavel', label: 'Exam Appeals' },
         { id: 'departments', icon: 'fa-building-columns', label: 'Departments' },
         { id: 'dockets', icon: 'fa-id-card-clip', label: 'Exam Dockets' },
         { id: 'students', icon: 'fa-users', label: 'Student Directory' },
@@ -380,8 +493,8 @@ const RegistrarDashboard = () => {
                                         </div>
                                         <div className="sd-stat-card">
                                             <div className="sd-stat-icon" style={{ background: 'rgba(245,158,11,0.1)', color: '#f59e0b' }}><i className="fas fa-clock"></i></div>
-                                            <div className="sd-stat-val">12</div>
-                                            <div className="sd-stat-lbl">Pending Dockets</div>
+                                            <div className="sd-stat-val">{appeals.filter(a => a.status === 'Pending').length}</div>
+                                            <div className="sd-stat-lbl">Pending Appeals</div>
                                         </div>
                                         <div className="sd-stat-card">
                                             <div className="sd-stat-icon" style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981' }}><i className="fas fa-file-invoice-dollar"></i></div>
@@ -738,6 +851,165 @@ const RegistrarDashboard = () => {
                                                 </tbody>
                                             </table>
                                         </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* ══════════ APPEALS TAB ══════════ */}
+                            {activeTab === 'appeals' && (
+                                <div className="sd-card">
+                                    <div className="sd-card-header">
+                                        <span>Exam Appeals Queue</span>
+                                        <div style={{ display: 'flex', gap: 10 }}>
+                                            <span className="sd-badge badge-teal">{appeals.filter(a => a.status === 'Pending').length} New</span>
+                                            <span className="sd-badge badge-green">{appeals.filter(a => a.status === 'Resolved').length} Resolved</span>
+                                        </div>
+                                    </div>
+                                    <div className="sd-card-body">
+                                        {appeals.length === 0 ? (
+                                            <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
+                                                <i className="fas fa-gavel" style={{ fontSize: 40, marginBottom: 15, display: 'block', opacity: 0.2 }}></i>
+                                                No exam appeals in the queue.
+                                            </div>
+                                        ) : (
+                                            <div className="sd-table-wrapper">
+                                                <table className="sd-table">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Student</th>
+                                                            <th>Course</th>
+                                                            <th>Original Result</th>
+                                                            <th>Status</th>
+                                                            <th>Date Submitted</th>
+                                                            <th>Action</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {appeals.map(apl => (
+                                                            <tr key={apl.id}>
+                                                                <td className="sd-td-bold">
+                                                                    <div style={{ fontSize: 14 }}>{apl.studentName}</div>
+                                                                    <div style={{ fontSize: 11, color: '#64748b', fontWeight: 400 }}>{apl.studentId}</div>
+                                                                </td>
+                                                                <td className="sd-td-bold">
+                                                                    <div style={{ fontSize: 14 }}>{apl.courseCode}</div>
+                                                                    <div style={{ fontSize: 11, color: '#64748b', fontWeight: 400 }}>{apl.courseName}</div>
+                                                                </td>
+                                                                <td><span className="sd-grade">{apl.result}</span></td>
+                                                                <td>
+                                                                    <span className={`sd-badge ${apl.status === 'Pending' ? 'badge-gold' :
+                                                                        apl.status === 'Under Review' ? 'badge-teal' : 'badge-green'
+                                                                        }`}>
+                                                                        {apl.status}
+                                                                    </span>
+                                                                </td>
+                                                                <td style={{ fontSize: 12 }}>{apl.timestamp?.toDate ? apl.timestamp.toDate().toLocaleDateString() : '—'}</td>
+                                                                <td>
+                                                                    <button
+                                                                        className="sd-btn sd-btn-ghost sd-btn-xs"
+                                                                        onClick={() => {
+                                                                            const newStatus = apl.status === 'Pending' ? 'Under Review' : 'Resolved';
+                                                                            if (newStatus === 'Resolved') {
+                                                                                const outcome = window.confirm("Was the result Upheld or Amended?") ? "Amended" : "Upheld";
+                                                                                handleUpdateAppeal(apl.id, newStatus, outcome);
+                                                                            } else {
+                                                                                handleUpdateAppeal(apl.id, newStatus);
+                                                                            }
+                                                                        }}
+                                                                    >
+                                                                        {apl.status === 'Pending' ? 'Review' : apl.status === 'Under Review' ? 'Resolve' : 'View'}
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* ══════════ RESULTS TAB ══════════ */}
+                            {activeTab === 'results' && (
+                                <div className="sd-card">
+                                    <div className="sd-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span>Result Approval & Publishing</span>
+                                        {allResults.some(r => r.status === 'submitted') && (
+                                            <button className="sd-btn sd-btn-primary" onClick={handleApproveAllResults}>
+                                                <i className="fas fa-check-double"></i> Approve All Pending
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="sd-card-body" style={{ padding: 0 }}>
+                                        {allResults.length === 0 ? (
+                                            <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>No results found in the system.</div>
+                                        ) : (
+                                            <div className="sd-table-wrapper">
+                                                <table className="sd-table">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Student</th>
+                                                            <th>Course</th>
+                                                            <th>Score</th>
+                                                            <th>Grade</th>
+                                                            <th>Status</th>
+                                                            <th>Action</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {allResults.map(res => (
+                                                            <tr key={res.docId}>
+                                                                <td className="sd-td-bold">
+                                                                    <div>{res.studentName}</div>
+                                                                    <div style={{ fontSize: 11, color: '#64748b', fontWeight: 400 }}>{res.studentRegNo}</div>
+                                                                </td>
+                                                                <td className="sd-td-bold">
+                                                                    <div>{res.courseCode}</div>
+                                                                    <div style={{ fontSize: 11, color: '#64748b', fontWeight: 400 }}>{res.courseName}</div>
+                                                                </td>
+                                                                <td>
+                                                                    <div style={{ fontWeight: 600 }}>{res.total} / 100</div>
+                                                                    <div style={{ fontSize: 10, color: '#64748b' }}>CA: {res.caScore} | EX: {res.examScore}</div>
+                                                                </td>
+                                                                <td>
+                                                                    <span className={`sd-grade ${res.grade === 'F' ? 'grade-f' : 'grade-pass'}`}>
+                                                                        {res.grade}
+                                                                    </span>
+                                                                </td>
+                                                                <td>
+                                                                    <span className={`sd-badge badge-${res.status}`}>
+                                                                        {res.status.toUpperCase()}
+                                                                    </span>
+                                                                </td>
+                                                                <td>
+                                                                    <div style={{ display: 'flex', gap: 5 }}>
+                                                                        {res.status === 'submitted' && (
+                                                                            <>
+                                                                                <button className="sd-icon-btn approve" title="Approve" onClick={() => handleResultAction(res.docId, 'approve')}>
+                                                                                    <i className="fas fa-check" />
+                                                                                </button>
+                                                                                <button className="sd-icon-btn reject" title="Reject" onClick={() => handleResultAction(res.docId, 'reject')}>
+                                                                                    <i className="fas fa-times" />
+                                                                                </button>
+                                                                            </>
+                                                                        )}
+                                                                        {res.status === 'approved' && (
+                                                                            <button className="sd-btn sd-btn-primary sd-btn-xs" onClick={() => handleResultAction(res.docId, 'publish')}>
+                                                                                <i className="fas fa-upload" /> Publish
+                                                                            </button>
+                                                                        )}
+                                                                        {res.status === 'published' && (
+                                                                            <span style={{ fontSize: 11, color: '#10b981' }}><i className="fas fa-check-double" /> Published</span>
+                                                                        )}
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )}

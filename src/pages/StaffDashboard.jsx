@@ -8,7 +8,7 @@ import { calculateGrade, getGradePoints } from '../utils/resultUtils';
 import {
   collection, query, where, onSnapshot,
   doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc,
-  serverTimestamp, orderBy, collectionGroup
+  serverTimestamp, orderBy, collectionGroup, writeBatch
 } from 'firebase/firestore';
 import '../dashboards.css';
 
@@ -73,6 +73,10 @@ const StaffDashboard = () => {
   const [students, setStudents] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
   const [resultLogs, setResultLogs] = useState([]);
+  const [personalPayroll, setPersonalPayroll] = useState([]);
+  const [personalLeaves, setPersonalLeaves] = useState([]);
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [leaveForm, setLeaveForm] = useState({ type: 'Annual Leave', start: '', end: '', reason: '' });
 
   const navigate = useNavigate();
   const { signOut, currentUser, changePassword } = useAuth();
@@ -286,6 +290,23 @@ const StaffDashboard = () => {
 
     return () => unsubLogs();
   }, [uid]);
+
+  /* Load Personal HR Data (Payslips & Leaves) */
+  useEffect(() => {
+    if (!uid || !lecturerData?.name) return;
+
+    const unsubPay = onSnapshot(
+      query(collection(db, 'payroll'), where('employeeId', '==', uid)),
+      snap => setPersonalPayroll(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+    );
+
+    const unsubLeave = onSnapshot(
+      query(collection(db, 'leave_requests'), where('employeeId', '==', uid)),
+      snap => setPersonalLeaves(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+    );
+
+    return () => { unsubPay(); unsubLeave(); };
+  }, [uid, lecturerData?.name]);
 
   /* ═══════════════════════════════════════════════════════════════
      ACTIONS
@@ -537,48 +558,70 @@ const StaffDashboard = () => {
   };
 
   const handleSubmitAllResults = async () => {
+    // 1. Filter unique course codes assigned to this lecturer
+    const courseCodes = [...new Set(courses.map(c => c.code).filter(Boolean))];
+
+    if (courseCodes.length === 0) {
+      showError("No assigned course codes found.");
+      return;
+    }
+
     triggerConfirm(
       "Submit All Results",
-      "Are you sure you want to submit all draft results for your assigned courses for admin approval? This action cannot be easily undone.",
+      `Are you sure you want to submit all draft results for your ${courseCodes.length} assigned courses for admin approval?`,
       "fa-paper-plane",
       async () => {
         setSubmittingAll(true);
         try {
-          const courseCodes = courses.map(c => c.code).filter(Boolean);
-          if (courseCodes.length === 0) return;
+          // 2. Query in batches (Firestore 'in' limit is max 30, but we use 10 for safety/older SDKs)
+          const BATCH_SIZE = 10;
+          let allDrafts = [];
 
-          const q = query(
-            collection(db, 'results'),
-            where('courseCode', 'in', courseCodes),
-            where('status', '==', 'draft')
-          );
-          const snap = await getDocs(q);
+          for (let i = 0; i < courseCodes.length; i += BATCH_SIZE) {
+            const chunk = courseCodes.slice(i, i + BATCH_SIZE);
+            const q = query(
+              collection(db, 'results'),
+              where('courseCode', 'in', chunk),
+              where('status', '==', 'draft')
+            );
+            const snap = await getDocs(q);
+            allDrafts = [...allDrafts, ...snap.docs];
+          }
 
-          if (snap.empty) {
+          if (allDrafts.length === 0) {
             showSuccess("No draft results found to submit.");
+            setSubmittingAll(false);
+            setConfirmModal(prev => ({ ...prev, show: false }));
             return;
           }
 
-          const updatePromises = snap.docs.map(d =>
-            updateDoc(doc(db, 'results', d.id), {
-              status: 'submitted',
-              submittedAt: serverTimestamp()
-            })
-          );
+          // 3. Perform updates in batches (Firestore writeBatch limit is 500)
+          const WRITE_BATCH_SIZE = 500;
+          for (let i = 0; i < allDrafts.length; i += WRITE_BATCH_SIZE) {
+            const batch = writeBatch(db);
+            const chunk = allDrafts.slice(i, i + WRITE_BATCH_SIZE);
 
-          await Promise.all(updatePromises);
+            chunk.forEach(d => {
+              batch.update(doc(db, 'results', d.id), {
+                status: 'submitted',
+                submittedAt: serverTimestamp()
+              });
+            });
 
-          showSuccess(`Successfully submitted ${snap.size} results to admin for approval!`);
+            await batch.commit();
+          }
+
+          showSuccess(`Successfully submitted ${allDrafts.length} results to admin for approval!`);
 
           await logResultAction({
             description: `Mass result submission to admin performed`,
             courseCodes,
-            totalSubmitted: snap.size
+            totalSubmitted: allDrafts.length
           });
 
         } catch (err) {
           console.error("Mass submission error:", err);
-          showError("Failed to submit results. Please try again.");
+          showError("Failed to submit results. Root cause: " + (err.message || 'Unknown error'));
         } finally {
           setSubmittingAll(false);
           setConfirmModal(prev => ({ ...prev, show: false }));
@@ -611,6 +654,24 @@ const StaffDashboard = () => {
         }
       }
     );
+  };
+
+  const handleApplyLeave = async (e) => {
+    e.preventDefault();
+    try {
+      await addDoc(collection(db, 'leave_requests'), {
+        ...leaveForm,
+        employeeId: uid,
+        employeeName: lecturerData?.name || currentUser?.email,
+        status: 'Pending',
+        createdAt: serverTimestamp()
+      });
+      setShowLeaveModal(false);
+      showSuccess('Leave request submitted successfully.');
+    } catch (err) {
+      console.error(err);
+      showError('Failed to submit leave request.');
+    }
   };
 
   /* ── Derived display values ── */
@@ -703,6 +764,24 @@ const StaffDashboard = () => {
                 <span className="sd-notif-dot" style={{ position: 'static', marginLeft: 'auto' }}>{announcements.length}</span>
               )}
               {activeTab === item.id && <div className="sd-nav-indicator"></div>}
+            </a>
+          ))}
+
+          <div className="sd-nav-group">Self-Service</div>
+          {[
+            { id: 'payslips', icon: 'fa-file-invoice-dollar', label: 'My Payslips' },
+            { id: 'leaves', icon: 'fa-calendar-check', label: 'My Leave' },
+            { id: 'documents', icon: 'fa-folder-open', label: 'HR Documents' },
+          ].map(item => (
+            <a key={item.id} href="#"
+              className={`sd-nav-link ${activeTab === item.id ? 'active' : ''}`}
+              onClick={(e) => {
+                e.preventDefault();
+                setActiveTab(item.id);
+                setSidebarOpen(false);
+              }}>
+              <i className={`fas ${item.icon}`}></i>
+              <span>{item.label}</span>
             </a>
           ))}
         </nav>
@@ -1177,34 +1256,23 @@ const StaffDashboard = () => {
                         </div>
                         <div style={{ display: 'flex', gap: 12 }}>
                           <label className={`sd-btn ${bulkUploading ? 'sd-btn-ghost' : 'sd-btn-white'}`} style={{ cursor: bulkUploading ? 'not-allowed' : 'pointer' }}>
-                            <i className={bulkUploading ? "fas fa-circle-notch fa-spin" : "fas fa-file-csv"}></i> {bulkUploading ? 'Processing...' : 'Bulk Upload Direct Courses'}
-                            <input
-                              type="file"
-                              accept=".csv"
-                              onChange={handleBulkResultUpload}
-                              disabled={bulkUploading}
-                              style={{ display: 'none' }}
-                            />
+                            <i className={bulkUploading ? 'fas fa-circle-notch fa-spin' : 'fas fa-file-csv'}></i>{' '}
+                            {bulkUploading ? 'Processing...' : 'Bulk Upload Direct Courses'}
+                            <input type="file" accept=".csv" onChange={handleBulkResultUpload} disabled={bulkUploading} style={{ display: 'none' }} />
                           </label>
-                          <button
-                            className="sd-btn sd-btn-primary"
-                            onClick={handleSubmitAllResults}
-                            disabled={submittingAll || courses.length === 0}
-                          >
-                            <i className={submittingAll ? "fas fa-circle-notch fa-spin" : "fas fa-paper-plane"}></i> {submittingAll ? 'Submitting...' : 'Submit All to Admin'}
+                          <button className="sd-btn sd-btn-primary" onClick={handleSubmitAllResults} disabled={submittingAll || courses.length === 0}>
+                            <i className={submittingAll ? 'fas fa-circle-notch fa-spin' : 'fas fa-paper-plane'}></i>{' '}
+                            {submittingAll ? 'Submitting...' : 'Submit All Results'}
                           </button>
                         </div>
                       </div>
+
                       <div className="sd-card">
                         <div className="sd-table-wrapper">
                           <table className="sd-table">
                             <thead>
                               <tr>
-                                <th>Code</th>
-                                <th>Course Name</th>
-                                <th>Semester</th>
-                                <th>Status</th>
-                                <th>Action</th>
+                                <th>Code</th><th>Course Name</th><th>Semester</th><th>Status</th><th>Action</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -1269,6 +1337,137 @@ const StaffDashboard = () => {
                       showSuccess={showSuccess}
                     />
                   )}
+                </div>
+              )}
+
+              {/* ══════════ PAYSLIPS TAB ══════════ */}
+              {activeTab === 'payslips' && (
+                <div className="sd-tab-fade">
+                  <div className="sd-page-header">
+                    <div>
+                      <h2 className="sd-page-title">My Payslips</h2>
+                      <p className="sd-page-sub">View and download your monthly salary statements.</p>
+                    </div>
+                  </div>
+                  <div className="sd-card">
+                    <div className="sd-table-wrapper">
+                      <table className="sd-table">
+                        <thead>
+                          <tr><th>Month</th><th>Gross Pay</th><th>Net Pay</th><th>Status</th><th>Action</th></tr>
+                        </thead>
+                        <tbody>
+                          {personalPayroll.length === 0 ? (
+                            <tr><td colSpan={5} className="sd-empty">No payslips found.</td></tr>
+                          ) : personalPayroll.map(p => (
+                            <tr key={p.id}>
+                              <td>{p.month}</td>
+                              <td>ZMW {p.grossPay?.toLocaleString() || p.amount?.toLocaleString()}</td>
+                              <td style={{ fontWeight: 700, color: '#059669' }}>ZMW {p.netPay?.toLocaleString() || p.amount?.toLocaleString()}</td>
+                              <td><Badge status={p.status} /></td>
+                              <td><button className="sd-dl-btn"><i className="fas fa-download"></i> PDF</button></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ══════════ LEAVE TAB ══════════ */}
+              {activeTab === 'leaves' && (
+                <div className="sd-tab-fade">
+                  <div className="sd-page-header">
+                    <div>
+                      <h2 className="sd-page-title">Leave Management</h2>
+                      <p className="sd-page-sub">Track your leave requests and balances.</p>
+                    </div>
+                    <button className="sd-btn sd-btn-primary" onClick={() => setShowLeaveModal(true)}>
+                      <i className="fas fa-plus"></i> New Leave Request
+                    </button>
+                  </div>
+                  <div className="sd-card">
+                    <div className="sd-table-wrapper">
+                      <table className="sd-table">
+                        <thead>
+                          <tr><th>Type</th><th>Start Date</th><th>End Date</th><th>Status</th></tr>
+                        </thead>
+                        <tbody>
+                          {personalLeaves.length === 0 ? (
+                            <tr><td colSpan={4} className="sd-empty">No leave requests found.</td></tr>
+                          ) : personalLeaves.map(l => (
+                            <tr key={l.id}>
+                              <td>{l.type}</td>
+                              <td>{l.start}</td>
+                              <td>{l.end}</td>
+                              <td><Badge status={l.status} /></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ══════════ DOCUMENTS TAB ══════════ */}
+              {activeTab === 'documents' && (
+                <div className="sd-tab-fade">
+                  <div className="sd-page-header">
+                    <div>
+                      <h2 className="sd-page-title">Personal HR Documents</h2>
+                      <p className="sd-page-sub">Access your contracts, appointment letters, and certifications.</p>
+                    </div>
+                  </div>
+                  <div className="sd-card">
+                    <div className="sd-card-body" style={{ padding: 20 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 20 }}>
+                        {[
+                          { name: 'Employment Contract.pdf', size: '1.2 MB' },
+                          { name: 'Staff Code of Conduct.pdf', size: '850 KB' },
+                          { name: 'Appointment Letter.pdf', size: '450 KB' }
+                        ].map((d, i) => (
+                          <div key={i} className="sd-card" style={{ padding: 15, background: '#f8fafc', display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <i className="fas fa-file-pdf" style={{ color: '#dc2626', fontSize: 24 }}></i>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: 13, fontWeight: 700 }}>{d.name}</div>
+                              <div style={{ fontSize: 11, color: '#64748b' }}>{d.size}</div>
+                            </div>
+                            <button className="sd-icon-btn-sm"><i className="fas fa-download"></i></button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {showLeaveModal && (
+                <div className="sd-modal-overlay">
+                  <div className="sd-modal">
+                    <div className="sd-modal-head">
+                      <h3>Request Leave</h3>
+                      <button className="sd-close-btn" onClick={() => setShowLeaveModal(false)}>&times;</button>
+                    </div>
+                    <div className="sd-modal-body">
+                      <form onSubmit={handleApplyLeave} className="sd-modal-form">
+                        <label>Leave Type</label>
+                        <select value={leaveForm.type} onChange={e => setLeaveForm({ ...leaveForm, type: e.target.value })}>
+                          <option>Annual Leave</option>
+                          <option>Sick Leave</option>
+                          <option>Maternity/Paternity Leave</option>
+                          <option>Compassionate Leave</option>
+                        </select>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15 }}>
+                          <div><label>Start Date</label><input type="date" required onChange={e => setLeaveForm({ ...leaveForm, start: e.target.value })} /></div>
+                          <div><label>End Date</label><input type="date" required onChange={e => setLeaveForm({ ...leaveForm, end: e.target.value })} /></div>
+                        </div>
+                        <label>Reason</label>
+                        <textarea value={leaveForm.reason} onChange={e => setLeaveForm({ ...leaveForm, reason: e.target.value })} placeholder="Optional reason..." />
+                        <button type="submit" className="sd-btn sd-btn-primary" style={{ width: '100%', marginTop: 20 }}>Submit Request</button>
+                      </form>
+                    </div>
+                  </div>
                 </div>
               )}
             </>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   collection, query, where, getDocs, doc, setDoc,
-  updateDoc, serverTimestamp, addDoc, orderBy
+  updateDoc, serverTimestamp, addDoc, orderBy, writeBatch
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { calculateGrade, getGradePoints } from '../utils/resultUtils';
@@ -84,7 +84,7 @@ const ResultEntry = ({ lecturerId, course, onBack, showSuccess }) => {
     if (!selectedExamId || activeSubTab !== 'submissions') return;
 
     const courseId = course.docId || course.id;
-    
+
     // Fetch questions for context in the detailed view
     getExamQuestions(courseId, selectedExamId).then(setExamQuestions);
 
@@ -99,9 +99,9 @@ const ResultEntry = ({ lecturerId, course, onBack, showSuccess }) => {
     return () => unsub();
   }, [selectedExamId, activeSubTab, course.docId, course.id]);
 
-  const selectedExam = useMemo(() => 
-    exams.find(e => e.id === selectedExamId), 
-  [exams, selectedExamId]);
+  const selectedExam = useMemo(() =>
+    exams.find(e => e.id === selectedExamId),
+    [exams, selectedExamId]);
 
   const handleScoreChange = (studentDocId, field, value) => {
     const val = value === '' ? '' : Math.min(field === 'caScore' ? 40 : 60, Math.max(0, parseFloat(value) || 0));
@@ -127,6 +127,9 @@ const ResultEntry = ({ lecturerId, course, onBack, showSuccess }) => {
   const saveResults = async (status = 'draft') => {
     setSubmitting(true);
     try {
+      const batch = writeBatch(db);
+      let count = 0;
+
       for (const student of students) {
         const res = results[student.docId];
         if (!res) continue;
@@ -135,7 +138,7 @@ const ResultEntry = ({ lecturerId, course, onBack, showSuccess }) => {
           studentId: student.docId,
           studentName: student.name,
           studentRegNo: student.studentId || student.id,
-          courseId: course.id,
+          courseId: course.docId || course.id,
           courseCode: course.code,
           courseName: course.name,
           caScore: parseFloat(res.caScore) || 0,
@@ -146,20 +149,28 @@ const ResultEntry = ({ lecturerId, course, onBack, showSuccess }) => {
           status: status,
           submittedBy: lecturerId,
           updatedAt: serverTimestamp(),
-          semester: course.semester
+          semester: course.semester || 'Current'
         };
 
         if (res.id) {
-          await updateDoc(doc(db, 'results', res.id), resultData);
+          batch.update(doc(db, 'results', res.id), resultData);
         } else {
-          await addDoc(collection(db, 'results'), resultData);
+          // Generate a new doc ref for fresh results
+          const newDocRef = doc(collection(db, 'results'));
+          batch.set(newDocRef, resultData);
         }
+        count++;
       }
-      showSuccess(status === 'submitted' ? 'Results submitted for approval!' : 'Draft saved successfully!');
+
+      if (count > 0) {
+        await batch.commit();
+      }
+
+      showSuccess(status === 'submitted' ? `Successfully submitted ${count} results for approval!` : 'Draft saved successfully!');
       if (status === 'submitted') onBack();
     } catch (err) {
       console.error("Error saving results:", err);
-      alert("Failed to save results.");
+      alert("Failed to save results. " + (err.message || ''));
     } finally {
       setSubmitting(false);
     }
@@ -235,12 +246,12 @@ const ResultEntry = ({ lecturerId, course, onBack, showSuccess }) => {
 
       {/* ── SUB-TABS NAVIGATION ── */}
       <div className="sd-tabs" style={{ marginBottom: 24, borderBottom: '1px solid #e2e8f0', display: 'flex', gap: 30 }}>
-        <button 
+        <button
           onClick={() => setActiveSubTab('direct')}
-          style={{ 
-            padding: '12px 4px', 
-            background: 'none', 
-            border: 'none', 
+          style={{
+            padding: '12px 4px',
+            background: 'none',
+            border: 'none',
             borderBottom: activeSubTab === 'direct' ? '3px solid var(--primary-color)' : '3px solid transparent',
             color: activeSubTab === 'direct' ? 'var(--primary-color)' : '#64748b',
             fontWeight: 600,
@@ -251,12 +262,12 @@ const ResultEntry = ({ lecturerId, course, onBack, showSuccess }) => {
           <i className="fas fa-keyboard" style={{ marginRight: 8 }}></i>
           Direct Score Entry
         </button>
-        <button 
+        <button
           onClick={() => setActiveSubTab('submissions')}
-          style={{ 
-            padding: '12px 4px', 
-            background: 'none', 
-            border: 'none', 
+          style={{
+            padding: '12px 4px',
+            background: 'none',
+            border: 'none',
             borderBottom: activeSubTab === 'submissions' ? '3px solid var(--primary-color)' : '3px solid transparent',
             color: activeSubTab === 'submissions' ? 'var(--primary-color)' : '#64748b',
             fontWeight: 600,
@@ -406,7 +417,7 @@ const ResultEntry = ({ lecturerId, course, onBack, showSuccess }) => {
                         const answer = viewingSubmission.answers?.[q.id];
                         const breakdown = viewingSubmission.questionBreakdown?.find(b => b.questionId === q.id);
                         const isCorrect = breakdown?.awardedMarks === breakdown?.maxMarks && breakdown?.maxMarks > 0;
-                        
+
                         /* 
                            FLOW: For each question in the exam, we look up the student's answer 
                            from the submission's 'answers' map. We then show the question text,
@@ -421,7 +432,7 @@ const ResultEntry = ({ lecturerId, course, onBack, showSuccess }) => {
                               </span>
                             </div>
                             <div style={{ fontSize: 15, color: '#1e293b', marginBottom: 12 }}>{q.question}</div>
-                            
+
                             <div style={{ background: 'white', padding: 12, borderRadius: 8, border: '1px solid #f1f5f9' }}>
                               <div style={{ fontSize: 11, color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700, marginBottom: 4 }}>Student's Answer:</div>
                               <div style={{ fontSize: 14, color: '#475569', fontWeight: 600 }}>
@@ -474,8 +485,8 @@ const ResultEntry = ({ lecturerId, course, onBack, showSuccess }) => {
                                 {sub.submittedAt?.toDate?.() ? sub.submittedAt.toDate().toLocaleString() : '—'}
                               </td>
                               <td>
-                                <button 
-                                  className="sd-btn sd-btn-white sd-btn-sm" 
+                                <button
+                                  className="sd-btn sd-btn-white sd-btn-sm"
                                   onClick={() => setViewingSubmission(sub)}
                                 >
                                   <i className="fas fa-eye"></i> View Answers

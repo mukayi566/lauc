@@ -38,6 +38,8 @@ const ITDashboard = () => {
     const [showPassModal, setShowPassModal] = useState(false);
     const [passForm, setPassForm] = useState({ new: '', confirm: '' });
     const [updatingPass, setUpdatingPass] = useState(false);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
 
     useEffect(() => {
         if (!currentUser) return;
@@ -127,8 +129,11 @@ const ITDashboard = () => {
                 </div>
             )}
 
+            {/* Overlay */}
+            {isSidebarOpen && <div className="sd-overlay" onClick={() => setIsSidebarOpen(false)} />}
+
             {/* Sidebar */}
-            <aside className="sd-sidebar">
+            <aside className={`sd-sidebar ${isSidebarOpen ? 'open' : ''}`}>
                 <div className="sd-sidebar-header">
                     <div className="sd-sidebar-logo">
                         <div className="sd-logo-icon" style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.2)' }}>
@@ -153,24 +158,24 @@ const ITDashboard = () => {
 
                 <nav className="sd-nav">
                     <div className="sd-nav-group">Main Operations</div>
-                    <button className={`sd-nav-link ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>
+                    <button className={`sd-nav-link ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => { setActiveTab('overview'); setIsSidebarOpen(false); }}>
                         <i className="fas fa-chart-line"></i> Dashboard {activeTab === 'overview' && <span className="sd-nav-indicator"></span>}
                     </button>
-                    <button className={`sd-nav-link ${activeTab === 'infrastructure' ? 'active' : ''}`} onClick={() => setActiveTab('infrastructure')}>
+                    <button className={`sd-nav-link ${activeTab === 'infrastructure' ? 'active' : ''}`} onClick={() => { setActiveTab('infrastructure'); setIsSidebarOpen(false); }}>
                         <i className="fas fa-network-wired"></i> Live Infrastructure {activeTab === 'infrastructure' && <span className="sd-nav-indicator"></span>}
                     </button>
-                    <button className={`sd-nav-link ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}>
+                    <button className={`sd-nav-link ${activeTab === 'users' ? 'active' : ''}`} onClick={() => { setActiveTab('users'); setIsSidebarOpen(false); }}>
                         <i className="fas fa-user-shield"></i> Access Control {activeTab === 'users' && <span className="sd-nav-indicator"></span>}
                     </button>
-                    <button className={`sd-nav-link ${activeTab === 'tickets' ? 'active' : ''}`} onClick={() => setActiveTab('tickets')}>
+                    <button className={`sd-nav-link ${activeTab === 'tickets' ? 'active' : ''}`} onClick={() => { setActiveTab('tickets'); setIsSidebarOpen(false); }}>
                         <i className="fas fa-ticket-alt"></i> Support Tickets {activeTab === 'tickets' && <span className="sd-nav-indicator"></span>}
                     </button>
 
                     <div className="sd-nav-group" style={{ marginTop: 20 }}>System Maintenance</div>
-                    <button className={`sd-nav-link ${activeTab === 'logs' ? 'active' : ''}`} onClick={() => setActiveTab('logs')}>
+                    <button className={`sd-nav-link ${activeTab === 'logs' ? 'active' : ''}`} onClick={() => { setActiveTab('logs'); setIsSidebarOpen(false); }}>
                         <i className="fas fa-terminal"></i> Audit Logs
                     </button>
-                    <button className={`sd-nav-link ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>
+                    <button className={`sd-nav-link ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => { setActiveTab('settings'); setIsSidebarOpen(false); }}>
                         <i className="fas fa-sliders-h"></i> System Settings
                     </button>
                 </nav>
@@ -185,7 +190,7 @@ const ITDashboard = () => {
             {/* Main Content */}
             <main className="sd-body">
                 <header className="sd-topbar">
-                    <button className="sd-hamburger"><i className="fas fa-bars"></i></button>
+                    <button className="sd-hamburger" onClick={() => setIsSidebarOpen(!isSidebarOpen)}><i className="fas fa-bars"></i></button>
                     <div className="sd-topbar-title">
                         {activeTab.charAt(0).toUpperCase() + activeTab.slice(1).replace('-', ' ')}
                     </div>

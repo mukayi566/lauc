@@ -3,7 +3,7 @@ import { QRCodeCanvas } from 'qrcode.react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
-  doc, getDoc, setDoc, updateDoc,
+  doc, getDoc, setDoc, updateDoc, deleteDoc,
   collection, getDocs, addDoc, onSnapshot,
   serverTimestamp, query, orderBy, where
 } from 'firebase/firestore';
@@ -13,12 +13,18 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import toast from 'react-hot-toast';
 import StudentExamView from '../components/lecturer/StudentExamView';
+import PaymentGate from '../components/PaymentGate';
+import { usePaymentGate } from '../hooks/usePaymentGate';
 
 /* ─────────────────────────────────────────────────────────────────
    HELPERS
 ───────────────────────────────────────────────────────────────── */
-const ZMW = (amount) =>
-  `K ${Number(amount).toLocaleString('en-ZM', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const ZMW = (amount) => {
+  const isNeg = Number(amount) < 0;
+  const abs = Math.abs(Number(amount));
+  const val = abs.toLocaleString('en-ZM', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return `${isNeg ? '-' : ''}K ${val}`;
+};
 
 const Badge = ({ status }) => {
   const map = {
@@ -113,6 +119,9 @@ const StudentDashboard = () => {
 
   const uid = currentUser?.uid;
 
+  // ── 50% Payment Gate (real-time, Finance-verified) ──
+  const payGate = usePaymentGate(uid);
+
   /* ══════════════════════════════════════════════
      SEED + LOAD from Firestore
   ══════════════════════════════════════════════ */
@@ -198,14 +207,24 @@ const StudentDashboard = () => {
       const loadedTx = txSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       setTransactions(loadedTx);
 
-      const bal = loadedTx.reduce((s, t) => {
-        const amt = Number(t.amount) || 0;
-        return t.type === 'credit' ? s - amt : s + amt;
-      }, 0);
-      const currentBalance = Math.max(0, bal);
+      // Fetch Verified Payments for balanced calculation
+      const vPayQuery = query(collection(db, 'payments'), where('studentUid', '==', uid), where('status', '==', 'Verified'));
+      const vSnap = await getDocs(vPayQuery);
+      const totalVerifiedPaid = vSnap.docs.reduce((acc, d) => acc + (Number(d.data().amount) || 0), 0);
+
+      // Total billed (Debits) - Use a fallback of 15,000 if no debits are found
+      const FALLBACK_FEE = 15000;
+      const dbDebits = loadedTx.reduce((s, t) => (t.type === 'debit' ? s + (Number(t.amount) || 0) : s), 0);
+      const totalDebits = dbDebits || FALLBACK_FEE;
+
+      // Unified DB-driven balance: Total Debits - Verified Payments
+      // Allows negative values to show credit balance if overpaid (e.g. -800)
+      const currentBalance = totalDebits - totalVerifiedPaid;
       setBalanceDue(currentBalance);
 
       /* ── exam docket ── */
+      const is50PercentMet = totalVerifiedPaid >= (totalDebits * 0.5);
+
       const docketRef2 = doc(db, 'students', uid, 'examDocket', 'current');
       const docketSnap = await getDoc(docketRef2);
       let docketData;
@@ -215,7 +234,7 @@ const StudentDashboard = () => {
           semester: 'Semester 2',
           examPeriod: 'June 9 – June 27, 2026',
           clearance: {
-            fees: currentBalance === 0,
+            fees: is50PercentMet,
             library: prof.libraryCleared ?? true,
             hostel: prof.hostelCleared ?? true,
             academic: true,
@@ -238,9 +257,9 @@ const StudentDashboard = () => {
         await setDoc(docketRef2, docketData);
       } else {
         docketData = docketSnap.data();
-        // Dynamically update fees clearance based on current balance
+        // Dynamically update fees clearance based on 50% threshold
         if (docketData.clearance) {
-          docketData.clearance.fees = currentBalance === 0;
+          docketData.clearance.fees = is50PercentMet;
         }
         if (!docketData.exams || docketData.exams.length === 0) {
           const dates = ['2026-06-10', '2026-06-12', '2026-06-14', '2026-06-16', '2026-06-18', '2026-06-20'];
@@ -381,12 +400,45 @@ const StudentDashboard = () => {
     const updated = notifications.map(n => ({ ...n, read: true }));
     setNotifications(updated);
     try {
-      for (const n of updated) {
+      for (const n of notifications) {
         if (!n.read && n.id) {
           await updateDoc(doc(db, 'students', uid, 'notifications', n.id), { read: true });
         }
       }
-    } catch { }
+    } catch (err) {
+      console.error("Error marking all read:", err);
+    }
+  };
+
+  const deleteNotification = async (id) => {
+    // Optimistic update
+    setNotifications(prev => prev.filter(n => n.id !== id));
+    try {
+      await deleteDoc(doc(db, 'students', uid, 'notifications', id));
+      toast.success("Notification deleted", { duration: 2000 });
+    } catch (err) {
+      console.error("Error deleting notification:", err);
+      toast.error("Failed to delete notification");
+      // Revert if failed? (Optional, usually deletions are safe to leave optimized)
+    }
+  };
+
+  const clearAllNotifications = async () => {
+    if (notifications.length === 0) return;
+    if (!window.confirm("Are you sure you want to clear all notifications?")) return;
+
+    const ids = notifications.map(n => n.id);
+    setNotifications([]); // Optimistic update
+
+    try {
+      // Direct deletion from Firestore for each
+      const promises = ids.map(id => deleteDoc(doc(db, 'students', uid, 'notifications', id)));
+      await Promise.all(promises);
+      toast.success("Notifications cleared");
+    } catch (err) {
+      console.error("Error clearing notifications:", err);
+      toast.error("Failed to clear some notifications");
+    }
   };
 
   /* Pay fees */
@@ -459,7 +511,7 @@ const StudentDashboard = () => {
             const a = Number(t.amount) || 0;
             return t.type === 'credit' ? s - a : s + a;
           }, 0);
-          setBalanceDue(Math.max(0, bal));
+          setBalanceDue(bal);
 
           setPayStep(4);
           setPaySuccessMsg(`Receipt #${receiptNo}`);
@@ -758,7 +810,23 @@ const StudentDashboard = () => {
                 onClick={e => {
                   e.preventDefault();
                   if (item.id === 'elearning') {
-                    navigate('/elearning');
+                    if (!payGate.hasAccess && !payGate.loading) {
+                      toast.error(
+                        'Pay at least 50% of your fees to access E-Learning.',
+                        { icon: '🔒', duration: 4000 }
+                      );
+                    } else {
+                      navigate('/elearning');
+                    }
+                  } else if (item.id === 'docket') {
+                    if (!payGate.hasAccess && !payGate.loading) {
+                      toast.error(
+                        'Pay at least 50% of your fees to access the Exam Docket.',
+                        { duration: 4000 }
+                      );
+                    } else {
+                      setActiveTab(item.id);
+                    }
                   } else {
                     setActiveTab(item.id);
                   }
@@ -813,17 +881,33 @@ const StudentDashboard = () => {
                 <div className="sd-notif-panel">
                   <div className="sd-notif-header">
                     <span>Notifications</span>
-                    <button className="sd-link-btn" onClick={markAllRead}>Mark all read</button>
-                  </div>
-                  {notifications.map(n => (
-                    <div key={n.id} className={`sd-notif-item ${!n.read ? 'unread' : ''}`}>
-                      <i className={`fas ${n.icon}`} style={{ color: n.color, marginTop: 2 }}></i>
-                      <div>
-                        <div className="sd-notif-text">{n.text}</div>
-                        <div className="sd-notif-time">{n.time}</div>
-                      </div>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <button className="sd-link-btn" onClick={markAllRead}>Mark read</button>
+                      <button className="sd-link-btn" style={{ color: '#ef4444' }} onClick={clearAllNotifications}>Clear all</button>
                     </div>
-                  ))}
+                  </div>
+                  <div style={{ maxHeight: '380px', overflowY: 'auto' }}>
+                    {notifications.length === 0 ? (
+                      <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
+                        No notifications.
+                      </div>
+                    ) : notifications.map(n => (
+                      <div key={n.id} className={`sd-notif-item ${!n.read ? 'unread' : ''}`}>
+                        <i className={`fas ${n.icon}`} style={{ color: n.color, marginTop: 2 }}></i>
+                        <div style={{ flex: 1 }}>
+                          <div className="sd-notif-text">{n.text}</div>
+                          <div className="sd-notif-time">{n.time}</div>
+                        </div>
+                        <button
+                          className="sd-notif-delete-btn"
+                          onClick={(e) => { e.stopPropagation(); deleteNotification(n.id); }}
+                          title="Delete"
+                        >
+                          <i className="fas fa-trash-alt"></i>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -1025,11 +1109,17 @@ const StudentDashboard = () => {
                   <div className="sd-card" style={{ marginTop: 24 }}>
                     <div className="sd-card-header">
                       <span>Notifications</span>
-                      <button className="sd-link-btn" onClick={markAllRead}>Mark all read</button>
+                      <div style={{ display: 'flex', gap: '12px' }}>
+                        <button className="sd-link-btn" onClick={markAllRead}>Mark all read</button>
+                        <button className="sd-link-btn" style={{ color: '#ef4444' }} onClick={clearAllNotifications}>Clear all</button>
+                      </div>
                     </div>
                     <div className="sd-card-body" style={{ padding: 0 }}>
                       {notifications.length === 0
-                        ? <div style={{ padding: '20px', color: '#94a3b8', textAlign: 'center' }}>No notifications.</div>
+                        ? <div style={{ padding: '40px 20px', color: '#94a3b8', textAlign: 'center' }}>
+                          <i className="fas fa-bell-slash" style={{ fontSize: '32px', marginBottom: '12px', opacity: 0.5 }}></i>
+                          <div>No notifications.</div>
+                        </div>
                         : notifications.map(n => (
                           <div key={n.id} className={`sd-notif-row ${!n.read ? 'unread' : ''}`}>
                             <div style={{ color: n.color, fontSize: 18 }}><i className={`fas ${n.icon}`}></i></div>
@@ -1037,7 +1127,16 @@ const StudentDashboard = () => {
                               <div className="sd-notif-text">{n.text}</div>
                               <div className="sd-notif-time">{n.time}</div>
                             </div>
-                            {!n.read && <span className="sd-unread-dot"></span>}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              {!n.read && <span className="sd-unread-dot"></span>}
+                              <button
+                                className="sd-notif-delete-btn"
+                                onClick={() => deleteNotification(n.id)}
+                                title="Delete"
+                              >
+                                <i className="fas fa-trash-alt"></i>
+                              </button>
+                            </div>
                           </div>
                         ))}
                     </div>
@@ -1107,86 +1206,103 @@ const StudentDashboard = () => {
 
               {/* ═══════════ RESULTS ═══════════ */}
               {activeTab === 'results' && (
-                <div className="sd-tab-fade">
-                  {downloadMsg && (
-                    <div className="sd-toast"><i className="fas fa-check-circle"></i> {downloadMsg}</div>
-                  )}
-                  <div className="sd-page-header">
-                    <div>
-                      <h2 className="sd-page-title">Academic Results</h2>
-                      <p className="sd-page-sub">Cumulative GPA: <strong style={{ color: '#0d9488' }}>{cgpa}</strong></p>
-                    </div>
-                  </div>
-
-                  {/* GPA bar chart */}
-                  {results.length > 0 && (
-                    <div className="sd-card" style={{ marginBottom: 24 }}>
-                      <div className="sd-card-header"><span>GPA Trend</span></div>
-                      <div className="sd-card-body">
-                        <div className="sd-gpa-bars">
-                          {results.map(r => (
-                            <div key={r.semester} className="sd-gpa-bar-grp">
-                              <div className="sd-gpa-bar-wrap">
-                                <div className="sd-gpa-bar" style={{ height: `${(parseFloat(r.gpa) / 4) * 100}%` }}></div>
-                              </div>
-                              <div className="sd-gpa-val">{r.gpa}</div>
-                              <div className="sd-gpa-sem">{r.semester}</div>
-                            </div>
-                          ))}
-                        </div>
+                !payGate.loading && !payGate.hasAccess ? (
+                  <div className="sd-tab-fade">
+                    <div className="sd-page-header">
+                      <div>
+                        <h2 className="sd-page-title">Academic Results</h2>
+                        <p className="sd-page-sub">Restricted — insufficient fee payment</p>
                       </div>
                     </div>
-                  )}
-
-                  <div className="sd-card">
-                    <div className="sd-card-header"><span>Published Results</span></div>
-                    {results.length === 0
-                      ? <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}>No results have been published yet.</div>
-                      : (
-                        <div className="sd-table-wrapper">
-                          <table className="sd-table">
-                            <thead>
-                              <tr>
-                                <th>Code</th>
-                                <th>Course Name</th>
-                                <th>CA</th>
-                                <th>Exam</th>
-                                <th>Total</th>
-                                <th>Grade</th>
-                                <th>GPA</th>
-                                <th>Actions</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {results.map(r => (
-                                <tr key={r.id}>
-                                  <td className="sd-td-bold">{r.courseCode}</td>
-                                  <td>{r.courseName}</td>
-                                  <td>{r.caScore}</td>
-                                  <td>{r.examScore}</td>
-                                  <td><strong>{r.total}</strong></td>
-                                  <td><span className="sd-grade">{r.grade}</span></td>
-                                  <td>{parseFloat(r.gpa).toFixed(2)}</td>
-                                  <td>
-                                    {['Supplementary', 'Deferred', 'F', 'Failed (F)'].includes(r.grade) && (
-                                      <button
-                                        className="sd-btn sd-btn-ghost sd-btn-xs"
-                                        onClick={() => openAppealForm(r)}
-                                        disabled={appeals.find(a => a.courseCode === r.courseCode && a.status !== 'Resolved')}
-                                      >
-                                        <i className="fas fa-gavel"></i>
-                                        {appeals.find(a => a.courseCode === r.courseCode && a.status !== 'Resolved') ? ' Appeal Active' : ' Appeal Result'}
-                                      </button>
-                                    )}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
+                    <PaymentGate
+                      percentPaid={payGate.percentPaid}
+                      amountPaid={payGate.amountPaid}
+                      amountRequired={payGate.amountRequired}
+                      featureName="Exam Results"
+                      onGoToPayments={() => setActiveTab('finance')}
+                    />
                   </div>
-                </div>
+                ) :
+                  <div className="sd-tab-fade">
+                    {downloadMsg && (
+                      <div className="sd-toast"><i className="fas fa-check-circle"></i> {downloadMsg}</div>
+                    )}
+                    <div className="sd-page-header">
+                      <div>
+                        <h2 className="sd-page-title">Academic Results</h2>
+                        <p className="sd-page-sub">Cumulative GPA: <strong style={{ color: '#0d9488' }}>{cgpa}</strong></p>
+                      </div>
+                    </div>
+
+                    {/* GPA bar chart */}
+                    {results.length > 0 && (
+                      <div className="sd-card" style={{ marginBottom: 24 }}>
+                        <div className="sd-card-header"><span>GPA Trend</span></div>
+                        <div className="sd-card-body">
+                          <div className="sd-gpa-bars">
+                            {results.map(r => (
+                              <div key={r.semester} className="sd-gpa-bar-grp">
+                                <div className="sd-gpa-bar-wrap">
+                                  <div className="sd-gpa-bar" style={{ height: `${(parseFloat(r.gpa) / 4) * 100}%` }}></div>
+                                </div>
+                                <div className="sd-gpa-val">{r.gpa}</div>
+                                <div className="sd-gpa-sem">{r.semester}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="sd-card">
+                      <div className="sd-card-header"><span>Published Results</span></div>
+                      {results.length === 0
+                        ? <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}>No results have been published yet.</div>
+                        : (
+                          <div className="sd-table-wrapper">
+                            <table className="sd-table">
+                              <thead>
+                                <tr>
+                                  <th>Code</th>
+                                  <th>Course Name</th>
+                                  <th>CA</th>
+                                  <th>Exam</th>
+                                  <th>Total</th>
+                                  <th>Grade</th>
+                                  <th>GPA</th>
+                                  <th>Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {results.map(r => (
+                                  <tr key={r.id}>
+                                    <td className="sd-td-bold">{r.courseCode}</td>
+                                    <td>{r.courseName}</td>
+                                    <td>{r.caScore}</td>
+                                    <td>{r.examScore}</td>
+                                    <td><strong>{r.total}</strong></td>
+                                    <td><span className="sd-grade">{r.grade}</span></td>
+                                    <td>{parseFloat(r.gpa).toFixed(2)}</td>
+                                    <td>
+                                      {['Supplementary', 'Deferred', 'F', 'Failed (F)'].includes(r.grade) && (
+                                        <button
+                                          className="sd-btn sd-btn-ghost sd-btn-xs"
+                                          onClick={() => openAppealForm(r)}
+                                          disabled={appeals.find(a => a.courseCode === r.courseCode && a.status !== 'Resolved')}
+                                        >
+                                          <i className="fas fa-gavel"></i>
+                                          {appeals.find(a => a.courseCode === r.courseCode && a.status !== 'Resolved') ? ' Appeal Active' : ' Appeal Result'}
+                                        </button>
+                                      )}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                    </div>
+                  </div>
               )}
 
               {/* ══════════ APPEALS TAB ══════════ */}
@@ -1396,307 +1512,343 @@ const StudentDashboard = () => {
               )}
               {/* ═══════════ EXAM DOCKET ═══════════ */}
               {activeTab === 'online-exams' && (
-                <StudentExamView
-                  student={student}
-                  courses={courses}
-                  courseCatalog={availableCourses}
-                  showError={(msg) => setDbError(msg)}
-                  showSuccess={(msg) => {
-                    setExamSuccessMsg(msg);
-                    setTimeout(() => setExamSuccessMsg(''), 5000);
-                  }}
-                />
+                !payGate.loading && !payGate.hasAccess ? (
+                  <div className="sd-tab-fade">
+                    <div className="sd-page-header">
+                      <div>
+                        <h2 className="sd-page-title">Online Exams</h2>
+                        <p className="sd-page-sub">Restricted — clear 50% fees to access</p>
+                      </div>
+                    </div>
+                    <PaymentGate
+                      percentPaid={payGate.percentPaid}
+                      amountPaid={payGate.amountPaid}
+                      amountRequired={payGate.amountRequired}
+                      featureName="Online Exams"
+                      onGoToPayments={() => setActiveTab('finance')}
+                    />
+                  </div>
+                ) : (
+                  <StudentExamView
+                    student={student}
+                    courses={courses}
+                    courseCatalog={availableCourses}
+                    showError={(msg) => setDbError(msg)}
+                    showSuccess={(msg) => {
+                      setExamSuccessMsg(msg);
+                      setTimeout(() => setExamSuccessMsg(''), 5000);
+                    }}
+                  />
+                )
               )}
 
               {activeTab === 'docket' && (
-                <div className="sd-tab-fade">
-                  <div className="sd-page-header">
-                    <div>
-                      <h2 className="sd-page-title">Exam Docket</h2>
-                      <p className="sd-page-sub">{examDocket?.academicYear} · {examDocket?.semester}</p>
-                    </div>
-                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                      <div className="sd-docket-view-toggle">
-                        <button
-                          className={`sd-toggle-btn ${docketView === 'docket' ? 'active' : ''}`}
-                          onClick={() => setDocketView('docket')}
-                        >
-                          <i className="fas fa-id-card"></i> Docket
-                        </button>
-                        <button
-                          className={`sd-toggle-btn ${docketView === 'timetable' ? 'active' : ''}`}
-                          onClick={() => setDocketView('timetable')}
-                        >
-                          <i className="fas fa-calendar-week"></i> Timetable
-                        </button>
+                !payGate.loading && !payGate.hasAccess ? (
+                  <div className="sd-tab-fade">
+                    <div className="sd-page-header">
+                      <div>
+                        <h2 className="sd-page-title">Exam Docket</h2>
+                        <p className="sd-page-sub">Restricted — clear 50% fees to access</p>
                       </div>
-                      {clearanceStatus?.cleared && (
-                        <>
-                          <button className="sd-btn sd-btn-primary" onClick={downloadDocketPdf} disabled={generatingPdf}>
-                            {generatingPdf
-                              ? <><i className="fas fa-circle-notch fa-spin"></i> Generating…</>
-                              : <><i className="fas fa-download"></i> Download PDF</>}
-                          </button>
-                          <button className="sd-btn sd-btn-ghost" onClick={() => window.print()}>
-                            <i className="fas fa-print"></i> Print
-                          </button>
-                        </>
-                      )}
                     </div>
+                    <PaymentGate
+                      percentPaid={payGate.percentPaid}
+                      amountPaid={payGate.amountPaid}
+                      amountRequired={payGate.amountRequired}
+                      featureName="Exam Docket"
+                      onGoToPayments={() => setActiveTab('finance')}
+                    />
                   </div>
-
-                  {/* ── Clearance Status Banner ── */}
-                  {clearanceStatus && (
-                    <div className={`sd-clearance-banner ${clearanceStatus.cleared ? 'cleared' : 'blocked'}`}>
-                      <div className="sd-clearance-icon">
-                        <i className={`fas ${clearanceStatus.cleared ? 'fa-shield-alt' : 'fa-ban'}`}></i>
+                ) : (
+                  <div className="sd-tab-fade">
+                    <div className="sd-page-header">
+                      <div>
+                        <h2 className="sd-page-title">Exam Docket</h2>
+                        <p className="sd-page-sub">{examDocket?.academicYear} · {examDocket?.semester}</p>
                       </div>
-                      <div className="sd-clearance-body">
-                        <div className="sd-clearance-title">
-                          {clearanceStatus.cleared ? 'You are Cleared for Examinations' : 'Docket Access Blocked'}
+                      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                        <div className="sd-docket-view-toggle">
+                          <button
+                            className={`sd-toggle-btn ${docketView === 'docket' ? 'active' : ''}`}
+                            onClick={() => setDocketView('docket')}
+                          >
+                            <i className="fas fa-id-card"></i> Docket
+                          </button>
+                          <button
+                            className={`sd-toggle-btn ${docketView === 'timetable' ? 'active' : ''}`}
+                            onClick={() => setDocketView('timetable')}
+                          >
+                            <i className="fas fa-calendar-week"></i> Timetable
+                          </button>
                         </div>
-                        {clearanceStatus.cleared
-                          ? <div className="sd-clearance-sub">All clearance checks passed. Your exam docket is valid and ready to download.</div>
-                          : (
-                            <ul className="sd-clearance-reasons">
-                              {clearanceStatus.blockedReasons.map((r, i) => (
-                                <li key={i}><i className="fas fa-exclamation-circle"></i> {r}</li>
-                              ))}
-                            </ul>
-                          )
-                        }
-                      </div>
-                      <div className="sd-clearance-badge-wrap">
-                        <span className={`sd-clearance-badge ${clearanceStatus.cleared ? 'badge-cleared' : 'badge-blocked'}`}>
-                          <i className={`fas ${clearanceStatus.cleared ? 'fa-check' : 'fa-times'}`}></i>
-                          {clearanceStatus.cleared ? 'Cleared' : 'Blocked'}
-                        </span>
+                        {clearanceStatus?.cleared && (
+                          <>
+                            <button className="sd-btn sd-btn-primary" onClick={downloadDocketPdf} disabled={generatingPdf}>
+                              {generatingPdf
+                                ? <><i className="fas fa-circle-notch fa-spin"></i> Generating…</>
+                                : <><i className="fas fa-download"></i> Download PDF</>}
+                            </button>
+                            <button className="sd-btn sd-btn-ghost" onClick={() => window.print()}>
+                              <i className="fas fa-print"></i> Print
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
-                  )}
 
-                  {/* ── Clearance Checklist ── */}
-                  {clearanceStatus && (
-                    <div className="sd-clearance-checklist">
-                      {Object.entries(clearanceStatus.details).map(([key, passed]) => {
-                        const labels = {
-                          fees: { icon: 'fa-money-bill-wave', label: 'Tuition Fees' },
-                          library: { icon: 'fa-book', label: 'Library' },
-                          hostel: { icon: 'fa-home', label: 'Hostel' },
-                          academic: { icon: 'fa-graduation-cap', label: 'Academic Standing' },
-                        };
-                        const info = labels[key] || { icon: 'fa-circle', label: key };
-                        return (
-                          <div key={key} className={`sd-clearance-check-item ${passed ? 'passed' : 'failed'}`}>
-                            <div className="sd-cc-icon">
-                              <i className={`fas ${info.icon}`}></i>
-                            </div>
-                            <div className="sd-cc-info">
-                              <div className="sd-cc-label">{info.label}</div>
-                              <div className="sd-cc-status">{passed ? 'Cleared' : 'Not Cleared'}</div>
-                            </div>
-                            <i className={`fas ${passed ? 'fa-check-circle' : 'fa-times-circle'} sd-cc-result`}></i>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {/* ── DOCKET VIEW ── */}
-                  {docketView === 'docket' && (
-                    <>
-                      {!clearanceStatus?.cleared && (
-                        <div className="sd-docket-blocked">
-                          <i className="fas fa-lock"></i>
-                          <h3>Docket Unavailable</h3>
-                          <p>Your exam docket cannot be viewed or downloaded until all clearance holds are resolved. Please visit the relevant offices to clear your account.</p>
+                    {/* ── Clearance Status Banner ── */}
+                    {clearanceStatus && (
+                      <div className={`sd-clearance-banner ${clearanceStatus.cleared ? 'cleared' : 'blocked'}`}>
+                        <div className="sd-clearance-icon">
+                          <i className={`fas ${clearanceStatus.cleared ? 'fa-shield-alt' : 'fa-ban'}`}></i>
                         </div>
-                      )}
-
-                      {clearanceStatus?.cleared && (
-                        <div className="sd-docket-card" ref={docketRef}>
-                          {/* Docket Header */}
-                          <div className="sd-docket-header">
-                            <div className="sd-docket-logo">
-                              <div className="sd-docket-logo-icon"><i className="fas fa-graduation-cap"></i></div>
-                              <div>
-                                <div className="sd-docket-university">Fairview University College</div>
-                                <div className="sd-docket-type">OFFICIAL EXAMINATION DOCKET</div>
-                              </div>
-                            </div>
-                            <div className="sd-docket-header-right">
-                              <div className="sd-docket-qr-wrapper">
-                                <QRCodeCanvas
-                                  value={JSON.stringify({
-                                    id: student.id,
-                                    name: student.name,
-                                    sem: examDocket?.semester,
-                                    year: examDocket?.academicYear,
-                                    v: 'Fairview-verified'
-                                  })}
-                                  size={90}
-                                  level="H"
-                                  includeMargin={false}
-                                  className="sd-docket-qr-img"
-                                />
-                                <span className="sd-qr-caption">Scan to Verify</span>
-                              </div>
-                              <div className="sd-docket-header-meta">
-                                <span className="sd-clearance-badge badge-cleared">
-                                  <i className="fas fa-check"></i> Cleared
-                                </span>
-                                <div className="sd-docket-period">
-                                  <i className="fas fa-calendar"></i> {examDocket?.examPeriod}
-                                </div>
-                              </div>
-                            </div>
+                        <div className="sd-clearance-body">
+                          <div className="sd-clearance-title">
+                            {clearanceStatus.cleared ? 'You are Cleared for Examinations' : 'Docket Access Blocked'}
                           </div>
+                          {clearanceStatus.cleared
+                            ? <div className="sd-clearance-sub">All clearance checks passed. Your exam docket is valid and ready to download.</div>
+                            : (
+                              <ul className="sd-clearance-reasons">
+                                {clearanceStatus.blockedReasons.map((r, i) => (
+                                  <li key={i}><i className="fas fa-exclamation-circle"></i> {r}</li>
+                                ))}
+                              </ul>
+                            )
+                          }
+                        </div>
+                        <div className="sd-clearance-badge-wrap">
+                          <span className={`sd-clearance-badge ${clearanceStatus.cleared ? 'badge-cleared' : 'badge-blocked'}`}>
+                            <i className={`fas ${clearanceStatus.cleared ? 'fa-check' : 'fa-times'}`}></i>
+                            {clearanceStatus.cleared ? 'Cleared' : 'Blocked'}
+                          </span>
+                        </div>
+                      </div>
+                    )}
 
-                          {/* Student Info & Photo Section */}
-                          <div style={{ display: 'flex', borderBottom: '1px solid #e8edf4' }}>
-                            <div className="sd-docket-info-grid" style={{ flex: 1, borderBottom: 'none' }}>
-                              {[
-                                ['Full Name', student.name],
-                                ['Student ID', student.id],
-                                ['Passport / NRC No.', profile?.nrcNumber || profile?.nrc || profile?.passportNumber || profile?.nrcPassportNumber || '—'],
-                                ['Programme', student.program || profile?.program || '—'],
-                                ['School', student.school || profile?.school || '—'],
-                                ['Academic Year', examDocket?.academicYear],
-                                ['Semester', examDocket?.semester],
-                                ['Total Credit Hours', creditHours],
-                              ].map(([k, v]) => (
-                                <div key={k} className="sd-docket-info-item">
-                                  <span className="sd-docket-info-key">{k}</span>
-                                  <span className="sd-docket-info-val">{v || '—'}</span>
-                                </div>
-                              ))}
+                    {/* ── Clearance Checklist ── */}
+                    {clearanceStatus && (
+                      <div className="sd-clearance-checklist">
+                        {Object.entries(clearanceStatus.details).map(([key, passed]) => {
+                          const labels = {
+                            fees: { icon: 'fa-money-bill-wave', label: 'Tuition Fees' },
+                            library: { icon: 'fa-book', label: 'Library' },
+                            hostel: { icon: 'fa-home', label: 'Hostel' },
+                            academic: { icon: 'fa-graduation-cap', label: 'Academic Standing' },
+                          };
+                          const info = labels[key] || { icon: 'fa-circle', label: key };
+                          return (
+                            <div key={key} className={`sd-clearance-check-item ${passed ? 'passed' : 'failed'}`}>
+                              <div className="sd-cc-icon">
+                                <i className={`fas ${info.icon}`}></i>
+                              </div>
+                              <div className="sd-cc-info">
+                                <div className="sd-cc-label">{info.label}</div>
+                                <div className="sd-cc-status">{passed ? 'Cleared' : 'Not Cleared'}</div>
+                              </div>
+                              <i className={`fas ${passed ? 'fa-check-circle' : 'fa-times-circle'} sd-cc-result`}></i>
                             </div>
+                          );
+                        })}
+                      </div>
+                    )}
 
-                            <div className="sd-docket-photo-column" style={{
-                              padding: '24px',
-                              borderLeft: '1px solid #e8edf4',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              background: '#fbfcfd'
-                            }}>
-                              <span className="sd-docket-info-key" style={{ marginBottom: '12px' }}>Registrar Capture</span>
-                              <div className="sd-docket-passport-box">
-                                {profile?.registrarPhotoUrl ? (
-                                  <img src={profile.registrarPhotoUrl} alt="Registrar Capture" className="sd-docket-passport-img" />
-                                ) : (
-                                  <div className="sd-docket-passport-placeholder">
-                                    <i className="fas fa-user"></i>
-                                    <span>Photo</span>
+                    {/* ── DOCKET VIEW ── */}
+                    {docketView === 'docket' && (
+                      <>
+                        {!clearanceStatus?.cleared && (
+                          <div className="sd-docket-blocked">
+                            <i className="fas fa-lock"></i>
+                            <h3>Docket Unavailable</h3>
+                            <p>Your exam docket cannot be viewed or downloaded until all clearance holds are resolved. Please visit the relevant offices to clear your account.</p>
+                          </div>
+                        )}
+
+                        {clearanceStatus?.cleared && (
+                          <div className="sd-docket-card" ref={docketRef}>
+                            {/* Docket Header */}
+                            <div className="sd-docket-header">
+                              <div className="sd-docket-logo">
+                                <div className="sd-docket-logo-icon"><i className="fas fa-graduation-cap"></i></div>
+                                <div>
+                                  <div className="sd-docket-university">Fairview University College</div>
+                                  <div className="sd-docket-type">OFFICIAL EXAMINATION DOCKET</div>
+                                </div>
+                              </div>
+                              <div className="sd-docket-header-right">
+                                <div className="sd-docket-qr-wrapper">
+                                  <QRCodeCanvas
+                                    value={JSON.stringify({
+                                      id: student.id,
+                                      name: student.name,
+                                      sem: examDocket?.semester,
+                                      year: examDocket?.academicYear,
+                                      v: 'Fairview-verified'
+                                    })}
+                                    size={90}
+                                    level="H"
+                                    includeMargin={false}
+                                    className="sd-docket-qr-img"
+                                  />
+                                  <span className="sd-qr-caption">Scan to Verify</span>
+                                </div>
+                                <div className="sd-docket-header-meta">
+                                  <span className="sd-clearance-badge badge-cleared">
+                                    <i className="fas fa-check"></i> Cleared
+                                  </span>
+                                  <div className="sd-docket-period">
+                                    <i className="fas fa-calendar"></i> {examDocket?.examPeriod}
                                   </div>
-                                )}
+                                </div>
                               </div>
                             </div>
-                          </div>
 
-                          {/* Exam Table */}
-                          <div className="sd-docket-table-wrap">
-                            <div className="sd-docket-table-title">
-                              <i className="fas fa-clipboard-list"></i> Registered Examinations
-                            </div>
-                            {(!examDocket?.exams || examDocket.exams.length === 0) ? (
-                              <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}>
-                                No exams found. Please register your courses first.
+                            {/* Student Info & Photo Section */}
+                            <div style={{ display: 'flex', borderBottom: '1px solid #e8edf4' }}>
+                              <div className="sd-docket-info-grid" style={{ flex: 1, borderBottom: 'none' }}>
+                                {[
+                                  ['Full Name', student.name],
+                                  ['Student ID', student.id],
+                                  ['Passport / NRC No.', profile?.nrcNumber || profile?.nrc || profile?.passportNumber || profile?.nrcPassportNumber || '—'],
+                                  ['Programme', student.program || profile?.program || '—'],
+                                  ['School', student.school || profile?.school || '—'],
+                                  ['Academic Year', examDocket?.academicYear],
+                                  ['Semester', examDocket?.semester],
+                                  ['Total Credit Hours', creditHours],
+                                ].map(([k, v]) => (
+                                  <div key={k} className="sd-docket-info-item">
+                                    <span className="sd-docket-info-key">{k}</span>
+                                    <span className="sd-docket-info-val">{v || '—'}</span>
+                                  </div>
+                                ))}
                               </div>
-                            ) : (
-                              <table className="sd-docket-table">
-                                <thead>
-                                  <tr>
-                                    <th>#</th>
-                                    <th>Course Code</th>
-                                    <th>Course Title</th>
-                                    <th>Date</th>
-                                    <th>Time</th>
-                                    <th>Venue</th>
-                                    <th>Signature invigilator</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {examDocket.exams.map((ex, i) => (
-                                    <tr key={ex.code + i}>
-                                      <td className="sd-docket-num">{i + 1}</td>
-                                      <td><span className="sd-code">{ex.code}</span></td>
-                                      <td className="sd-td-bold">{ex.name}</td>
-                                      <td>{ex.date ? new Date(ex.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</td>
-                                      <td><span className="sd-docket-time">{ex.time}</span></td>
-                                      <td>{ex.venue}</td>
-                                      <td><span className="sd-docket-signature" style={{ borderBottom: '1px solid #000', minWidth: '100px', display: 'inline-block' }}>&nbsp;</span></td>
+
+                              <div className="sd-docket-photo-column" style={{
+                                padding: '24px',
+                                borderLeft: '1px solid #e8edf4',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                background: '#fbfcfd'
+                              }}>
+                                <span className="sd-docket-info-key" style={{ marginBottom: '12px' }}>Registrar Capture</span>
+                                <div className="sd-docket-passport-box">
+                                  {profile?.registrarPhotoUrl ? (
+                                    <img src={profile.registrarPhotoUrl} alt="Registrar Capture" className="sd-docket-passport-img" />
+                                  ) : (
+                                    <div className="sd-docket-passport-placeholder">
+                                      <i className="fas fa-user"></i>
+                                      <span>Photo</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Exam Table */}
+                            <div className="sd-docket-table-wrap">
+                              <div className="sd-docket-table-title">
+                                <i className="fas fa-clipboard-list"></i> Registered Examinations
+                              </div>
+                              {(!examDocket?.exams || examDocket.exams.length === 0) ? (
+                                <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}>
+                                  No exams found. Please register your courses first.
+                                </div>
+                              ) : (
+                                <table className="sd-docket-table">
+                                  <thead>
+                                    <tr>
+                                      <th>#</th>
+                                      <th>Course Code</th>
+                                      <th>Course Title</th>
+                                      <th>Date</th>
+                                      <th>Time</th>
+                                      <th>Venue</th>
+                                      <th>Signature invigilator</th>
                                     </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            )}
-                          </div>
-
-                          {/* Footer */}
-                          <div className="sd-docket-footer">
-                            <div>
-                              <i className="fas fa-info-circle"></i>
-                              This docket must be presented at the examination hall. Issued: {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}
+                                  </thead>
+                                  <tbody>
+                                    {examDocket.exams.map((ex, i) => (
+                                      <tr key={ex.code + i}>
+                                        <td className="sd-docket-num">{i + 1}</td>
+                                        <td><span className="sd-code">{ex.code}</span></td>
+                                        <td className="sd-td-bold">{ex.name}</td>
+                                        <td>{ex.date ? new Date(ex.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</td>
+                                        <td><span className="sd-docket-time">{ex.time}</span></td>
+                                        <td>{ex.venue}</td>
+                                        <td><span className="sd-docket-signature" style={{ borderBottom: '1px solid #000', minWidth: '100px', display: 'inline-block' }}>&nbsp;</span></td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              )}
                             </div>
-                            <div>Fairview University College · Academic Registrar's Office</div>
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  )}
 
-                  {/* ── TIMETABLE VIEW ── */}
-                  {docketView === 'timetable' && (
-                    <div className="sd-card" style={{ marginTop: 0 }}>
-                      <div className="sd-card-header">
-                        <span>Exam Timetable</span>
-                        <span className="sd-badge badge-teal">{examDocket?.exams?.length || 0} exams</span>
+                            {/* Footer */}
+                            <div className="sd-docket-footer">
+                              <div>
+                                <i className="fas fa-info-circle"></i>
+                                This docket must be presented at the examination hall. Issued: {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}
+                              </div>
+                              <div>Fairview University College · Academic Registrar's Office</div>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {/* ── TIMETABLE VIEW ── */}
+                    {docketView === 'timetable' && (
+                      <div className="sd-card" style={{ marginTop: 0 }}>
+                        <div className="sd-card-header">
+                          <span>Exam Timetable</span>
+                          <span className="sd-badge badge-teal">{examDocket?.exams?.length || 0} exams</span>
+                        </div>
+                        {(!examDocket?.exams || examDocket.exams.length === 0) ? (
+                          <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
+                            <i className="fas fa-calendar-times" style={{ fontSize: 40, marginBottom: 12, display: 'block' }}></i>
+                            No exams scheduled. Register your courses first.
+                          </div>
+                        ) : (
+                          <div className="sd-exam-timeline">
+                            {[...examDocket.exams]
+                              .sort((a, b) => new Date(a.date) - new Date(b.date))
+                              .map((ex, i) => {
+                                const d = new Date(ex.date);
+                                const isUpcoming = d >= new Date();
+                                const colors = ['#0d9488', '#7c3aed', '#2563eb', '#f59e0b', '#dc2626', '#10b981', '#ec4899', '#6366f1'];
+                                return (
+                                  <div key={ex.code + i} className={`sd-exam-event ${isUpcoming ? 'upcoming' : 'past'}`}>
+                                    <div className="sd-exam-event-date" style={{ background: colors[i % colors.length] }}>
+                                      <div className="sd-eed-day">{d.toLocaleDateString('en-GB', { day: '2-digit' })}</div>
+                                      <div className="sd-eed-mon">{d.toLocaleDateString('en-GB', { month: 'short' })}</div>
+                                    </div>
+                                    <div className="sd-exam-event-body">
+                                      <div className="sd-eeb-course">
+                                        <span className="sd-code" style={{ fontSize: 11 }}>{ex.code}</span>
+                                        <span className="sd-eeb-name">{ex.name}</span>
+                                      </div>
+                                      <div className="sd-eeb-meta">
+                                        <span><i className="fas fa-clock"></i> {ex.time}</span>
+                                        <span><i className="fas fa-map-marker-alt"></i> {ex.venue}</span>
+                                        <span><i className="fas fa-pen-nib"></i> Sign: ________________</span>
+                                      </div>
+                                    </div>
+                                    <div className="sd-exam-event-status">
+                                      <span className={`sd-badge ${isUpcoming ? 'badge-teal' : 'badge-gold'}`}>
+                                        {isUpcoming ? 'Upcoming' : 'Completed'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        )}
                       </div>
-                      {(!examDocket?.exams || examDocket.exams.length === 0) ? (
-                        <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
-                          <i className="fas fa-calendar-times" style={{ fontSize: 40, marginBottom: 12, display: 'block' }}></i>
-                          No exams scheduled. Register your courses first.
-                        </div>
-                      ) : (
-                        <div className="sd-exam-timeline">
-                          {[...examDocket.exams]
-                            .sort((a, b) => new Date(a.date) - new Date(b.date))
-                            .map((ex, i) => {
-                              const d = new Date(ex.date);
-                              const isUpcoming = d >= new Date();
-                              const colors = ['#0d9488', '#7c3aed', '#2563eb', '#f59e0b', '#dc2626', '#10b981', '#ec4899', '#6366f1'];
-                              return (
-                                <div key={ex.code + i} className={`sd-exam-event ${isUpcoming ? 'upcoming' : 'past'}`}>
-                                  <div className="sd-exam-event-date" style={{ background: colors[i % colors.length] }}>
-                                    <div className="sd-eed-day">{d.toLocaleDateString('en-GB', { day: '2-digit' })}</div>
-                                    <div className="sd-eed-mon">{d.toLocaleDateString('en-GB', { month: 'short' })}</div>
-                                  </div>
-                                  <div className="sd-exam-event-body">
-                                    <div className="sd-eeb-course">
-                                      <span className="sd-code" style={{ fontSize: 11 }}>{ex.code}</span>
-                                      <span className="sd-eeb-name">{ex.name}</span>
-                                    </div>
-                                    <div className="sd-eeb-meta">
-                                      <span><i className="fas fa-clock"></i> {ex.time}</span>
-                                      <span><i className="fas fa-map-marker-alt"></i> {ex.venue}</span>
-                                      <span><i className="fas fa-pen-nib"></i> Sign: ________________</span>
-                                    </div>
-                                  </div>
-                                  <div className="sd-exam-event-status">
-                                    <span className={`sd-badge ${isUpcoming ? 'badge-teal' : 'badge-gold'}`}>
-                                      {isUpcoming ? 'Upcoming' : 'Completed'}
-                                    </span>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
+                    )}
+                  </div>
+                )
               )}
 
               {/* ═══════════ HOSTEL & ACCOMMODATION ═══════════ */}

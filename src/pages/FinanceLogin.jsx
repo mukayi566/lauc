@@ -202,7 +202,7 @@ const FinanceLogin = () => {
                                 >
                                     {loading
                                         ? <><i className="fas fa-spinner fa-spin"></i> Securing Session...</>
-                                        : <><i className="fas fa-shield-alt"></i> Access Vault</>}
+                                        : <> Sign In</>}
                                 </button>
                             </form>
                         </>

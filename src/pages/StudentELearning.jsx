@@ -5,6 +5,8 @@ import { db } from '../firebase';
 import { collection, getDocs, query, where, doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { JitsiMeeting } from '@jitsi/react-sdk';
 import Layout from '../components/Layout';
+import PaymentGate from '../components/PaymentGate';
+import { usePaymentGate } from '../hooks/usePaymentGate';
 import '../dashboards.css';
 import './elearning.css';
 
@@ -28,6 +30,9 @@ const StudentELearning = () => {
     const location = useLocation();
 
     const uid = currentUser?.uid;
+
+    // ── 50% Payment Gate ──
+    const payGate = usePaymentGate(uid);
 
     const loadData = useCallback(async () => {
         if (!uid) return;
@@ -232,11 +237,19 @@ const StudentELearning = () => {
                 </div>
 
                 <div className="container section">
-                    {loading ? (
+                    {loading || payGate.loading ? (
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '300px', color: '#1e3c72' }}>
                             <i className="fas fa-circle-notch fa-spin fa-3x" style={{ marginBottom: '15px' }}></i>
                             <p>Syncing your academic records...</p>
                         </div>
+                    ) : !payGate.hasAccess ? (
+                        <PaymentGate
+                            percentPaid={payGate.percentPaid}
+                            amountPaid={payGate.amountPaid}
+                            amountRequired={payGate.amountRequired}
+                            featureName="E-Learning Portal"
+                            onGoToPayments={() => navigate('/student-dashboard')}
+                        />
                     ) : (
                         <>
                             {activeSection === 'courses' && (

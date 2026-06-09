@@ -31,6 +31,7 @@ const FinanceDashboard = () => {
 
     const [students, setStudents] = useState([]);
     const [stuSearch, setStuSearch] = useState('');
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     // Update 'Arrears Total' whenever payments or students data changes
     useEffect(() => {
@@ -261,8 +262,10 @@ const FinanceDashboard = () => {
                 </div>
             )}
 
+            {isSidebarOpen && <div className="dashboard-overlay" onClick={() => setIsSidebarOpen(false)}></div>}
+
             {/* Sidebar */}
-            <aside className="dashboard-sidebar">
+            <aside className={`dashboard-sidebar ${isSidebarOpen ? 'sidebar-open' : ''}`}>
                 <div className="sidebar-header">
                     <div className="sidebar-logo">
                         <i className="fas fa-wallet"></i>
@@ -270,10 +273,10 @@ const FinanceDashboard = () => {
                     </div>
                 </div>
                 <nav className="sidebar-nav">
-                    <button className={activeTab === 'overview' ? 'active' : ''} onClick={() => setActiveTab('overview')}>
+                    <button className={activeTab === 'overview' ? 'active' : ''} onClick={() => { setActiveTab('overview'); setIsSidebarOpen(false); }}>
                         <i className="fas fa-chart-line"></i> Summary
                     </button>
-                    <button className={activeTab === 'payments' ? 'active' : ''} onClick={() => setActiveTab('payments')}>
+                    <button className={activeTab === 'payments' ? 'active' : ''} onClick={() => { setActiveTab('payments'); setIsSidebarOpen(false); }}>
                         <i className="fas fa-receipt"></i> Transactions
                         {txTotals.pending > 0 && (
                             <span style={{ marginLeft: 'auto', background: '#fbbf24', color: '#1e293b', borderRadius: 20, fontSize: 10, fontWeight: 800, padding: '2px 7px' }}>
@@ -281,13 +284,13 @@ const FinanceDashboard = () => {
                             </span>
                         )}
                     </button>
-                    <button className={activeTab === 'students' ? 'active' : ''} onClick={() => setActiveTab('students')}>
+                    <button className={activeTab === 'students' ? 'active' : ''} onClick={() => { setActiveTab('students'); setIsSidebarOpen(false); }}>
                         <i className="fas fa-user-graduate"></i> Student Balances
                     </button>
-                    <button className={activeTab === 'scholarships' ? 'active' : ''} onClick={() => setActiveTab('scholarships')}>
+                    <button className={activeTab === 'scholarships' ? 'active' : ''} onClick={() => { setActiveTab('scholarships'); setIsSidebarOpen(false); }}>
                         <i className="fas fa-hand-holding-usd"></i> Scholarships
                     </button>
-                    <button className={activeTab === 'reports' ? 'active' : ''} onClick={() => setActiveTab('reports')}>
+                    <button className={activeTab === 'reports' ? 'active' : ''} onClick={() => { setActiveTab('reports'); setIsSidebarOpen(false); }}>
                         <i className="fas fa-file-invoice-dollar"></i> Reports
                     </button>
                 </nav>
@@ -301,6 +304,9 @@ const FinanceDashboard = () => {
             {/* Main Content */}
             <main className="dashboard-main">
                 <header className="dashboard-header">
+                    <button className="fin-hamburger" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+                        <i className="fas fa-bars"></i>
+                    </button>
                     <div className="header-search">
                         <i className="fas fa-search"></i>
                         <input

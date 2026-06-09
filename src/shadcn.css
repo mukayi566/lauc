@@ -1,0 +1,13 @@
+/*
+ * shadcn/ui CSS variables — imported in dashboards that use
+ * Card, Dialog, Table, and Popover components.
+ * The dark-themed values match the existing Fairview dashboard palette.
+ */
+
+.shadcn-scope,
+[data-shadcn] {
+    --card-bg: #1e2a3a;
+    --card-text: #e2e8f0;
+    --card-muted: #94a3b8;
+    --card-border: rgba(255, 255, 255, 0.08);
+}

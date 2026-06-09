@@ -312,7 +312,7 @@ const FinanceDashboard = () => {
                         <input
                             type="text"
                             placeholder={activeTab === 'payments' ? "Search transactions..." : activeTab === 'students' ? "Search students..." : "Search..."}
-                            value={activeTab === 'payments' ? txSearch : activeTab === 'students' ? stuSearch : undefined}
+                            value={activeTab === 'payments' ? txSearch : activeTab === 'students' ? stuSearch : ''}
                             onChange={e => {
                                 if (activeTab === 'payments') setTxSearch(e.target.value);
                                 if (activeTab === 'students') setStuSearch(e.target.value);

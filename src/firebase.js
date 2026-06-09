@@ -1,14 +1,22 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { 
-  initializeFirestore, 
-  persistentLocalCache, 
-  persistentMultipleTabManager 
+import {
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager
 } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  /**
+   * IMPORTANT: The authDomain MUST match a domain that is:
+   * 1. Listed in Firebase Console → Authentication → Settings → Authorized domains
+   * 2. Your deployed Vercel URL (e.g. fairviewuniversity.vercel.app) must be added there.
+   *
+   * Using your custom Vercel domain here prevents the Same-Origin Policy error
+   * that occurs when Firebase redirects auth through firebaseapp.com.
+   */
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
@@ -19,13 +27,14 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize services
+// Initialize auth
 export const auth = getAuth(app);
 
 /**
- * Initialize Firestore with persistent cache.
+ * Initialize Firestore with persistent offline cache.
+ * This means the app will still work (read data) when offline or on poor network.
  * Note: If you see "Database '(default)' not found", please go to the 
- * Firebase Console -> Firestore Database and click "Create database".
+ * Firebase Console → Firestore Database and click "Create database".
  */
 export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({
@@ -33,7 +42,7 @@ export const db = initializeFirestore(app, {
   })
 });
 
-// Initialize secondary app to create users without logging out
+// Secondary app instance — used to create users without logging the admin out
 const secondaryApp = initializeApp(firebaseConfig, "Secondary");
 export const secondaryAuth = getAuth(secondaryApp);
 

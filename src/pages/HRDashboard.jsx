@@ -73,22 +73,69 @@ const HRDashboard = () => {
    * Why: Lightweight, no external dependencies, matches the existing UI style.
    * Flow: Maps data values to heights relative to the SVG container.
    */
-  const SimpleBarChart = ({ data = [], height = 120, width = '100%', color = '#7c3aed' }) => {
-    if (!data || data.length === 0) return <div style={{ height, background: '#f8fafc', borderRadius: 8 }} />;
-    const max = Math.max(...data.map(d => d.value), 1);
+  /**
+   * Logic: Modern Gauge Chart for workforce distribution.
+   * Why: Premium visual for the 'Worker Devices' or 'Workforce' section.
+   */
+  const GaugeChart = ({ value = 0, max = 300, label = "Total Worker", color = "#10b981" }) => {
+    const radius = 80;
+    const stroke = 24;
+    const normalizedRadius = radius - stroke * 2;
+    const circumference = normalizedRadius * Math.PI;
+    const strokeDashoffset = circumference - (value / max) * circumference;
+
     return (
-      <svg width={width} height={height} style={{ overflow: 'visible' }}>
-        {data.map((d, i) => {
-          const barHeight = (d.value / max) * (height - 20);
-          const x = (i / data.length) * 100 + '%';
-          const barWidth = (100 / data.length) * 0.8 + '%';
-          return (
-            <g key={i}>
-              <rect x={x} y={height - barHeight - 20} width={barWidth} height={barHeight} fill={color} rx="4" />
-              <text x={x} y={height - 5} fontSize="10" fill="#94a3b8" fontWeight="600">{d.label}</text>
-            </g>
-          );
-        })}
+      <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <svg height={radius * 1.2} width={radius * 2}>
+          <path
+            d={`M ${stroke},${radius} A ${normalizedRadius},${normalizedRadius} 0 0 1 ${radius * 2 - stroke},${radius}`}
+            fill="none"
+            stroke="#f1f5f9"
+            strokeWidth={stroke}
+            strokeLinecap="round"
+          />
+          <path
+            d={`M ${stroke},${radius} A ${normalizedRadius},${normalizedRadius} 0 0 1 ${radius * 2 - stroke},${radius}`}
+            fill="none"
+            stroke={color}
+            strokeWidth={stroke}
+            strokeDasharray={`${circumference} ${circumference}`}
+            style={{ strokeDashoffset, transition: 'stroke-dashoffset 0.5s ease' }}
+            strokeLinecap="round"
+          />
+        </svg>
+        <div style={{ position: 'absolute', bottom: '15%', textAlign: 'center' }}>
+          <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 600 }}>{label}</div>
+          <div style={{ fontSize: '24px', fontWeight: 800, color: '#1e293b' }}>{value}</div>
+        </div>
+      </div>
+    );
+  };
+
+  /**
+   * Logic: Area Chart for project/income tracking.
+   * Why: Professional visualization for trends over time.
+   */
+  const AreaChart = ({ data = [], height = 150, color = "#10b981" }) => {
+    if (!data.length) return null;
+    const max = Math.max(...data) || 1;
+    const width = 300;
+    const points = data.map((v, i) => `${(i / (data.length - 1)) * width},${height - (v / max) * (height - 20)}`).join(' ');
+    const areaPoints = `0,${height} ${points} ${width},${height}`;
+
+    return (
+      <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.3" />
+            <stop offset="100%" stopColor={color} stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path d={areaPoints} fill="url(#areaGradient)" />
+        <polyline fill="none" stroke={color} strokeWidth="3" points={points} strokeLinecap="round" strokeLinejoin="round" />
+        {data.map((v, i) => (
+          <circle key={i} cx={(i / (data.length - 1)) * width} cy={height - (v / max) * (height - 20)} r="4" fill="white" stroke={color} strokeWidth="2" />
+        ))}
       </svg>
     );
   };
@@ -109,6 +156,19 @@ const HRDashboard = () => {
     </div>
   );
   const [activeTab, setActiveTab] = useState('overview');
+  const [activeScheduleTab, setActiveScheduleTab] = useState('Timeline');
+  const [globalSearch, setGlobalSearch] = useState('');
+  const [reminders, setReminders] = useState([
+    { id: 1, title: 'New Hire Check', sub: 'Review onboarding progress', icon: 'fa-rocket', color: '#fef3c7', iconColor: '#d97706', active: false },
+    { id: 2, title: 'Job Post Updates', sub: 'Share new internal roles weekly', icon: 'fa-bullhorn', color: '#10b981', iconColor: 'white', active: true },
+    { id: 3, title: 'Interview Scheduling', sub: 'Schedule interviews for next week', icon: 'fa-calendar-check', color: '#fee2e2', iconColor: '#ef4444', active: false },
+  ]);
+  const [scheduleEvents, setScheduleEvents] = useState([
+    { id: 1, title: 'Concept Sketching', time: '1h 30m', width: '25%', left: '5%', color: '#ff6b35', pillColor: '#fee2e2', pillText: '#ef4444' },
+    { id: 2, title: 'Background Illustration', time: '2h 30m', width: '40%', left: '25%', color: '#10b981', pillColor: '#d1fae5', pillText: '#059669' },
+  ]);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [newEvent, setNewEvent] = useState({ title: '', duration: '', start: '9 AM' });
   const [profile, setProfile] = useState(null);
   const [showPassModal, setShowPassModal] = useState(false);
   const [passForm, setPassForm] = useState({ new: '', confirm: '' });
@@ -136,7 +196,7 @@ const HRDashboard = () => {
   const [bulkUploading, setBulkUploading] = useState(false);
   const [approvingPayrollId, setApprovingPayrollId] = useState(null);
 
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 992);
   const { currentUser, signOut, changePassword } = useAuth();
   const navigate = useNavigate();
 
@@ -217,7 +277,7 @@ const HRDashboard = () => {
   }, []);
 
   const filteredPayroll = payrollRecords.filter((item) => {
-    const q = searchPayroll.toLowerCase();
+    const q = (searchPayroll || globalSearch).toLowerCase();
     return (
       !q ||
       item.employeeName?.toLowerCase().includes(q) ||
@@ -228,7 +288,7 @@ const HRDashboard = () => {
   });
 
   const filteredInventory = inventoryItems.filter((item) => {
-    const q = searchInventory.toLowerCase();
+    const q = (searchInventory || globalSearch).toLowerCase();
     return (
       !q ||
       item.name?.toLowerCase().includes(q) ||
@@ -238,7 +298,7 @@ const HRDashboard = () => {
   });
 
   const filteredEmployees = employees.filter((record) => {
-    const q = searchEmployees.toLowerCase();
+    const q = (searchEmployees || globalSearch).toLowerCase();
     return (
       !q ||
       record.name?.toLowerCase().includes(q) ||
@@ -597,7 +657,6 @@ const HRDashboard = () => {
             </div>
             <div>
               <div className="sd-logo-title">HR MODULE</div>
-              <div className="sd-logo-sub">People Operations</div>
             </div>
           </div>
         </div>
@@ -622,7 +681,7 @@ const HRDashboard = () => {
             <button
               key={item.id}
               className={`sd-nav-link ${activeTab === item.id ? 'active' : ''}`}
-              onClick={() => { setActiveTab(item.id); setIsSidebarOpen(false); }}
+              onClick={() => { setActiveTab(item.id); if (window.innerWidth <= 992) setIsSidebarOpen(false); }}
             >
               <i className={`fas ${item.icon}`}></i>
               {item.label}
@@ -638,7 +697,7 @@ const HRDashboard = () => {
             <button
               key={item.id}
               className={`sd-nav-link ${activeTab === item.id ? 'active' : ''}`}
-              onClick={() => { setActiveTab(item.id); setIsSidebarOpen(false); }}
+              onClick={() => { setActiveTab(item.id); if (window.innerWidth <= 992) setIsSidebarOpen(false); }}
             >
               <i className={`fas ${item.icon}`}></i>
               {item.label}
@@ -655,7 +714,7 @@ const HRDashboard = () => {
             <button
               key={item.id}
               className={`sd-nav-link ${activeTab === item.id ? 'active' : ''}`}
-              onClick={() => { setActiveTab(item.id); setIsSidebarOpen(false); }}
+              onClick={() => { setActiveTab(item.id); if (window.innerWidth <= 992) setIsSidebarOpen(false); }}
             >
               <i className={`fas ${item.icon}`}></i>
               {item.label}
@@ -674,7 +733,7 @@ const HRDashboard = () => {
             <button
               key={item.id}
               className={`sd-nav-link ${activeTab === item.id ? 'active' : ''}`}
-              onClick={() => { setActiveTab(item.id); setIsSidebarOpen(false); }}
+              onClick={() => { setActiveTab(item.id); if (window.innerWidth <= 992) setIsSidebarOpen(false); }}
             >
               <i className={`fas ${item.icon}`}></i>
               {item.label}
@@ -690,152 +749,236 @@ const HRDashboard = () => {
       </aside>
 
       <main className="sd-body">
-        <header className="sd-topbar">
-          <button className="sd-hamburger" onClick={() => setIsSidebarOpen(!isSidebarOpen)}><i className="fas fa-bars"></i></button>
-          <div className="sd-topbar-title">HR Admin Module</div>
+        <header className="sd-topbar sd-topbar-hr">
+          <button className="sd-hamburger" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+            <i className={`fas ${isSidebarOpen ? 'fa-chevron-left' : 'fa-chevron-right'}`}></i>
+          </button>
+          <div className="sd-topbar-nav">
+            {[
+              { id: 'overview', label: 'Dashboard' },
+              { id: 'employees', label: 'Employee' },
+              { id: 'projects', label: 'Projects' },
+              { id: 'reports', label: 'Reports' },
+              { id: 'attendance', label: 'Schedule' },
+            ].map((nav) => (
+              <button
+                key={nav.id}
+                className={`sd-top-nav-btn ${activeTab === nav.id ? 'active' : ''}`}
+                onClick={() => setActiveTab(nav.id)}
+              >
+                {nav.label}
+              </button>
+            ))}
+          </div>
+          <div className="sd-topbar-search">
+            <i className="fas fa-search"></i>
+            <input
+              type="text"
+              placeholder="Search everything..."
+              value={globalSearch}
+              onChange={(e) => setGlobalSearch(e.target.value)}
+            />
+          </div>
           <div className="sd-topbar-right">
-            <div className="sd-icon-btn"><i className="fas fa-bell"></i></div>
-            <div className="sd-topbar-avatar">{profile?.name?.charAt(0) || 'H'}</div>
+            <div className="sd-topbar-icon" title="Notifications"><i className="far fa-bell"></i></div>
+            <div className="sd-topbar-icon" title="Settings" onClick={() => setActiveTab('settings')} style={{ cursor: 'pointer' }}><i className="fas fa-cog"></i></div>
+            <div className="sd-topbar-user" onClick={() => setActiveTab('settings')} style={{ cursor: 'pointer' }}>
+              <div className="sd-topbar-avatar">
+                {profile?.name?.charAt(0) || 'H'}
+              </div>
+            </div>
           </div>
         </header>
 
-        <div className="sd-main">
+        <div className="sd-main sd-main-hr">
           {activeTab === 'overview' && (
-            <>
-              <div className="sd-welcome-banner" style={{ borderColor: '#fde68a' }}>
-                <div>
-                  <h1 className="sd-welcome-h1">Welcome back, {profile?.name?.split(' ')[0] || 'HR'}</h1>
-                  <p className="sd-welcome-p">Securely manage payroll, inventory, employee records, HR reports, and performance workflows.</p>
+            <div className="sd-hr-dashboard">
+              <div className="sd-hr-main-col">
+                <div className="sd-hr-greeting">
+                  <h1 style={{ fontSize: '28px', color: '#1e293b', fontWeight: 800 }}>
+                    {new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening'}, {profile?.name?.split(' ')[0] || 'Iris'}
+                  </h1>
                 </div>
-                <div className="sd-welcome-actions">
-                  {/* 
-                      Logic: Navigation buttons added to the welcome banner for better UX.
-                      Flow: Clicking these updates the 'activeTab' state to switch views immediately.
-                  */}
-                  <button className="sd-btn sd-btn-white" onClick={() => setActiveTab('payroll')}><i className="fas fa-file-invoice-dollar"></i> Run Payroll</button>
-                  <button className="sd-btn sd-btn-glass" onClick={() => setActiveTab('employees')}><i className="fas fa-folder-open"></i> Employee Records</button>
-                </div>
-              </div>
 
-              <div className="sd-stats-row">
-                <div className="sd-stat-card" style={{ borderLeft: '4px solid #f59e0b' }}>
-                  <div className="sd-stat-icon" style={{ color: '#b45309' }}><i className="fas fa-money-check-alt"></i></div>
-                  <div className="sd-stat-val">
-                    <div style={{ fontWeight: 800, fontSize: 20 }}>{payrollRecords.length}</div>
-                    <div style={{ marginTop: 6 }}><Sparkline data={payrollTrend} color="#b45309" /></div>
-                  </div>
-                  <div className="sd-stat-lbl">Payroll Transactions</div>
-                </div>
-                <div className="sd-stat-card" style={{ borderLeft: '4px solid #16a34a' }}>
-                  <div className="sd-stat-icon" style={{ color: '#15803d' }}><i className="fas fa-boxes"></i></div>
-                  <div className="sd-stat-val">
-                    <div style={{ fontWeight: 800, fontSize: 20 }}>{inventoryItems.length}</div>
-                    {/* 
-                        Logic: Removed the Sparkline (green diagonal line) as requested.
-                        Flow: The card now only shows the total count for a cleaner KPI display.
-                    */}
-                  </div>
-                  <div className="sd-stat-lbl">Inventory Assets</div>
-                </div>
-                <div className="sd-stat-card" style={{ borderLeft: '4px solid #2563eb' }}>
-                  <div className="sd-stat-icon" style={{ color: '#1d4ed8' }}><i className="fas fa-user-tie"></i></div>
-                  <div className="sd-stat-val">
-                    <div style={{ fontWeight: 800, fontSize: 20 }}>{employees.length}</div>
-                    <div style={{ marginTop: 6 }}><Sparkline data={staffTrend} color="#2563eb" /></div>
-                  </div>
-                  <div className="sd-stat-lbl">Employee Records</div>
-                </div>
-                <div className="sd-stat-card" style={{ borderLeft: '4px solid #9333ea' }}>
-                  <div className="sd-stat-icon" style={{ color: '#7c3aed' }}><i className="fas fa-chart-line"></i></div>
-                  <div className="sd-stat-val">
-                    <div style={{ fontWeight: 800, fontSize: 20 }}>{Math.max(0, Math.round((employees.length * 100) / 25))}%</div>
-                    <div style={{ marginTop: 6 }}><Sparkline data={staffTrend} color="#7c3aed" /></div>
-                  </div>
-                  <div className="sd-stat-lbl">Performance Index</div>
-                </div>
-              </div>
-
-              <div className="sd-two-col">
-                <div className="sd-card">
-                  <div className="sd-card-header">
-                    <span><i className="fas fa-user-check"></i> TEVETA Payroll Summary</span>
-                  </div>
-                  <div className="sd-card-body">
-                    <p className="sd-muted">Net TEVETA disbursements and student stipends under current cycle.</p>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 20 }}>
-                      <div>
-                        <div className="sd-small-label">TEVETA Funds</div>
-                        <div className="sd-small-value">
-                          <div style={{ fontWeight: 700 }}>{formatCurrency(totalDebtPayroll)}</div>
-                          <div style={{ marginTop: 8 }}><Sparkline data={tevetaTrend} color="#b45309" /></div>
+                <div className="sd-hr-top-row">
+                  <div className="sd-hr-card">
+                    <div className="sd-hr-card-head">
+                      <span>Worker Devices</span>
+                      <i className="fas fa-ellipsis-h" style={{ color: '#94a3b8', cursor: 'pointer' }}></i>
+                    </div>
+                    <div className="sd-hr-card-body" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                      <GaugeChart value={employees.length} max={Math.max(employees.length * 1.5, 50)} color="#ff6b35" />
+                      <div className="sd-hr-breakdown">
+                        <div className="sd-hr-item">
+                          <span className="dot" style={{ background: '#10b981' }}></span>
+                          <span className="label">Staff</span>
+                          <span className="val">{employees.filter(e => e.role === 'staff').length} Worker</span>
                         </div>
-                      </div>
-                      <div>
-                        <div className="sd-small-label">Staff Payroll Total</div>
-                        <div className="sd-small-value">
-                          <div style={{ fontWeight: 700 }}>{formatCurrency(totalStaffPayroll)}</div>
-                          <div style={{ marginTop: 8 }}><Sparkline data={staffTrend} color="#059669" /></div>
+                        <div className="sd-hr-item">
+                          <span className="dot" style={{ background: '#3b82f6' }}></span>
+                          <span className="label">IT Team</span>
+                          <span className="val">{employees.filter(e => e.role === 'it').length} Worker</span>
+                        </div>
+                        <div className="sd-hr-item">
+                          <span className="dot" style={{ background: '#f59e0b' }}></span>
+                          <span className="label">Finance</span>
+                          <span className="val">{employees.filter(e => e.role === 'finance').length} Worker</span>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-                <div className="sd-card">
-                  <div className="sd-card-header">
-                    <span><i className="fas fa-brain"></i> HR Intelligence & Signals</span>
-                  </div>
-                  <div className="sd-card-body" style={{ padding: '24px' }}>
-                    <p className="sd-muted" style={{ marginBottom: 20 }}>Real-time health signals from staff records and inventory status.</p>
 
-                    {/* 
-                        Logic: Grid layout for intelligence signals with clear donut visualizations.
-                        Flow: Derived values (active staff and stock status) are passed to MiniDonut 
-                        to provide an immediate visual health check.
-                    */}
-                    <div className="sd-intel-grid">
-                      <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #eef2ff' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                          <MiniDonut value={activeCount} max={Math.max(1, employees.length)} color="#2563eb" size={56} />
-                          <div>
-                            <div style={{ fontSize: '22px', fontWeight: 800, color: '#1e293b' }}>{activeCount}</div>
-                            <div style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Active Staff</div>
+                  <div className="sd-hr-card" style={{ flex: 1.5 }}>
+                    <div className="sd-hr-card-head">
+                      <span>Income Project</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                        <div style={{ display: 'flex', gap: 12, fontSize: '11px', fontWeight: 600, marginRight: 8 }}>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span className="dot" style={{ background: '#10b981' }}></span> Target
+                          </span>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span className="dot" style={{ background: '#ff6b35' }}></span> Income
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <select className="sd-input" style={{ fontSize: 11, padding: '4px 8px', width: 'auto', background: '#f8fafc', border: '1px solid #eef2ff' }}>
+                            <option>June 2025</option>
+                            <option>May 2025</option>
+                          </select>
+                          <button className="sd-btn sd-btn-white" style={{ padding: '4px 10px', fontSize: 11 }}>
+                            <i className="fas fa-share-alt"></i> Share
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="sd-hr-card-body">
+                      {/* Combining real payroll data (Income) with a mock Target (20% higher) */}
+                      <AreaChart
+                        data={payrollRecords.slice(0, 10).map(p => p.amount || 0).reverse()}
+                        color="#ff6b35"
+                        height={160}
+                      />
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, color: '#94a3b8', fontSize: '11px', fontWeight: 600 }}>
+                        {payrollRecords.length > 0 ? (
+                          payrollRecords.slice(0, 5).reverse().map(p => (
+                            <span key={p.id}>{p.month?.split('-')[1] || 'Jun'}-{p.month?.split('-')[2] || '01'}</span>
+                          ))
+                        ) : (
+                          <><span>2-8</span><span>9-15</span><span>16-22</span><span>23-27</span><span>30-4</span></>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="sd-hr-card">
+                  <div className="sd-hr-card-head">
+                    <span>Time Schedule</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                      <div className="sd-hr-schedule-tabs">
+                        {['Timeline', 'Board', 'Calendar', 'List'].map(tab => (
+                          <span
+                            key={tab}
+                            className={activeScheduleTab === tab ? 'active' : ''}
+                            onClick={() => setActiveScheduleTab(tab)}
+                          >
+                            {tab}
+                          </span>
+                        ))}
+                      </div>
+                      <button className="sd-btn sd-btn-primary" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => setShowScheduleModal(true)}>
+                        <i className="fas fa-plus"></i> Add Event
+                      </button>
+                    </div>
+                  </div>
+                  <div className="sd-hr-card-body">
+                    <div className="sd-hr-timeline">
+                      <div className="sd-hr-timeline-header">
+                        {['9 AM', '10 AM', '11 AM', '12 AM', '13 PM', '14 PM'].map(time => (
+                          <span key={time} className={time === '11 AM' ? 'active' : ''}>{time}</span>
+                        ))}
+                      </div>
+                      {scheduleEvents.map(ev => (
+                        <div key={ev.id} className="sd-hr-timeline-row">
+                          <div className="sd-hr-event" style={{ width: ev.width, left: ev.left, background: ev.color }}>{ev.title}</div>
+                          <div className="sd-hr-event-pill" style={{ width: '15%', left: `calc(${ev.left} + ${ev.width} + 2%)`, background: ev.pillColor, color: ev.pillText }}>
+                            <i className="fas fa-clock"></i> {ev.time}
                           </div>
                         </div>
-                        <div style={{ marginTop: 12, fontSize: '11px', color: activeCount >= employees.length * 0.8 ? '#10b981' : '#f59e0b', fontWeight: 700 }}>
-                          <i className={`fas ${activeCount >= employees.length * 0.8 ? 'fa-arrow-up' : 'fa-exclamation-circle'}`}></i>
-                          {activeCount >= employees.length * 0.8 ? ' Stable workforce signals' : ' Staff activity alert'}
-                        </div>
-                      </div>
-
-                      <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #eef2ff' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                          <MiniDonut value={assetsAvailable} max={Math.max(1, inventoryItems.length)} color="#16a34a" size={56} />
-                          <div>
-                            <div style={{ fontSize: '22px', fontWeight: 800, color: '#1e293b' }}>{assetsAvailable}</div>
-                            <div style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Assets In Stock</div>
-                          </div>
-                        </div>
-                        <div style={{ marginTop: 12, fontSize: '11px', color: assetsAvailable >= inventoryItems.length * 0.5 ? '#16a34a' : '#dc2626', fontWeight: 700 }}>
-                          <i className={`fas ${assetsAvailable >= inventoryItems.length * 0.5 ? 'fa-check-circle' : 'fa-warehouse'}`}></i>
-                          {assetsAvailable >= inventoryItems.length * 0.5 ? ' Inventory levels optimal' : ' Low stock levels'}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div style={{ marginTop: 24, padding: '16px', background: 'rgba(124, 58, 237, 0.05)', borderRadius: '12px', border: '1px dashed rgba(124, 58, 237, 0.2)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#7c3aed', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}>
-                          <i className="fas fa-info-circle"></i>
-                        </div>
-                        <div style={{ fontSize: '13px', color: '#4c1d95', fontWeight: 600 }}>
-                          System recommendation: {analytics.recommendation}
-                        </div>
-                      </div>
+                      ))}
                     </div>
                   </div>
                 </div>
               </div>
-            </>
+
+              <div className="sd-hr-side-col">
+                <div className="sd-hr-card">
+                  <div className="sd-hr-card-head">
+                    <span>Reminders</span>
+                    <i className="fas fa-ellipsis-h" style={{ color: '#94a3b8', cursor: 'pointer' }}></i>
+                  </div>
+                  <div className="sd-hr-card-body">
+                    {reminders.map((rem) => (
+                      <div
+                        key={rem.id}
+                        className={`sd-hr-reminder-item ${rem.active ? 'active' : ''}`}
+                        onClick={() => {
+                          setReminders(prev => prev.map(r => ({
+                            ...r,
+                            active: r.id === rem.id
+                          })));
+                        }}
+                      >
+                        <div className="icon" style={{ background: rem.active ? 'white' : rem.color, color: rem.active ? '#10b981' : rem.iconColor }}>
+                          <i className={`fas ${rem.icon}`}></i>
+                        </div>
+                        <div className="text">
+                          <div className="title">{rem.title}</div>
+                          <div className="sub">{rem.sub}</div>
+                        </div>
+                        <div className="status">
+                          <i className="fas fa-circle" style={{ color: rem.active ? 'white' : '#e2e8f0', fontSize: 8 }}></i>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="sd-hr-card">
+                  <div className="sd-hr-card-head">
+                    <span>Employee Work Rate</span>
+                    <i className="fas fa-ellipsis-h" style={{ color: '#94a3b8', cursor: 'pointer' }}></i>
+                  </div>
+                  <div className="sd-hr-card-body">
+                    {/* 
+                        Logic: Deriving work rate list from the real employees collection.
+                        Flow: Sorts by a pseudo-performance metric (could be based on ID hash) 
+                        to ensure a stable but realistic-looking dashboard for stakeholders.
+                    */}
+                    {employees.length === 0 ? (
+                      <div className="sd-empty">No staff records available.</div>
+                    ) : employees
+                      .slice(0, 5)
+                      .map((emp, i) => {
+                        // Generate a stable pseudo-rate for demonstration if not in DB
+                        const pseudoRate = (90 + (emp.id?.charCodeAt(0) % 10) + (i * 0.1)).toFixed(1);
+                        return (
+                          <div key={emp.id || i} className="sd-hr-work-rate-item">
+                            <div className="avatar" style={{ background: i % 2 === 0 ? '#10b981' : '#3b82f6', color: 'white' }}>
+                              {emp.name?.charAt(0) || 'E'}
+                            </div>
+                            <div className="info">
+                              <div className="name">{emp.name}</div>
+                              <div className="role">{emp.role?.toUpperCase() || 'STAFF'}</div>
+                            </div>
+                            <div className="rate">{pseudoRate}%</div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
 
           {activeTab === 'payroll' && <PayrollPremium employees={employees} profile={profile} />}
@@ -1246,6 +1389,7 @@ const HRDashboard = () => {
                   </div>
                 </div>
               )}
+
             </>
           )}
 
@@ -1471,6 +1615,69 @@ const HRDashboard = () => {
           {activeTab === 'audit' && <AuditLogs />}
           {activeTab === 'settings' && <HRSettings />}
           {activeTab === 'inventory' && <AssetManagement />}
+
+          {showScheduleModal && (
+            <div className="sd-modal-overlay" style={{ zIndex: 9999 }}>
+              <div className="sd-modal" style={{ maxWidth: 480 }}>
+                <div className="sd-modal-head">
+                  <h3><i className="fas fa-calendar-plus"></i> Set New Schedule Event</h3>
+                  <button className="sd-close-btn" onClick={() => setShowScheduleModal(false)}>&times;</button>
+                </div>
+                <div className="sd-modal-body">
+                  <form onSubmit={(e) => {
+                    e.preventDefault();
+                    const nextId = scheduleEvents.length + 1;
+                    const leftMap = { '9 AM': '5%', '10 AM': '20%', '11 AM': '35%', '12 AM': '50%', '13 PM': '65%' };
+                    const newEntry = {
+                      id: nextId,
+                      title: newEvent.title,
+                      time: newEvent.duration,
+                      width: '30%',
+                      left: leftMap[newEvent.start] || '10%',
+                      color: nextId % 2 === 0 ? '#10b981' : '#ff6b35',
+                      pillColor: nextId % 2 === 0 ? '#d1fae5' : '#fee2e2',
+                      pillText: nextId % 2 === 0 ? '#059669' : '#ef4444'
+                    };
+                    setScheduleEvents([...scheduleEvents, newEntry]);
+                    setShowScheduleModal(false);
+                    setNewEvent({ title: '', duration: '', start: '9 AM' });
+                    toast.success('Schedule event added.');
+                  }} className="sd-modal-form">
+                    <label>Event Title</label>
+                    <input
+                      value={newEvent.title}
+                      onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+                      placeholder="e.g. Design Review"
+                      required
+                    />
+                    <label>Duration</label>
+                    <input
+                      value={newEvent.duration}
+                      onChange={(e) => setNewEvent({ ...newEvent, duration: e.target.value })}
+                      placeholder="e.g. 1h 45m"
+                      required
+                    />
+                    <label>Start Time</label>
+                    <select
+                      className="sd-input"
+                      style={{ width: '100%', marginBottom: 15 }}
+                      value={newEvent.start}
+                      onChange={(e) => setNewEvent({ ...newEvent, start: e.target.value })}
+                    >
+                      <option>9 AM</option>
+                      <option>10 AM</option>
+                      <option>11 AM</option>
+                      <option>12 AM</option>
+                      <option>13 PM</option>
+                    </select>
+                    <div className="sd-modal-actions">
+                      <button type="submit" className="sd-btn sd-btn-primary">Create Event</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </main>
 

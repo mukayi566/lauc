@@ -45,7 +45,7 @@ const Spinner = () => (
 const StaffDashboard = () => {
   /* ── UI state ── */
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 992);
   const [showManageModal, setShowManageModal] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
@@ -724,10 +724,10 @@ const StaffDashboard = () => {
   return (
     <div className="sd-shell staff-theme">
       {/* OVERLAY */}
-      {sidebarOpen && <div className="sd-overlay" onClick={() => setSidebarOpen(false)} />}
+      {isSidebarOpen && <div className="sd-overlay" onClick={() => setIsSidebarOpen(false)} />}
 
       {/* SIDEBAR */}
-      <div className={`sd-sidebar ${sidebarOpen ? 'open' : ''}`}>
+      <div className={`sd-sidebar ${isSidebarOpen ? 'open' : ''}`}>
         <div className="sd-sidebar-logo">
           <div className="sd-logo-icon"><i className="fas fa-chalkboard-teacher"></i></div>
           <div>
@@ -756,7 +756,7 @@ const StaffDashboard = () => {
                 } else {
                   setActiveTab(item.id);
                 }
-                setSidebarOpen(false);
+                if (window.innerWidth <= 992) setIsSidebarOpen(false);
               }}>
               <i className={`fas ${item.icon}`}></i>
               <span>{item.label}</span>
@@ -778,7 +778,7 @@ const StaffDashboard = () => {
               onClick={(e) => {
                 e.preventDefault();
                 setActiveTab(item.id);
-                setSidebarOpen(false);
+                if (window.innerWidth <= 992) setIsSidebarOpen(false);
               }}>
               <i className={`fas ${item.icon}`}></i>
               <span>{item.label}</span>
@@ -799,7 +799,7 @@ const StaffDashboard = () => {
       {/* MAIN CONTENT */}
       <div className="sd-body">
         <header className="sd-topbar">
-          <button className="sd-hamburger" onClick={() => setSidebarOpen(true)}>
+          <button className="sd-hamburger" onClick={() => setIsSidebarOpen(true)}>
             <i className="fas fa-bars"></i>
           </button>
           <div className="sd-topbar-title">
@@ -816,7 +816,7 @@ const StaffDashboard = () => {
                 <div className="sd-notif-panel" style={{ right: 0, top: '50px' }}>
                   <div className="sd-notif-header">
                     <span>Recent Announcements</span>
-                    <button className="sd-link-btn" onClick={() => { setActiveTab('announcements'); setShowNotifPanel(false); }}>View All</button>
+                    <button className={`sd-nav-link ${activeTab === 'announcements' ? 'active' : ''}`} onClick={() => { setActiveTab('announcements'); setShowNotifPanel(false); if (window.innerWidth <= 992) setIsSidebarOpen(false); }}>View All</button>
                   </div>
                   <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
                     {announcements.length === 0 ? (

@@ -33,7 +33,7 @@ const Spinner = () => (
 const RegistrarDashboard = () => {
     /* ── UI state ── */
     const [activeTab, setActiveTab] = useState('dashboard');
-    const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 992);
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
     const [successMsg, setSuccessMsg] = useState('');
@@ -420,7 +420,7 @@ const RegistrarDashboard = () => {
                     {navItems.map(item => (
                         <a key={item.id} href="#"
                             className={`sd-nav-link ${activeTab === item.id ? 'active' : ''}`}
-                            onClick={(e) => { e.preventDefault(); setActiveTab(item.id); setSidebarOpen(false); }}>
+                            onClick={(e) => { e.preventDefault(); setActiveTab(item.id); if (window.innerWidth <= 992) setSidebarOpen(false); }}>
                             <i className={`fas ${item.icon}`}></i>
                             <span>{item.label}</span>
                             {activeTab === item.id && <div className="sd-nav-indicator"></div>}

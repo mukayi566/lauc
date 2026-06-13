@@ -90,26 +90,34 @@ const StaffELearning = () => {
             setMessage({ type: 'error', text: 'Please select a course.' });
             return;
         }
-
+        if (!title.trim()) {
+            setMessage({ type: 'error', text: 'Please enter a title for the material.' });
+            return;
+        }
         if (selectedType === 'link' && !externalUrl) {
             setMessage({ type: 'error', text: 'Please provide an external URL.' });
             return;
         }
-
         if (selectedType !== 'link' && files.length === 0) {
-            setMessage({ type: 'error', text: 'Please select at least one file.' });
+            setMessage({ type: 'error', text: 'Please select at least one file to upload.' });
             return;
         }
 
         setUploading(true);
-        setMessage({ type: 'info', text: selectedType === 'link' ? 'Saving link...' : `Uploading ${files.length} material(s)...` });
+        setOverallProgress(0);
+        setMessage({
+            type: 'info',
+            text: selectedType === 'link'
+                ? 'Saving link to database…'
+                : `Uploading ${files.length} file${files.length > 1 ? 's' : ''} to Firebase Storage…`
+        });
 
         try {
             if (selectedType === 'link') {
                 await addDoc(collection(db, 'learning_materials'), {
-                    title: title || 'External Resource',
+                    title: title.trim() || 'External Resource',
                     course,
-                    topic,
+                    topic: topic || '',
                     access,
                     type: 'link',
                     fileUrl: externalUrl,
@@ -121,65 +129,85 @@ const StaffELearning = () => {
                     createdAt: serverTimestamp(),
                     views: 0
                 });
+                setOverallProgress(100);
             } else {
-                let completed = 0;
                 const totalFiles = files.length;
-                const uploadPromises = files.map(async (file, index) => {
-                    const fileName = `${Date.now()}_${file.name}`;
+                // Track bytes progress per file slot
+                const fileProgress = new Array(totalFiles).fill(0);
+                const fileSizes = files.map(f => f.size);
+                const totalBytes = fileSizes.reduce((s, b) => s + b, 0) || 1;
+
+                const uploadPromises = files.map((file, index) => {
+                    const fileName = `${Date.now()}_${index}_${file.name}`;
                     const storageRef = ref(storage, `elearning/${course}/${fileName}`);
                     const uploadTask = uploadBytesResumable(storageRef, file);
 
                     return new Promise((resolve, reject) => {
-                        uploadTask.on('state_changed',
+                        uploadTask.on(
+                            'state_changed',
                             (snapshot) => {
-                                // Can track individual progress if needed
+                                // Real-time per-file progress — aggregate into overall %
+                                fileProgress[index] = snapshot.bytesTransferred;
+                                const transferred = fileProgress.reduce((s, b) => s + b, 0);
+                                setOverallProgress(Math.round((transferred / totalBytes) * 100));
                             },
                             (error) => {
-                                console.error("Upload error:", error);
+                                console.error('Upload error for file', file.name, error);
                                 reject(error);
                             },
                             async () => {
-                                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-
-                                await addDoc(collection(db, 'learning_materials'), {
-                                    title: files.length === 1 && title ? title : file.name.split('.')[0],
-                                    course,
-                                    topic,
-                                    access,
-                                    type: selectedType,
-                                    fileUrl: downloadURL,
-                                    fileName: file.name,
-                                    fileSize: (file.size / (1024 * 1024)).toFixed(2) + ' MB',
-                                    uploaderId: currentUser?.uid,
-                                    uploaderName: currentUser?.displayName || 'Staff Member',
-                                    published: publish,
-                                    createdAt: serverTimestamp(),
-                                    views: 0
-                                });
-
-                                completed++;
-                                setOverallProgress(Math.round((completed / totalFiles) * 100));
-                                resolve();
+                                try {
+                                    const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                                    await addDoc(collection(db, 'learning_materials'), {
+                                        title: totalFiles === 1 ? (title.trim() || file.name.split('.')[0]) : file.name.split('.')[0],
+                                        course,
+                                        topic: topic || '',
+                                        access,
+                                        type: selectedType,
+                                        fileUrl: downloadURL,
+                                        fileName: file.name,
+                                        fileSize: (file.size / (1024 * 1024)).toFixed(2) + ' MB',
+                                        uploaderId: currentUser?.uid,
+                                        uploaderName: currentUser?.displayName || 'Staff Member',
+                                        published: publish,
+                                        createdAt: serverTimestamp(),
+                                        views: 0
+                                    });
+                                    resolve();
+                                } catch (dbErr) {
+                                    reject(dbErr);
+                                }
                             }
                         );
                     });
                 });
 
                 await Promise.all(uploadPromises);
+                setOverallProgress(100);
             }
 
-            setUploading(false);
+            // Reset form
             setFiles([]);
             setExternalUrl('');
-            setOverallProgress(0);
             setTitle('');
             setTopic('');
-            setMessage({ type: 'success', text: `Successfully published materials!` });
-            setTimeout(() => setMessage({ type: '', text: '' }), 5000);
+            setMessage({
+                type: 'success',
+                text: `✅ Material${files.length > 1 ? 's' : ''} ${publish ? 'published' : 'saved as draft'} successfully! Students can now view it in the E-Learning portal.`
+            });
+            setTimeout(() => {
+                setMessage({ type: '', text: '' });
+                setOverallProgress(0);
+            }, 6000);
 
         } catch (error) {
-            console.error("Error during upload: ", error);
-            setMessage({ type: 'error', text: 'Error uploading one or more files.' });
+            console.error('Upload failed:', error);
+            let errMsg = 'Upload failed. Please try again.';
+            if (error.code === 'storage/unauthorized') errMsg = 'Permission denied. Check Firebase Storage rules.';
+            else if (error.code === 'storage/quota-exceeded') errMsg = 'Firebase Storage quota exceeded.';
+            else if (error.code === 'storage/invalid-url') errMsg = 'Invalid file path. Contact support.';
+            setMessage({ type: 'error', text: errMsg });
+        } finally {
             setUploading(false);
         }
     };
@@ -472,10 +500,27 @@ const StaffELearning = () => {
 
                             {uploading && (
                                 <div className="upload-progress-container" style={{ marginTop: '20px' }}>
-                                    <div className="progress-bar-bg" style={{ height: '8px', backgroundColor: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
-                                        <div className="progress-bar-fill" style={{ height: '100%', width: `${overallProgress}%`, backgroundColor: '#2563eb', transition: 'width 0.3s ease' }}></div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13, fontWeight: 600, color: '#475569' }}>
+                                        <span>
+                                            <i className="fas fa-cloud-upload-alt" style={{ marginRight: 6, color: '#2563eb' }}></i>
+                                            {overallProgress < 100 ? 'Uploading to Firebase Storage…' : 'Saving to database…'}
+                                        </span>
+                                        <span style={{ color: '#2563eb' }}>{overallProgress}%</span>
                                     </div>
-                                    <p style={{ fontSize: '12px', textAlign: 'center', marginTop: '5px' }}>Overall Progress: {overallProgress}%</p>
+                                    <div className="progress-bar-bg" style={{ height: '10px', backgroundColor: '#e2e8f0', borderRadius: '99px', overflow: 'hidden' }}>
+                                        <div className="progress-bar-fill" style={{
+                                            height: '100%',
+                                            width: `${overallProgress}%`,
+                                            background: overallProgress === 100
+                                                ? 'linear-gradient(90deg, #10b981, #059669)'
+                                                : 'linear-gradient(90deg, #2563eb, #60a5fa)',
+                                            transition: 'width 0.25s ease',
+                                            borderRadius: '99px'
+                                        }}></div>
+                                    </div>
+                                    <p style={{ fontSize: '11px', textAlign: 'center', marginTop: 6, color: '#94a3b8' }}>
+                                        {overallProgress === 100 ? '✅ Upload complete — saving metadata…' : `Please wait, do not close this tab`}
+                                    </p>
                                 </div>
                             )}
 

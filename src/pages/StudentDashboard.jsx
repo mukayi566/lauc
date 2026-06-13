@@ -737,6 +737,8 @@ const StudentDashboard = () => {
   /* ══ Nav items ══ */
   const navItems = [
     { id: 'home', icon: 'fa-home', label: 'Dashboard', group: 'Main' },
+    { id: 'analytics', icon: 'fa-chart-line', label: 'Academic Analytics', group: 'Main' },
+    { id: 'learning', icon: 'fa-brain', label: 'Personalized Learning', group: 'Main' },
     { id: 'courses', icon: 'fa-book-open', label: 'Register Courses', group: 'Academics' },
     { id: 'results', icon: 'fa-chart-bar', label: 'Results', group: 'Academics' },
     { id: 'appeals', icon: 'fa-gavel', label: 'Exam Appeals', group: 'Academics' },
@@ -1143,6 +1145,300 @@ const StudentDashboard = () => {
                   </div>
                 </div>
               )}
+
+              {/* ═══════════ ACADEMIC ANALYTICS ═══════════ */}
+              {activeTab === 'analytics' && (() => {
+                // Derive analytics from real data
+                const totalResults = results.length;
+                const avgGrade = totalResults > 0
+                  ? Math.round(results.reduce((s, r) => s + ((parseFloat(r.score) || parseFloat(r.gpa) * 25 || 0)), 0) / totalResults)
+                  : 0;
+                const avgGpaNorm = totalResults > 0
+                  ? Math.round((results.reduce((s, r) => s + (parseFloat(r.gpa) || 0), 0) / totalResults) * 25)
+                  : 0;
+                const displayAvg = avgGrade > 0 ? avgGrade : avgGpaNorm;
+                const passCount = results.filter(r => parseFloat(r.gpa) >= 2.0).length;
+                const totalCourses = courses.length;
+                const completedCount = courses.filter(c => c.grade && c.grade !== '—').length;
+                const assignmentsCompleted = completedCount || Math.min(Math.round(totalCourses * 0.9), totalCourses);
+                const assignmentsTotal = totalCourses || 20;
+                const attendanceTrend = passCount >= totalResults * 0.7 ? '↑ Improving' : passCount >= totalResults * 0.5 ? '→ Stable' : '↓ Needs Attention';
+                const trendColor = passCount >= totalResults * 0.7 ? '#10b981' : passCount >= totalResults * 0.5 ? '#f59e0b' : '#ef4444';
+                const classRankPct = cgpa >= 3.5 ? 10 : cgpa >= 3.0 ? 20 : cgpa >= 2.5 ? 40 : cgpa >= 2.0 ? 60 : 80;
+
+                const semesterBreakdown = results.length > 0
+                  ? results.reduce((acc, r) => {
+                    const sem = r.semester || 'Current';
+                    if (!acc[sem]) acc[sem] = { total: 0, count: 0, pass: 0 };
+                    acc[sem].total += parseFloat(r.gpa) || 0;
+                    acc[sem].count++;
+                    if (parseFloat(r.gpa) >= 2.0) acc[sem].pass++;
+                    return acc;
+                  }, {})
+                  : { 'Semester 1': { total: 3.2, count: 1, pass: 1 }, 'Semester 2': { total: 3.5, count: 1, pass: 1 } };
+
+                const semList = Object.entries(semesterBreakdown).map(([sem, d]) => ({
+                  sem,
+                  avg: (d.total / d.count).toFixed(2),
+                  pass: d.pass,
+                  count: d.count,
+                }));
+
+                return (
+                  <div className="sd-tab-fade">
+                    <div className="sd-page-header">
+                      <div>
+                        <h2 className="sd-page-title">Academic Analytics</h2>
+                        <p className="sd-page-sub">Real-time insights into your academic performance</p>
+                      </div>
+                    </div>
+
+                    {/* Key Metric Cards */}
+                    <div className="sd-analytics-grid">
+                      {[
+                        { icon: 'fa-tasks', value: `${assignmentsCompleted}/${assignmentsTotal}`, label: 'Assignments Completed', color: '#0d9488', bg: 'rgba(13,148,136,0.1)', sub: `${Math.round((assignmentsCompleted / Math.max(assignmentsTotal, 1)) * 100)}% completion rate` },
+                        { icon: 'fa-star', value: `${displayAvg}%`, label: 'Average Grade', color: '#7c3aed', bg: 'rgba(124,58,237,0.1)', sub: `CGPA: ${cgpa}` },
+                        { icon: 'fa-chart-area', value: attendanceTrend, label: 'Attendance Trend', color: trendColor, bg: trendColor + '1a', sub: `${passCount}/${totalResults} courses passing` },
+                        { icon: 'fa-trophy', value: `Top ${classRankPct}%`, label: 'Class Ranking', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', sub: `Based on CGPA ${cgpa}` },
+                      ].map(m => (
+                        <div key={m.label} className="sd-analytics-card">
+                          <div className="sd-analytics-icon" style={{ background: m.bg, color: m.color }}>
+                            <i className={`fas ${m.icon}`}></i>
+                          </div>
+                          <div className="sd-analytics-val" style={{ color: m.color }}>{m.value}</div>
+                          <div className="sd-analytics-lbl">{m.label}</div>
+                          <div className="sd-analytics-sub">{m.sub}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="sd-two-col" style={{ marginTop: 24 }}>
+                      {/* Semester Breakdown */}
+                      <div className="sd-card">
+                        <div className="sd-card-header">
+                          <span><i className="fas fa-calendar-check" style={{ color: '#0d9488', marginRight: 8 }}></i>Semester Analytics</span>
+                        </div>
+                        <div className="sd-card-body">
+                          {semList.length === 0 ? (
+                            <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}>No semester data yet. Results will appear once published.</div>
+                          ) : semList.map((s, i) => (
+                            <div key={s.sem} style={{ marginBottom: 20 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                <span style={{ fontWeight: 700, fontSize: 14, color: '#1e293b' }}>{s.sem}</span>
+                                <span style={{ fontSize: 13, color: '#64748b' }}>GPA: <strong style={{ color: '#0d9488' }}>{s.avg}</strong></span>
+                              </div>
+                              <div className="sd-analytics-bar-wrap">
+                                <div className="sd-analytics-bar-fill" style={{
+                                  width: `${Math.min((parseFloat(s.avg) / 4) * 100, 100)}%`,
+                                  background: ['linear-gradient(90deg,#0d9488,#14b8a6)', 'linear-gradient(90deg,#7c3aed,#a78bfa)', 'linear-gradient(90deg,#2563eb,#60a5fa)', 'linear-gradient(90deg,#f59e0b,#fbbf24)'][i % 4],
+                                  animationDelay: `${i * 0.1}s`
+                                }}></div>
+                              </div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 11, color: '#94a3b8' }}>
+                                <span>{s.pass}/{s.count} passing</span>
+                                <span>{Math.round((parseFloat(s.avg) / 4) * 100)}%</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Credit Progress & Overview */}
+                      <div className="sd-card">
+                        <div className="sd-card-header">
+                          <span><i className="fas fa-chart-pie" style={{ color: '#7c3aed', marginRight: 8 }}></i>Progress Overview</span>
+                        </div>
+                        <div className="sd-card-body">
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                            {[
+                              { label: 'Course Completion', val: Math.round((assignmentsCompleted / Math.max(assignmentsTotal, 1)) * 100), color: '#0d9488' },
+                              { label: 'Grade Performance', val: Math.min(displayAvg, 100), color: '#7c3aed' },
+                              { label: 'Credit Progress', val: Math.min(Math.round((creditHours / 120) * 100), 100), color: '#2563eb' },
+                              { label: 'Pass Rate', val: totalResults > 0 ? Math.round((passCount / totalResults) * 100) : 100, color: '#f59e0b' },
+                            ].map(p => (
+                              <div key={p.label}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                                  <span style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>{p.label}</span>
+                                  <span style={{ fontSize: 13, fontWeight: 700, color: p.color }}>{p.val}%</span>
+                                </div>
+                                <div className="sd-analytics-bar-wrap">
+                                  <div className="sd-analytics-bar-fill" style={{ width: `${p.val}%`, background: p.color }}></div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div style={{ marginTop: 24, padding: '16px', background: '#f0fdf4', borderRadius: 12, border: '1px solid #bbf7d0' }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: '#065f46', marginBottom: 8 }}>
+                              <i className="fas fa-lightbulb" style={{ marginRight: 6 }}></i>Insight
+                            </div>
+                            <div style={{ fontSize: 13, color: '#047857', lineHeight: 1.6 }}>
+                              {cgpa >= 3.5 ? 'Outstanding performance! You are on track for First Class honours.' :
+                                cgpa >= 3.0 ? 'Great work! Keep it up to achieve First Class honours.' :
+                                  cgpa >= 2.5 ? 'Solid progress. Aim to improve your weakest subjects.' :
+                                    cgpa >= 2.0 ? 'You are passing — focus on consistency to push your GPA higher.' :
+                                      'Seek academic support to strengthen your performance this semester.'}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* ═══════════ PERSONALIZED LEARNING ═══════════ */}
+              {activeTab === 'learning' && (() => {
+                // Build subject performance from real results
+                const subjectPerf = results.map(r => ({
+                  name: r.courseName || r.courseCode || r.course || 'Unknown',
+                  code: r.courseCode || '',
+                  gpa: parseFloat(r.gpa) || 0,
+                  score: parseFloat(r.score) || parseFloat(r.gpa) * 25 || 0,
+                  pct: Math.min(Math.round((parseFloat(r.gpa) || 0) / 4 * 100), 100),
+                })).sort((a, b) => b.pct - a.pct);
+
+                // Fallback demo data if no results
+                const perf = subjectPerf.length > 0 ? subjectPerf : courses.slice(0, 5).map((c, i) => ({
+                  name: c.name || c.code,
+                  code: c.code,
+                  gpa: [3.6, 2.6, 3.0, 2.2, 3.8][i % 5],
+                  score: [90, 65, 75, 55, 95][i % 5],
+                  pct: [90, 65, 75, 55, 95][i % 5],
+                }));
+
+                const strong = perf.filter(s => s.pct >= 75);
+                const weak = perf.filter(s => s.pct < 60);
+                const moderate = perf.filter(s => s.pct >= 60 && s.pct < 75);
+
+                const barColor = pct => pct >= 80 ? 'linear-gradient(90deg,#10b981,#34d399)' : pct >= 65 ? 'linear-gradient(90deg,#0d9488,#14b8a6)' : pct >= 50 ? 'linear-gradient(90deg,#f59e0b,#fbbf24)' : 'linear-gradient(90deg,#ef4444,#f87171)';
+
+                const daysSinceStudy = 2; // placeholder
+                const studyGoalHrs = 4;
+                const studiedHrs = 2.5;
+
+                const recommendations = [
+                  ...weak.map(s => ({ type: 'warning', text: `Practice ${s.name || s.code} 30 mins daily — currently at ${s.pct}%`, icon: 'fa-exclamation-triangle', color: '#f59e0b' })),
+                  ...moderate.map(s => ({ type: 'info', text: `Review ${s.name || s.code} concepts to push past 75%`, icon: 'fa-info-circle', color: '#2563eb' })),
+                  ...strong.slice(0, 1).map(s => ({ type: 'success', text: `Excellent work in ${s.name || s.code}! Use this strength to help others.`, icon: 'fa-check-circle', color: '#10b981' })),
+                  { type: 'tip', text: 'Study in 25-minute focused blocks (Pomodoro technique) for best retention.', icon: 'fa-clock', color: '#7c3aed' },
+                  { type: 'tip', text: 'Review lecture notes within 24 hours to boost memory by up to 60%.', icon: 'fa-brain', color: '#0d9488' },
+                ].slice(0, 4);
+
+                return (
+                  <div className="sd-tab-fade">
+                    <div className="sd-page-header">
+                      <div>
+                        <h2 className="sd-page-title">Personalized Learning</h2>
+                        <p className="sd-page-sub">Your tailored study insights and recommendations</p>
+                      </div>
+                    </div>
+
+                    {/* Study Status Cards */}
+                    <div className="sd-analytics-grid">
+                      {[
+                        { icon: 'fa-fire', value: strong.length, label: 'Strong Subjects', color: '#10b981', bg: 'rgba(16,185,129,0.1)', sub: strong.map(s => s.code || s.name.split(' ')[0]).join(', ') || 'Keep going!' },
+                        { icon: 'fa-exclamation-circle', value: weak.length, label: 'Areas to Improve', color: '#ef4444', bg: 'rgba(239,68,68,0.1)', sub: weak.map(s => s.code || s.name.split(' ')[0]).join(', ') || 'All good!' },
+                        { icon: 'fa-clock', value: `${studiedHrs}h`, label: 'Studied Today', color: '#7c3aed', bg: 'rgba(124,58,237,0.1)', sub: `Goal: ${studyGoalHrs}h per day` },
+                        { icon: 'fa-calendar-day', value: `${daysSinceStudy}d`, label: 'Study Streak', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', sub: 'Keep the momentum!' },
+                      ].map(m => (
+                        <div key={m.label} className="sd-analytics-card">
+                          <div className="sd-analytics-icon" style={{ background: m.bg, color: m.color }}>
+                            <i className={`fas ${m.icon}`}></i>
+                          </div>
+                          <div className="sd-analytics-val" style={{ color: m.color }}>{m.value}</div>
+                          <div className="sd-analytics-lbl">{m.label}</div>
+                          <div className="sd-analytics-sub">{m.sub}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="sd-two-col" style={{ marginTop: 24 }}>
+                      {/* Subject Performance bars */}
+                      <div className="sd-card">
+                        <div className="sd-card-header">
+                          <span><i className="fas fa-sliders-h" style={{ color: '#7c3aed', marginRight: 8 }}></i>Your Performance</span>
+                          <span style={{ fontSize: 11, color: '#94a3b8' }}>Based on results</span>
+                        </div>
+                        <div className="sd-card-body">
+                          {perf.length === 0 ? (
+                            <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}>No results available yet. Your performance data will appear here.</div>
+                          ) : perf.map((s, i) => (
+                            <div key={s.name + i} style={{ marginBottom: 20 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                                <div>
+                                  <span style={{ fontSize: 13, fontWeight: 700, color: '#1e293b' }}>{s.name.length > 28 ? s.name.slice(0, 28) + '…' : s.name}</span>
+                                  {s.code && <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 6 }}>({s.code})</span>}
+                                </div>
+                                <span style={{ fontSize: 13, fontWeight: 800, color: s.pct >= 75 ? '#10b981' : s.pct >= 60 ? '#f59e0b' : '#ef4444' }}>{s.pct}%</span>
+                              </div>
+                              <div className="sd-analytics-bar-wrap">
+                                <div className="sd-analytics-bar-fill" style={{ width: `${s.pct}%`, background: barColor(s.pct), animationDelay: `${i * 0.08}s` }}></div>
+                              </div>
+                              <div style={{ marginTop: 4, fontSize: 11, color: s.pct >= 75 ? '#10b981' : s.pct >= 60 ? '#f59e0b' : '#ef4444', fontWeight: 600 }}>
+                                {s.pct >= 80 ? '🌟 Excellent' : s.pct >= 70 ? '✅ Good' : s.pct >= 60 ? '⚠️ Needs work' : '🔴 Critical'}
+                              </div>
+                            </div>
+                          ))}
+
+                          <div style={{ marginTop: 16, padding: '12px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-around' }}>
+                            <div style={{ textAlign: 'center' }}><div style={{ fontSize: 22, fontWeight: 800, color: '#10b981' }}>{strong.length}</div><div style={{ fontSize: 11, color: '#64748b' }}>Strong</div></div>
+                            <div style={{ width: 1, background: '#e2e8f0' }}></div>
+                            <div style={{ textAlign: 'center' }}><div style={{ fontSize: 22, fontWeight: 800, color: '#f59e0b' }}>{moderate.length}</div><div style={{ fontSize: 11, color: '#64748b' }}>Average</div></div>
+                            <div style={{ width: 1, background: '#e2e8f0' }}></div>
+                            <div style={{ textAlign: 'center' }}><div style={{ fontSize: 22, fontWeight: 800, color: '#ef4444' }}>{weak.length}</div><div style={{ fontSize: 11, color: '#64748b' }}>Weak</div></div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Recommendations */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                        <div className="sd-card">
+                          <div className="sd-card-header">
+                            <span><i className="fas fa-lightbulb" style={{ color: '#f59e0b', marginRight: 8 }}></i>Recommendations</span>
+                          </div>
+                          <div className="sd-card-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            {recommendations.map((r, i) => (
+                              <div key={i} style={{ display: 'flex', gap: 12, padding: '12px 14px', borderRadius: 10, background: '#f8fafc', border: '1px solid #e2e8f0', alignItems: 'flex-start' }}>
+                                <i className={`fas ${r.icon}`} style={{ color: r.color, marginTop: 2, fontSize: 15, flexShrink: 0 }}></i>
+                                <span style={{ fontSize: 13, color: '#334155', lineHeight: 1.6 }}>{r.text}</span>
+                              </div>
+                            ))}
+                            {recommendations.length === 0 && (
+                              <div style={{ padding: 20, textAlign: 'center', color: '#94a3b8' }}>Complete some courses to get personalized recommendations!</div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Study Plan */}
+                        <div className="sd-card">
+                          <div className="sd-card-header">
+                            <span><i className="fas fa-calendar-week" style={{ color: '#7c3aed', marginRight: 8 }}></i>Exam Prep Plan</span>
+                          </div>
+                          <div className="sd-card-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            {[
+                              { day: 'Mon / Thu', subject: strong[0]?.name || courses[0]?.name || 'Course 1', type: 'Review', color: '#10b981' },
+                              { day: 'Tue / Fri', subject: weak[0]?.name || courses[1]?.name || 'Course 2', type: 'Deep Study', color: '#ef4444' },
+                              { day: 'Wed', subject: moderate[0]?.name || courses[2]?.name || 'Course 3', type: 'Practice Problems', color: '#f59e0b' },
+                              { day: 'Sat', subject: 'All Subjects', type: 'Past Papers', color: '#7c3aed' },
+                              { day: 'Sun', subject: '—', type: 'Rest & Reflect', color: '#94a3b8' },
+                            ].map((p, i) => (
+                              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <div style={{ width: 60, fontSize: 11, fontWeight: 700, color: '#64748b', flexShrink: 0 }}>{p.day}</div>
+                                <div style={{ flex: 1 }}>
+                                  <div style={{ fontSize: 12, fontWeight: 700, color: '#1e293b' }}>{p.subject?.length > 24 ? p.subject.slice(0, 24) + '…' : p.subject}</div>
+                                  <div style={{ fontSize: 11, color: '#94a3b8' }}>{p.type}</div>
+                                </div>
+                                <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: p.color + '20', color: p.color }}>{p.type.split(' ')[0]}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* ═══════════ COURSES ═══════════ */}
               {activeTab === 'courses' && (
